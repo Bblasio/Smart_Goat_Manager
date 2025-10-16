@@ -7,3 +7,7 @@ pandas
 numpy
 Pillow
 pyrebase4
+gcloud
+oauth2client
+requests-toolbelt
+setuptools

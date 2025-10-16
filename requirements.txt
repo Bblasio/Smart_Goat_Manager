@@ -1,1 +1,8 @@
-pyrebase4
+streamlit
+streamlit-option-menu
+firebase-admin
+python-dotenv
+requests
+pandas
+numpy
+Pillow

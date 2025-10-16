@@ -9,7 +9,7 @@ import uuid
 firebaseConfig = {
     "apiKey": "AIzaSyCCwzzr-F8qgDVwPK6xSy2mGLUulQ9F3bE",
     "authDomain": "goat-smart-farm.firebaseapp.com",
-    "databaseURL": "https://goat-smart-farm-default-rtdb.firebaseio.com/",
+    "databaseURL": "ENV_VARIABLE",
     "projectId": "goat-smart-farm",
     "storageBucket": "goat-smart-farm.appspot.com",
     "messagingSenderId": "595909170929",

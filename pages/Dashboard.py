@@ -14,7 +14,7 @@ if not firebase_admin._apps:
         r"C:\Users\User\Desktop\Projects\smart-goat-farm\serviceAccountKey.json"
     )
     firebase_admin.initialize_app(cred, {
-        "databaseURL": "https://goat-smart-farm-default-rtdb.firebaseio.com/"
+         "databaseURL": "ENV_VARIABLE"
     })
 
 # -------------------- Page config --------------------

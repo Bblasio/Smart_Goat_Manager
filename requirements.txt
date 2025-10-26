@@ -11,3 +11,4 @@ gcloud
 oauth2client
 requests-toolbelt
 setuptools
+feedparser

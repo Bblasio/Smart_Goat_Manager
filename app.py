@@ -3,6 +3,7 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 import pyrebase
 import json
+import base64
 
 # -------------------------------------------------
 # 1. Load Firebase config from Streamlit Secrets
@@ -23,7 +24,29 @@ db = firebase.database()
 # -------------------------------------------------
 # 3. Page config
 # -------------------------------------------------
-st.set_page_config(page_title="Smart Goat Farm", page_icon="goat", layout="wide")
+st.set_page_config(page_title="Smart Goat Farm", page_icon="🐐", layout="wide")
+
+# -------------------------------------------------
+# 🖼️  Add Background Image
+# -------------------------------------------------
+def add_bg_from_local(image_file):
+    with open(image_file, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{encoded}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+add_bg_from_local("images/app.png")  # 👈 your background image path
 
 # -------------------------------------------------
 # 4. Session state defaults
@@ -158,7 +181,6 @@ elif st.session_state.show_reset:
 elif not st.session_state.authenticated:
     login_page()
 else:
-    # === GO TO PAGES FOLDER ===
     import os
     page_path = f"pages/{st.session_state.selected_page}.py"
     if os.path.exists(page_path):
@@ -167,7 +189,6 @@ else:
     else:
         st.error(f"Page '{st.session_state.selected_page}' not found.")
 
-    # === SIDEBAR: Only Welcome + Logout ===
     with st.sidebar:
         st.markdown(f"### Welcome, {st.session_state.farm_name}")
         if st.button("Logout"):

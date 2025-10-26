@@ -14,3 +14,4 @@ setuptools
 feedparser
 plotly
 scikit-learn
+base64

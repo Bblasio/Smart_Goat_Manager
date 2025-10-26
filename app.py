@@ -1,135 +1,154 @@
 # app.py
-
 import streamlit as st
 from streamlit_option_menu import option_menu
 import pyrebase
-from firebase_config import firebaseConfig
+import json
 
-# ✅ Firebase setup
+# -------------------------------------------------
+# 1. Load Firebase config from Streamlit Secrets
+# -------------------------------------------------
+if "firebase_config" not in st.secrets:
+    st.error("Missing `firebase_config` in Streamlit Secrets!")
+    st.stop()
+
+firebaseConfig = json.loads(st.secrets["firebase_config"])
+
+# -------------------------------------------------
+# 2. Initialise Pyrebase
+# -------------------------------------------------
 firebase = pyrebase.initialize_app(firebaseConfig)
 auth = firebase.auth()
-db = firebase.database()  # 👉 Realtime Database
+db = firebase.database()          # Realtime Database
 
-# ✅ Page configuration
+# -------------------------------------------------
+# 3. Page config
+# -------------------------------------------------
 st.set_page_config(
     page_title="Smart Goat Farm",
-    page_icon="🐐",
+    page_icon="goat",
     layout="wide",
 )
 
-# ✅ Initialize session state
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "show_signup" not in st.session_state:
-    st.session_state.show_signup = False
-if "show_reset" not in st.session_state:
-    st.session_state.show_reset = False
-if "farm_name" not in st.session_state:
-    st.session_state.farm_name = ""
-if "selected_page" not in st.session_state:
-    st.session_state.selected_page = "Dashboard"  # 👈 default landing page after login
+# -------------------------------------------------
+# 4. Session state defaults
+# -------------------------------------------------
+defaults = {
+    "authenticated": False,
+    "show_signup": False,
+    "show_reset": False,
+    "farm_name": "",
+    "selected_page": "Dashboard",
+    "user": None,
+}
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
-# ✅ Forgot Password Page
+# -------------------------------------------------
+# 5. Helper: parse Pyrebase errors
+# -------------------------------------------------
+def parse_pyrebase_error(e):
+    msg = str(e).lower()
+    if "email" in msg and "already" in msg:
+        return "Email already in use."
+    if "network" in msg or "timeout" in msg:
+        return "Network error – try again."
+    if "permission" in msg or "denied" in msg:
+        return "Database permission denied – check Firebase rules."
+    if "invalid" in msg and "password" in msg:
+        return "Password is too weak (min 6 chars)."
+    return f"Error: {e}"
+
+# -------------------------------------------------
+# 6. Pages
+# -------------------------------------------------
 def forgot_password_page():
-    st.title("🔑 Reset Password")
-    st.write("Enter your email and we’ll send you a reset link.")
-
+    st.title("Reset Password")
     with st.form("reset_form"):
         email = st.text_input("Email")
-        reset_btn = st.form_submit_button("Send Reset Link")
-
-        if reset_btn:
+        if st.form_submit_button("Send Reset Link"):
             try:
                 auth.send_password_reset_email(email)
-                st.success("📩 Password reset email sent successfully!")
+                st.success("Reset link sent – check your inbox.")
                 st.session_state.show_reset = False
                 st.rerun()
             except Exception as e:
-                st.error("❌ Failed to send reset email. Check your email or try again.")
-
+                st.error(parse_pyrebase_error(e))
     if st.button("Back to Login"):
         st.session_state.show_reset = False
         st.rerun()
 
-# ✅ Login Page
-def login_page():
-    st.title("🔐 Login to Smart Goat Farm")
 
+def login_page():
+    st.title("Login")
     with st.form("login_form"):
         email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        login_btn = st.form_submit_button("Login")
-
-        if login_btn:
+        pwd = st.text_input("Password", type="password")
+        if st.form_submit_button("Login"):
             try:
-                user = auth.sign_in_with_email_and_password(email, password)
-                st.session_state.authenticated = True
-                st.session_state.user = user
-                user_id = user["localId"]
-
-                # ✅ Fetch farm name from Realtime Database
-                farm_name = db.child("users").child(user_id).child("farm_name").get().val()
-                st.session_state.farm_name = farm_name if farm_name else "My Farm"
-
-                # 👇 Redirect user to Dashboard
-                st.session_state.selected_page = "Dashboard"
-                st.success("✅ Login successful! Redirecting to Dashboard...")
+                user = auth.sign_in_with_email_and_password(email, pwd)
+                uid = user["localId"]
+                # fetch farm name
+                farm = db.child("users").child(uid).child("farm_name").get().val()
+                st.session_state.update({
+                    "authenticated": True,
+                    "user": user,
+                    "farm_name": farm or "My Farm",
+                    "selected_page": "Dashboard",
+                })
+                st.success("Logged in – welcome!")
                 st.rerun()
+            except Exception as e:
+                st.error(parse_pyrebase_error(e))
 
-            except Exception:
-                st.error("❌ Invalid credentials or user not found.")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("📝 Create Account"):
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Create Account"):
             st.session_state.show_signup = True
             st.rerun()
-    with col2:
-        if st.button("🔑 Forgot Password"):
+    with c2:
+        if st.button("Forgot Password"):
             st.session_state.show_reset = True
             st.rerun()
 
-# ✅ Signup Page
-def signup_page():
-    st.title("📝 Create Account")
 
+def signup_page():
+    st.title("Create Account")
     with st.form("signup_form"):
         farm_name = st.text_input("Farm Name")
         email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        signup_btn = st.form_submit_button("Sign Up")
-
-        if signup_btn:
-            if farm_name.strip() == "":
-                st.error("❌ Farm name is required.")
+        pwd = st.text_input("Password", type="password")
+        if st.form_submit_button("Sign Up"):
+            if not farm_name.strip():
+                st.error("Farm name is required.")
             else:
                 try:
-                    user = auth.create_user_with_email_and_password(email, password)
-                    user_id = user["localId"]
-
-                    # ✅ Save farm name in Realtime Database
-                    db.child("users").child(user_id).child("farm_name").set(farm_name)
-
-                    st.success("✅ Account created successfully! You can now log in.")
+                    user = auth.create_user_with_email_and_password(email, pwd)
+                    uid = user["localId"]
+                    # write farm name (rules allow only own uid)
+                    db.child("users").child(uid).child("farm_name").set(farm_name)
+                    st.success("Account created – you can now log in.")
                     st.session_state.show_signup = False
                     st.rerun()
                 except Exception as e:
-                    st.error("❌ Error creating account. Email might already be in use.")
+                    st.error(parse_pyrebase_error(e))
 
     if st.button("Back to Login"):
         st.session_state.show_signup = False
         st.rerun()
 
-# ✅ Logout Button
+
 def logout_button():
-    if st.sidebar.button("🚪 Logout"):
-        st.session_state.authenticated = False
-        st.session_state.user = None
-        st.session_state.farm_name = ""
+    if st.sidebar.button("Logout"):
+        for k in ["authenticated", "user", "farm_name"]:
+            st.session_state[k] = None if k != "authenticated" else False
         st.session_state.selected_page = "Dashboard"
         st.rerun()
 
-# ✅ Routing
+
+# -------------------------------------------------
+# 7. Routing
+# -------------------------------------------------
 if st.session_state.show_signup:
     signup_page()
 elif st.session_state.show_reset:
@@ -137,27 +156,24 @@ elif st.session_state.show_reset:
 elif not st.session_state.authenticated:
     login_page()
 else:
-    # ✅ Sidebar Navigation
+    # ---- Authenticated UI ----
     with st.sidebar:
-        st.markdown(f"### 🐐 {st.session_state.farm_name}")
+        st.markdown(f"### {st.session_state.farm_name}")
         logout_button()
         st.session_state.selected_page = option_menu(
             menu_title="Smart Goat Farm",
             options=["Dashboard", "Manage Goats", "Breeding"],
             icons=["speedometer", "clipboard-data", "heart"],
-            menu_icon="cast",
-            default_index=["Dashboard", "Manage Goats", "Breeding"].index(st.session_state.selected_page),
+            default_index=["Dashboard", "Manage Goats", "Breeding"]
+            .index(st.session_state.selected_page),
         )
 
-    # ✅ Page Content
     if st.session_state.selected_page == "Dashboard":
-        st.title(f"📊 Welcome to {st.session_state.farm_name} Farm")
-        st.write("Here you will see total goats, breeding alerts, and activity charts.")
-
+        st.title(f"Welcome to {st.session_state.farm_name}")
+        st.write("Dashboard content goes here…")
     elif st.session_state.selected_page == "Manage Goats":
-        st.title("🐐 Manage Goats")
-        st.write("Here you can add, view, and manage goat records.")
-
+        st.title("Manage Goats")
+        st.write("Add / edit goat records…")
     elif st.session_state.selected_page == "Breeding":
-        st.title("🧬 Breeding Management")
-        st.write("Manage breeding pairs and predict birth dates using AI.")
+        st.title("Breeding Management")
+        st.write("AI-powered breeding predictions…")

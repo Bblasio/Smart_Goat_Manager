@@ -1,149 +1,163 @@
-# 📄 reports.py
+# pages/Reports.py
 import streamlit as st
-import pandas as pd
-from datetime import datetime
-import sqlite3
+from datetime import datetime, timedelta
+import uuid
 
-# ✅ Helper: Get current logged-in user
-def get_current_user():
-    if "user" in st.session_state:
-        return st.session_state["user"]
-    else:
-        st.warning("⚠️ Please log in to view your reports.")
-        st.stop()
+# --- Auth Guard ---
+if "authenticated" not in st.session_state or not st.session_state.authenticated:
+    st.warning("Please log in.")
+    st.stop()
 
-# ✅ Helper: Fetch data from SQLite
-def fetch_data(query, params=()):
-    conn = sqlite3.connect("goat_farm.db")
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
+user = st.session_state.user
+uid = user["localId"]
+id_token = user["idToken"]
 
-# ✅ Section 1: Breeding & Pregnancy Report
-def breeding_report(user_id):
-    st.subheader("🐐 Breeding & Pregnancy Report")
+# --- Import db ---
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app import db
 
-    pregnancies = fetch_data("""
-        SELECT female_id, breeding_date, expected_due_date
-        FROM breeding
-        WHERE user_id = ?
-    """, (user_id,))
+# --- Helper: Safe .val() ---
+def get_val(resp):
+    return resp.val() if resp and resp.val() else {}
 
-    if pregnancies:
-        df = pd.DataFrame(pregnancies, columns=["Female ID", "Breeding Date", "Expected Due Date"])
-        df["Breeding Date"] = pd.to_datetime(df["Breeding Date"])
-        df["Expected Due Date"] = pd.to_datetime(df["Expected Due Date"])
-        df["Days Remaining"] = (df["Expected Due Date"] - datetime.now()).dt.days
+# --- Fetch All Data ---
+farm_name = db.child("users").child(uid).child("farm_name").get(token=id_token).val() or "My Farm"
+st.set_page_config(page_title="Reports", page_icon="document", layout="wide")
+st.title(f"{farm_name} – AI Reports")
 
-        # 📅 Show only those due in the next 30 days
-        df_due_soon = df[df["Days Remaining"] <= 30]
-        if not df_due_soon.empty:
-            st.success("Upcoming births (within 30 days):")
-            st.dataframe(df_due_soon, use_container_width=True)
+goats = get_val(db.child("users").child(uid).child("records").child("goats").get(token=id_token))
+breeding = get_val(db.child("users").child(uid).child("records").child("breeding").get(token=id_token))
+sales = get_val(db.child("users").child(uid).child("records").child("sales").get(token=id_token))
+health = get_val(db.child("users").child(uid).child("records").child("health").get(token=id_token))
 
-            # 🕒 Countdown
-            for _, row in df_due_soon.iterrows():
-                st.write(
-                    f"• Female **{row['Female ID']}** is due in **{row['Days Remaining']} days** "
-                    f"(Expected: {row['Expected Due Date'].date()})"
-                )
-        else:
-            st.info("✅ No expected births in the next 30 days.")
-    else:
-        st.info("No breeding records found for this account.")
-
-# ✅ Section 2: Inventory Report
-def inventory_report(user_id):
-    st.subheader("📊 Inventory Report")
-
-    totals = fetch_data("""
-        SELECT category, COUNT(*)
-        FROM goats
-        WHERE user_id = ?
-        GROUP BY category
-    """, (user_id,))
-
-    if totals:
-        df_inventory = pd.DataFrame(totals, columns=["Category", "Total"])
-        st.dataframe(df_inventory, use_container_width=True)
-    else:
-        st.info("No goats in your inventory yet.")
-
-# ✅ Section 3: Sales Report (placeholder if you want to track sales later)
-def sales_report(user_id):
-    st.subheader("💰 Sales Report")
-
-    sales = fetch_data("""
-        SELECT goat_id, sale_date, amount
-        FROM sales
-        WHERE user_id = ?
-    """, (user_id,))
-
+# --- 1. Highest Sales ---
+def highest_sales():
+    st.subheader("Highest Sales")
     if sales:
-        df_sales = pd.DataFrame(sales, columns=["Goat ID", "Sale Date", "Amount"])
-        df_sales["Sale Date"] = pd.to_datetime(df_sales["Sale Date"])
-        st.dataframe(df_sales, use_container_width=True)
+        sales_list = []
+        for sid, s in sales.items():
+            try:
+                price = float(s.get("price", 0))
+                sales_list.append({
+                    "Goat ID": s.get("goat_id", "—"),
+                    "Buyer": s.get("buyer_name", "—"),
+                    "Price (Ksh)": price,
+                    "Date": s.get("sale_date", "—")
+                })
+            except:
+                continue
+        if sales_list:
+            df = pd.DataFrame(sales_list).sort_values("Price (Ksh)", ascending=False)
+            top = df.head(5)
+            st.dataframe(top, use_container_width=True)
+            st.success(f"Top sale: **Ksh {top.iloc[0]['Price (Ksh)']:,}** for Goat {top.iloc[0]['Goat ID']}")
+        else:
+            st.info("No valid sales data.")
     else:
-        st.info("No sales records found.")
+        st.info("No sales recorded yet.")
 
-# ✅ Section 4: Export Reports (future enhancement)
-def export_reports():
-    st.subheader("📤 Export Reports")
-    st.caption("Export features (PDF / CSV / Excel) coming soon.")
-    st.button("Export as PDF")
-    st.button("Export as CSV")
+# --- 2. Predicted Birth Dates (AI: 150-day gestation) ---
+def predicted_births():
+    st.subheader("Predicted Birth Dates (AI)")
+    if breeding:
+        preds = []
+        for bid, b in breeding.items():
+            mating_str = b.get("mating_date")
+            if not mating_str:
+                continue
+            try:
+                mating_date = datetime.fromisoformat(mating_str.split("T")[0])
+                predicted = mating_date + timedelta(days=150)
+                days_left = (predicted - datetime.now()).days
+                status = "Due Soon" if days_left <= 7 else ("Upcoming" if days_left <= 30 else "Future")
+                preds.append({
+                    "Female": b.get("female_id", "—"),
+                    "Mating": mating_date.strftime("%b %d"),
+                    "Predicted Birth": predicted.strftime("%b %d, %Y"),
+                    "Days Left": max(0, days_left),
+                    "Status": status
+                })
+            except:
+                continue
+        if preds:
+            df = pd.DataFrame(preds).sort_values("Days Left")
+            st.dataframe(df, use_container_width=True)
+            due_soon = df[df["Days Left"] <= 7]
+            if not due_soon.empty:
+                st.warning(f"{len(due_soon)} birth(s) due in 7 days!")
+        else:
+            st.info("No valid breeding dates.")
+    else:
+        st.info("No breeding records.")
 
-# ✅ Main Page
-def main():
-    st.set_page_config(page_title="Reports", page_icon="📑", layout="wide")
-    st.title("📑 Reports")
-    st.write("Here you can view reports related to your farm operations.")
+# --- 3. AI Recommendations ---
+def ai_recommendations():
+    st.subheader("AI Recommendations")
+    recs = []
 
-    # Get logged-in user
-    user = get_current_user()
-    user_id = user["id"]
+    # Breeding
+    if breeding:
+        active_females = len({b.get("female_id") for b in breeding.values() if b.get("female_id")})
+        total_females = sum(1 for g in goats.values() if str(g.get("gender")).lower() == "female") if goats else 0
+        if total_females > active_females:
+            recs.append("Consider breeding more females to increase herd size.")
 
-    # Expandable sections
-    with st.expander("🐐 Breeding & Pregnancy Report", expanded=True):
-        breeding_report(user_id)
+    # Health
+    if health:
+        recent = sum(1 for h in health.values() if h.get("checkup_date"))
+        if recent == 0:
+            recs.append("Schedule health check-ups for all goats.")
+        else:
+            recs.append("Health monitoring is active.")
 
-    with st.expander("📊 Inventory Report", expanded=False):
-        inventory_report(user_id)
+    # Sales
+    if sales:
+        total_revenue = sum(float(s.get("price", 0)) for s in sales.values() if s.get("price"))
+        recs.append(f"Total revenue: **Ksh {total_revenue:,.0f}** — great job!")
+    else:
+        recs.append("Start recording sales to track income.")
 
-    with st.expander("💰 Sales Report", expanded=False):
-        sales_report(user_id)
+    # General
+    total_goats = len(goats) if goats else 0
+    if total_goats < 5:
+        recs.append("Farm is small — consider expansion.")
+    elif total_goats > 50:
+        recs.append("Large herd — ensure proper feeding and space.")
 
-    with st.expander("📤 Export Reports", expanded=False):
-        export_reports()
+    if recs:
+        for r in recs:
+            st.write(f"• {r}")
+    else:
+        st.success("All systems optimal!")
 
-if __name__ == "__main__":
-    main()
-def main():
-    st.set_page_config(page_title="Reports", page_icon="📑", layout="wide")
-    st.title("📑 Reports")
-    st.write("Here you can view reports related to your farm operations.")
+# --- 4. Bonus: Farm Summary ---
+def farm_summary():
+    st.subheader("Farm Summary")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Goats", len(goats) if goats else 0)
+    with col2:
+        st.metric("Active Breeding", len(breeding) if breeding else 0)
+    with col3:
+        st.metric("Total Sales", len(sales) if sales else 0)
+    with col4:
+        st.metric("Health Checks", len(health) if health else 0)
 
-    # Get logged-in user
-    user = get_current_user()
+# --- Layout ---
+with st.expander("Highest Sales", expanded=True):
+    highest_sales()
 
-    # ✅ Use 'uid' instead of 'id'
-    user_id = user.get("uid")  # safer than user["uid"]
+with st.expander("Predicted Birth Dates (AI)", expanded=True):
+    predicted_births()
 
-    if not user_id:
-        st.error("❌ User ID not found in session. Please log in again.")
-        st.stop()
+with st.expander("AI Recommendations", expanded=True):
+    ai_recommendations()
 
-    # Expandable sections
-    with st.expander("🐐 Breeding & Pregnancy Report", expanded=True):
-        breeding_report(user_id)
+with st.expander("Farm Summary", expanded=False):
+    farm_summary()
 
-    with st.expander("📊 Inventory Report", expanded=False):
-        inventory_report(user_id)
-
-    with st.expander("💰 Sales Report", expanded=False):
-        sales_report(user_id)
-
-    with st.expander("📤 Export Reports", expanded=False):
-        export_reports()
+# --- Export (Future) ---
+with st.expander("Export Reports", expanded=False):
+    st.write("Export to PDF/CSV coming soon.")
+    st.button("Generate PDF")

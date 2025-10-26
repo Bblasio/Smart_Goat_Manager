@@ -41,86 +41,115 @@ for k, v in defaults.items():
         st.session_state[k] = v
 
 # -------------------------------------------------
-# 5. Helper: parse Pyrebase errors
+# 5. Helper: Parse Firebase Auth Errors
 # -------------------------------------------------
-def parse_pyrebase_error(e):
-    msg = str(e).lower()
-    if "email" in msg and "already" in msg: return "Email already in use."
-    if "network" in msg or "timeout" in msg: return "Network error – try again."
-    if "permission" in msg or "denied" in msg: return "Database permission denied."
-    if "invalid" in msg and "password" in msg: return "Password too weak (min 6 chars)."
-    return f"Error: {e}"
+def parse_auth_error(e):
+    error_msg = str(e).lower()
+    if "invalid" in error_msg and "password" in error_msg:
+        return "Wrong password."
+    if "user" in error_msg and "not found" in error_msg:
+        return "Email not found."
+    if "email" in error_msg and "already" in error_msg:
+        return "Email already in use."
+    if "weak" in error_msg or "least 6" in error_msg:
+        return "Password too weak (min 6 chars)."
+    if "network" in error_msg or "timeout" in error_msg:
+        return "Network error – try again."
+    return "Invalid email or password."
 
 # -------------------------------------------------
-# 6. Pages
+# 6. Forgot Password Page
 # -------------------------------------------------
 def forgot_password_page():
     st.title("Reset Password")
     with st.form("reset_form"):
-        email = st.text_input("Email")
+        email = st.text_input("Enter your email")
         if st.form_submit_button("Send Reset Link"):
-            try:
-                auth.send_password_reset_email(email)
-                st.success("Reset link sent.")
-                st.session_state.show_reset = False
-                st.rerun()
-            except Exception as e:
-                st.error(parse_pyrebase_error(e))
-    if st.button("Back"): st.session_state.show_reset = False; st.rerun()
+            if not email.strip():
+                st.error("Please enter your email.")
+            else:
+                try:
+                    auth.send_password_reset_email(email)
+                    st.success("Reset link sent! Check your email (including spam).")
+                    st.info("You will be redirected to login in 5 seconds...")
+                    st.session_state.show_reset = False
+                    st.rerun()
+                except Exception as e:
+                    st.error(parse_auth_error(e))
+    if st.button("Back to Login"):
+        st.session_state.show_reset = False
+        st.rerun()
 
+# -------------------------------------------------
+# 7. Login Page
+# -------------------------------------------------
 def login_page():
-    st.title("Login")
+    st.title("Login to Your Farm")
     with st.form("login_form"):
-        email = st.text_input("Email")
+        email = st.text_input("Email", placeholder="you@farm.com")
         pwd = st.text_input("Password", type="password")
         if st.form_submit_button("Login"):
-            try:
-                user = auth.sign_in_with_email_and_password(email, pwd)
-                uid = user["localId"]
-                id_token = user["idToken"]
-                farm = db.child("users").child(uid).child("farm_name").get(token=id_token).val()
+            if not email or not pwd:
+                st.error("Please fill in both fields.")
+            else:
+                try:
+                    user = auth.sign_in_with_email_and_password(email, pwd)
+                    uid = user["localId"]
+                    id_token = user["idToken"]
+                    farm = db.child("users").child(uid).child("farm_name").get(token=id_token).val()
 
-                st.session_state.update({
-                    "authenticated": True,
-                    "user": user,
-                    "farm_name": farm or "My Farm",
-                    "selected_page": "Dashboard",
-                })
-                st, st.success("Welcome! Redirecting...")
-                st.rerun()
-            except Exception as e:
-                st.error(parse_pyrebase_error(e))
+                    st.session_state.update({
+                        "authenticated": True,
+                        "user": user,
+                        "farm_name": farm or "My Farm",
+                        "selected_page": "Dashboard",
+                    })
+                    st.success("Login successful! Welcome back.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(parse_auth_error(e))
 
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("Create Account"): st.session_state.show_signup = True; st.rerun()
+        if st.button("Create Account"):
+            st.session_state.show_signup = True
+            st.rerun()
     with c2:
-        if st.button("Forgot Password"): st.session_state.show_reset = True; st.rerun()
+        if st.button("Forgot Password?"):
+            st.session_state.show_reset = True
+            st.rerun()
 
+# -------------------------------------------------
+# 8. Signup Page
+# -------------------------------------------------
 def signup_page():
-    st.title("Create Account")
+    st.title("Create New Farm Account")
     with st.form("signup_form"):
-        farm_name = st.text_input("Farm Name")
-        email = st.text_input("Email")
+        farm_name = st.text_input("Farm Name", placeholder="e.g. Sunny Goat Farm")
+        email = st.text_input("Email", placeholder="you@farm.com")
         pwd = st.text_input("Password", type="password")
         if st.form_submit_button("Sign Up"):
-            if not farm_name.strip():
-                st.error("Farm name required.")
+            if not all([farm_name.strip(), email.strip(), pwd]):
+                st.error("All fields are required.")
+            elif len(pwd) < 6:
+                st.error("Password must be at least 6 characters.")
             else:
                 try:
                     user = auth.create_user_with_email_and_password(email, pwd)
                     uid = user["localId"]
                     id_token = user["idToken"]
-                    db.child("users").child(uid).child("farm_name").set(farm_name, token=id_token)
+                    db.child("users").child(uid).child("farm_name").set(farm_name.strip(), token=id_token)
                     st.success("Account created! Please log in.")
                     st.session_state.show_signup = False
                     st.rerun()
                 except Exception as e:
-                    st.error(parse_pyrebase_error(e))
-    if st.button("Back"): st.session_state.show_signup = False; st.rerun()
+                    st.error(parse_auth_error(e))
+    if st.button("Back to Login"):
+        st.session_state.show_signup = False
+        st.rerun()
 
 # -------------------------------------------------
-# 7. Routing
+# 9. Routing
 # -------------------------------------------------
 if st.session_state.show_signup:
     signup_page()
@@ -151,5 +180,6 @@ else:
             "Navigation",
             ["Dashboard", "Manage Goats", "Breeding"],
             icons=["speedometer", "clipboard-data", "heart"],
-            default_index=["Dashboard", "Manage Goats", "Breeding"].index(st.session_state.selected_page),
+            default_index=["Dashboard", "Manage Goats", "Breeding"]
+            .index(st.session_state.selected_page),
         )

@@ -17,32 +17,50 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import db
 
-# --- Fetch Data (use .val()!) ---
+# --- Fetch Data ---
 farm_name = db.child("users").child(uid).child("farm_name").get(token=id_token).val() or "My Farm"
 st.title(f"{farm_name} – Dashboard")
 
-# Total Goats
+# === GOATS ===
 goats_resp = db.child("users").child(uid).child("records").child("goats").get(token=id_token)
 goats = goats_resp.val() if goats_resp else {}
 total_goats = len(goats) if goats else 0
 
-# Pregnant Goats
+# Count Male / Female
+males = sum(1 for g in goats.values() if str(g.get("gender", "")).lower() in ["male", "m"])
+females = total_goats - males
+
+# === PREGNANT GOATS ===
 breeding_resp = db.child("users").child(uid).child("records").child("breeding").get(token=id_token)
 breeding = breeding_resp.val() if breeding_resp else {}
 pregnant_count = len(breeding) if breeding else 0
 
-# Total Users (all farms)
-all_users_resp = db.child("users").get(token=id_token)
-all_users = all_users_resp.val() if all_users_resp else {}
-total_users = len(all_users) if all_users else 0
+# === WORKERS (from user_profile records) ===
+workers_resp = db.child("users").child(uid).child("records").child("user_profile").get(token=id_token)
+workers = workers_resp.val() if workers_resp else {}
+total_workers = len(workers) if workers else 0
 
-# --- Metrics ---
-c1, c2, c3 = st.columns(3)
-c1.metric("Total Goats", total_goats)
-c2.metric("Pregnant Goats", pregnant_count)
-c3.metric("Total Users", total_users)
+# --- Metrics (4 columns) ---
+c1, c2, c3, c4 = st.columns(4)
 
-# --- Farm age ---
+with c1:
+    st.metric("Total Goats", total_goats)
+with c2:
+    st.metric("Male Goats", males)
+with c3:
+    st.metric("Female Goats", females)
+with c4:
+    st.metric("Pregnant Goats", pregnant_count)
+
+# --- Workers Row ---
+st.markdown("---")
+w1, w2 = st.columns(2)
+with w1:
+    st.metric("Total Workers", total_workers)
+with w2:
+    st.write("")  # placeholder
+
+# --- Farm Age ---
 created_resp = db.child("users").child(uid).child("created_at").get(token=id_token)
 created = created_resp.val() if created_resp else None
 if created:

@@ -80,17 +80,14 @@ def login_page():
                 id_token = user["idToken"]
                 farm = db.child("users").child(uid).child("farm_name").get(token=id_token).val()
 
-                # Update session
                 st.session_state.update({
                     "authenticated": True,
                     "user": user,
                     "farm_name": farm or "My Farm",
                     "selected_page": "Dashboard",
                 })
-
-                st.success("Welcome! Redirecting to Dashboard...")
-                st.rerun()  # Forces immediate redirect
-
+                st, st.success("Welcome! Redirecting...")
+                st.rerun()
             except Exception as e:
                 st.error(parse_pyrebase_error(e))
 
@@ -132,18 +129,16 @@ elif st.session_state.show_reset:
 elif not st.session_state.authenticated:
     login_page()
 else:
-    # === USER IS LOGGED IN → GO TO PAGES FOLDER ===
+    # === GO TO PAGES FOLDER ===
     import os
     page_path = f"pages/{st.session_state.selected_page}.py"
-    
     if os.path.exists(page_path):
         with open(page_path) as f:
             exec(f.read(), globals())
     else:
         st.error(f"Page '{st.session_state.selected_page}' not found.")
-        st.write("Available: Dashboard, Manage Goats, Breeding")
 
-    # Sidebar (only after login)
+    # Sidebar
     with st.sidebar:
         st.markdown(f"### {st.session_state.farm_name}")
         if st.button("Logout"):
@@ -156,6 +151,5 @@ else:
             "Navigation",
             ["Dashboard", "Manage Goats", "Breeding"],
             icons=["speedometer", "clipboard-data", "heart"],
-            default_index=["Dashboard", "Manage Goats", "Breeding"]
-            .index(st.session_state.selected_page),
+            default_index=["Dashboard", "Manage Goats", "Breeding"].index(st.session_state.selected_page),
         )

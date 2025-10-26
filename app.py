@@ -167,19 +167,11 @@ else:
     else:
         st.error(f"Page '{st.session_state.selected_page}' not found.")
 
-    # Sidebar
+    # === SIDEBAR: Only Welcome + Logout ===
     with st.sidebar:
-        st.markdown(f"### {st.session_state.farm_name}")
+        st.markdown(f"### Welcome, {st.session_state.farm_name}")
         if st.button("Logout"):
             for k in ["authenticated", "user", "farm_name"]:
                 st.session_state[k] = None if k != "authenticated" else False
             st.session_state.selected_page = "Dashboard"
             st.rerun()
-
-        st.session_state.selected_page = option_menu(
-            "Navigation",
-            ["Dashboard", "Manage Goats", "Breeding"],
-            icons=["speedometer", "clipboard-data", "heart"],
-            default_index=["Dashboard", "Manage Goats", "Breeding"]
-            .index(st.session_state.selected_page),
-        )

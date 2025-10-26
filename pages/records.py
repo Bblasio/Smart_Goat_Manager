@@ -33,12 +33,11 @@ def add_record(collection: str, data: dict):
     db.child("users").child(uid).child("records").child(collection).child(rid).set(data, token=id_token)
     st.success(f"{collection.title()} added!")
 
-def delete_records(collection: str, selected_ids: list):
-    """Delete multiple records from Firebase"""
+def delete_record(collection: str, rid: str):
+    """Delete one record from Firebase"""
     try:
-        for rid in selected_ids:
-            db.child("users").child(uid).child("records").child(collection).child(rid).remove(token=id_token)
-        st.success(f"Deleted {len(selected_ids)} record(s) successfully!")
+        db.child("users").child(uid).child("records").child(collection).child(rid).remove(token=id_token)
+        st.success("Deleted successfully!")
         st.rerun()
     except Exception as e:
         st.error(f"Delete failed: {e}")
@@ -65,129 +64,115 @@ sales = get_records("sales")
 workers = get_records("user_profile")
 
 # =============================================
-# 6. TABLE DISPLAY FUNCTION
+# 6. DISPLAY TABLES (with Delete Button per Row)
 # =============================================
-def show_table_with_checkbox(collection: str, df: pd.DataFrame):
-    """Show table with checkboxes for selecting rows"""
-    if df.empty:
-        st.info(f"No {collection} recorded.")
+def show_table(collection: str, records: dict, columns: list):
+    """Render table for a collection with per-row Delete button"""
+    if not records:
+        st.info(f"No {collection} records found.")
         return
 
-    selected = []
-    df_display = df.copy()
+    table_data = []
+    for rid, rec in records.items():
+        row = {col: rec.get(col.lower(), "—") for col in columns}
+        table_data.append((rid, row))
 
-    # Add checkbox per row
-    for rid in df_display.index:
-        checkbox = st.checkbox(f"Select {rid}", key=f"chk_{collection}_{rid}")
-        if checkbox:
-            selected.append(rid)
+    df = pd.DataFrame([r for _, r in table_data])
+    df["Action"] = [st.button("🗑️ Delete", key=f"del_{collection}_{rid}", on_click=delete_record, args=(collection, rid)) for rid, _ in table_data]
 
-    st.dataframe(df_display, use_container_width=True)
-
-    # Single Delete button for selected
-    if selected:
-        if st.button(f"🗑️ Delete Selected {collection.title()}"):
-            delete_records(collection, selected)
+    st.dataframe(df, use_container_width=True)
 
 # =============================================
-# 7. GOATS TABLE
+# 7. GOATS
 # =============================================
 with tabs[0]:
     st.subheader("Goats")
-    if goats:
-        goat_list = []
-        for rid, g in goats.items():
-            goat_list.append({
-                "Tag": g.get("tag_number", "—"),
-                "Breed": g.get("breed", "—"),
-                "Gender": g.get("gender", "—"),
-                "DOB": g.get("dob", "—")
-            })
-        df_goats = pd.DataFrame(goat_list, index=list(goats.keys()))
-        show_table_with_checkbox("goats", df_goats)
-    else:
-        st.info("No goats yet.")
+    show_table("goats", goats, ["Tag_Number", "Breed", "Gender", "Dob"])
 
 # =============================================
-# 8. BREEDING TABLE
+# 8. BREEDING
 # =============================================
 with tabs[1]:
     st.subheader("Breeding & Births")
     if breeding:
-        breed_list = []
+        table_data = []
         for rid, b in breeding.items():
             try:
                 exp = datetime.fromisoformat(b.get("expected_birth", "").split("T")[0])
                 days_left = (exp.date() - datetime.now().date()).days
             except:
                 days_left = "—"
-            breed_list.append({
+            table_data.append({
                 "Female": b.get("female_id", "—"),
                 "Male": b.get("male_id", "—"),
-                "Mated": b.get("mating_date", "—"),
-                "Expected": b.get("expected_birth", "—"),
-                "Days Left": days_left
+                "Mating_Date": b.get("mating_date", "—"),
+                "Expected_Birth": b.get("expected_birth", "—"),
+                "Days_Left": days_left
             })
-        df_breeding = pd.DataFrame(breed_list, index=list(breeding.keys()))
-        show_table_with_checkbox("breeding", df_breeding)
+        df = pd.DataFrame(table_data)
+        df["Action"] = [st.button("🗑️ Delete", key=f"del_breeding_{rid}", on_click=delete_record, args=("breeding", rid)) for rid in breeding.keys()]
+        st.dataframe(df, use_container_width=True)
     else:
-        st.info("No breeding records.")
+        st.info("No breeding records found.")
 
 # =============================================
-# 9. HEALTH TABLE
+# 9. HEALTH
 # =============================================
 with tabs[2]:
     st.subheader("Health Records")
     if health:
-        health_list = []
+        table_data = []
         for rid, h in health.items():
-            health_list.append({
+            table_data.append({
                 "Goat": h.get("goat_id", "—"),
                 "Condition": h.get("condition", "—"),
                 "Treatment": h.get("treatment", "—"),
-                "Date": h.get("checkup_date", "—")
+                "Checkup_Date": h.get("checkup_date", "—")
             })
-        df_health = pd.DataFrame(health_list, index=list(health.keys()))
-        show_table_with_checkbox("health", df_health)
+        df = pd.DataFrame(table_data)
+        df["Action"] = [st.button("🗑️ Delete", key=f"del_health_{rid}", on_click=delete_record, args=("health", rid)) for rid in health.keys()]
+        st.dataframe(df, use_container_width=True)
     else:
-        st.info("No health records.")
+        st.info("No health records found.")
 
 # =============================================
-# 10. SALES TABLE
+# 10. SALES
 # =============================================
 with tabs[3]:
     st.subheader("Sales")
     if sales:
-        sales_list = []
+        table_data = []
         for rid, s in sales.items():
-            sales_list.append({
+            table_data.append({
                 "Goat": s.get("goat_id", "—"),
                 "Buyer": s.get("buyer_name", "—"),
                 "Price": f"Ksh {s.get('price', 0):,}",
-                "Date": s.get("sale_date", "—")
+                "Sale_Date": s.get("sale_date", "—")
             })
-        df_sales = pd.DataFrame(sales_list, index=list(sales.keys()))
-        show_table_with_checkbox("sales", df_sales)
+        df = pd.DataFrame(table_data)
+        df["Action"] = [st.button("🗑️ Delete", key=f"del_sales_{rid}", on_click=delete_record, args=("sales", rid)) for rid in sales.keys()]
+        st.dataframe(df, use_container_width=True)
     else:
-        st.info("No sales yet.")
+        st.info("No sales found.")
 
 # =============================================
-# 11. WORKERS TABLE
+# 11. WORKERS
 # =============================================
 with tabs[4]:
-    st.subheader("Farm Workers")
+    st.subheader("Workers")
     if workers:
-        worker_list = []
+        table_data = []
         for rid, w in workers.items():
-            worker_list.append({
-                "Name": w.get("full_name", "—"),
+            table_data.append({
+                "Full_Name": w.get("full_name", "—"),
                 "Phone": w.get("phone", "—"),
                 "Location": w.get("location", "—")
             })
-        df_workers = pd.DataFrame(worker_list, index=list(workers.keys()))
-        show_table_with_checkbox("user_profile", df_workers)
+        df = pd.DataFrame(table_data)
+        df["Action"] = [st.button("🗑️ Delete", key=f"del_worker_{rid}", on_click=delete_record, args=("user_profile", rid)) for rid in workers.keys()]
+        st.dataframe(df, use_container_width=True)
     else:
-        st.info("No workers added.")
+        st.info("No workers found.")
 
 # =============================================
 # 12. AI RECOMMENDATIONS
@@ -196,35 +181,29 @@ with tabs[5]:
     st.subheader("AI Farm Advisor")
     recs = []
 
-    # Pregnant goats
     if breeding:
         today = datetime.now().date()
         due_soon = 0
         for b in breeding.values():
             try:
                 exp = datetime.fromisoformat(b.get("expected_birth", "").split("T")[0]).date()
-                days = (exp - today).days
-                if days <= 7:
+                if (exp - today).days <= 7:
                     due_soon += 1
             except:
                 pass
         if due_soon:
-            recs.append(f"{due_soon} goat(s) due in 7 days — prepare delivery!")
+            recs.append(f"{due_soon} goat(s) due within 7 days — prepare for delivery!")
         else:
-            recs.append("No immediate births.")
+            recs.append("No goats due soon.")
 
-    # Health
     sick = len([h for h in health.values() if h.get("condition", "").lower() in ["sick", "weak"]])
     if sick:
         recs.append(f"{sick} goat(s) need urgent care.")
     else:
         recs.append("All goats healthy.")
 
-    # Sales
-    total = sum(float(s.get("price", 0)) for s in sales.values())
-    recs.append(f"Total sales: **Ksh {total:,.0f}**")
-
-    # Herd
+    total_sales = sum(float(s.get("price", 0)) for s in sales.values())
+    recs.append(f"Total sales: **Ksh {total_sales:,.0f}**")
     recs.append(f"Total goats: **{len(goats)}**")
 
     for r in recs:
@@ -272,12 +251,11 @@ with st.sidebar:
             g = st.text_input("Goat Tag *")
             c = st.text_input("Condition")
             t = st.text_input("Treatment")
-            d = st.date_input("Check-up")
+            d = st.date_input("Check-up Date")
             if st.form_submit_button("Save"):
                 if g:
                     add_record("health", {
-                        "goat_id": g, "condition": c, "treatment": t,
-                        "checkup_date": str(d)
+                        "goat_id": g, "condition": c, "treatment": t, "checkup_date": str(d)
                     })
 
     elif rec_type == "Sales":
@@ -289,8 +267,7 @@ with st.sidebar:
             if st.form_submit_button("Save"):
                 if g:
                     add_record("sales", {
-                        "goat_id": g, "buyer_name": b, "price": p,
-                        "sale_date": str(d)
+                        "goat_id": g, "buyer_name": b, "price": p, "sale_date": str(d)
                     })
 
     elif rec_type == "Worker":

@@ -3,6 +3,7 @@ import streamlit as st
 import uuid
 from datetime import datetime, timedelta
 import pandas as pd
+import sys, os
 
 # =============================================
 # 1. AUTH GUARD
@@ -18,7 +19,6 @@ id_token = user["idToken"]
 # =============================================
 # 2. IMPORT DB
 # =============================================
-import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import db
 
@@ -50,7 +50,7 @@ def get_records(collection: str) -> dict:
 # 4. PAGE SETUP
 # =============================================
 st.set_page_config(page_title="Farm Records", layout="wide")
-st.title("Farm Records & AI Insights")
+st.title("🐐 Farm Records & AI Insights")
 
 tabs = st.tabs(["Goats", "Breeding", "Health", "Sales", "Workers", "AI Advisor"])
 
@@ -64,33 +64,39 @@ sales = get_records("sales")
 workers = get_records("user_profile")
 
 # =============================================
-# 6. DISPLAY IN TABLES (Mobile-Friendly)
+# 6. FIXED TABLE FUNCTION (Clean Delete Flow)
 # =============================================
 def show_table(collection: str, df: pd.DataFrame, key_col: str):
     if df.empty:
         st.info(f"No {collection} recorded.")
         return
 
-    # Add Delete Button Column
-    def make_delete_button(rid):
-        return st.button("Delete", key=f"del_{collection}_{rid}", on_click=delete_record, args=(collection, rid))
-
-    # Use st.data_editor for interactive table
     df_display = df.copy()
-    df_display["Action"] = [make_delete_button(rid) for rid in df.index]
-    
-    st.dataframe(
-        df_display,
-        use_container_width=True,
-        hide_index=False,
-        column_config={
-            "Action": st.column_config.Column(width="small")
-        }
-    )
+    df_display["Action"] = "⚙️ Manage"
 
-# --- Goats Table ---
+    st.dataframe(df_display, use_container_width=True, hide_index=False)
+
+    st.markdown("### Manage Records")
+    st.caption("Select a record below to delete")
+
+    record_ids = list(df.index)
+    chosen_id = st.selectbox(f"Choose {collection[:-1].title()} Record", [""] + record_ids, key=f"sel_{collection}")
+
+    if chosen_id:
+        with st.expander(f"🗑️ Delete Record {chosen_id}", expanded=True):
+            st.warning(f"Are you sure you want to delete **{chosen_id}** from {collection}? This action cannot be undone.")
+            c1, c2 = st.columns([1, 3])
+            with c1:
+                if st.button("✅ Confirm Delete", key=f"confirm_{collection}_{chosen_id}"):
+                    delete_record(collection, chosen_id)
+            with c2:
+                st.info("Click confirm to permanently remove this record.")
+
+# =============================================
+# 7. GOATS TAB
+# =============================================
 with tabs[0]:
-    st.subheader("Goats")
+    st.subheader("🐐 Goats")
     if goats:
         goat_list = []
         for rid, g in goats.items():
@@ -106,9 +112,11 @@ with tabs[0]:
     else:
         st.info("No goats yet.")
 
-# --- Breeding Table ---
+# =============================================
+# 8. BREEDING TAB
+# =============================================
 with tabs[1]:
-    st.subheader("Breeding & Births")
+    st.subheader("🍼 Breeding & Births")
     if breeding:
         breed_list = []
         for rid, b in breeding.items():
@@ -128,11 +136,13 @@ with tabs[1]:
         df_breeding = pd.DataFrame(breed_list).set_index("ID")
         show_table("breeding", df_breeding, "Female")
     else:
-        st.info("No breeding records.")
+        st.info("No breeding records yet.")
 
-# --- Health Table ---
+# =============================================
+# 9. HEALTH TAB
+# =============================================
 with tabs[2]:
-    st.subheader("Health Records")
+    st.subheader("🩺 Health Records")
     if health:
         health_list = []
         for rid, h in health.items():
@@ -146,11 +156,13 @@ with tabs[2]:
         df_health = pd.DataFrame(health_list).set_index("ID")
         show_table("health", df_health, "Goat")
     else:
-        st.info("No health records.")
+        st.info("No health records yet.")
 
-# --- Sales Table ---
+# =============================================
+# 10. SALES TAB
+# =============================================
 with tabs[3]:
-    st.subheader("Sales")
+    st.subheader("💰 Sales")
     if sales:
         sales_list = []
         for rid, s in sales.items():
@@ -166,9 +178,11 @@ with tabs[3]:
     else:
         st.info("No sales yet.")
 
-# --- Workers Table ---
+# =============================================
+# 11. WORKERS TAB
+# =============================================
 with tabs[4]:
-    st.subheader("Farm Workers")
+    st.subheader("👷 Farm Workers")
     if workers:
         worker_list = []
         for rid, w in workers.items():
@@ -181,14 +195,15 @@ with tabs[4]:
         df_workers = pd.DataFrame(worker_list).set_index("ID")
         show_table("user_profile", df_workers, "Name")
     else:
-        st.info("No workers added.")
+        st.info("No workers yet.")
 
-# --- AI RECOMMENDATIONS ---
+# =============================================
+# 12. AI ADVISOR TAB
+# =============================================
 with tabs[5]:
-    st.subheader("AI Farm Advisor")
+    st.subheader("🤖 AI Farm Advisor")
     recs = []
 
-    # Pregnant goats
     if breeding:
         today = datetime.now().date()
         due_soon = 0
@@ -201,32 +216,29 @@ with tabs[5]:
             except:
                 pass
         if due_soon:
-            recs.append(f"{due_soon} goat(s) due in 7 days — prepare delivery!")
+            recs.append(f"{due_soon} goat(s) due in the next 7 days — prepare delivery!")
         else:
             recs.append("No immediate births.")
 
-    # Health
     sick = len([h for h in health.values() if h.get("condition", "").lower() in ["sick", "weak"]])
     if sick:
         recs.append(f"{sick} goat(s) need urgent care.")
     else:
-        recs.append("All goats healthy.")
+        recs.append("All goats appear healthy.")
 
-    # Sales
     total = sum(float(s.get("price", 0)) for s in sales.values())
     recs.append(f"Total sales: **Ksh {total:,.0f}**")
 
-    # Herd
     recs.append(f"Total goats: **{len(goats)}**")
 
     for r in recs:
         st.write(f"• {r}")
 
 # =============================================
-# 7. SIDEBAR: ADD RECORDS
+# 13. SIDEBAR — ADD NEW RECORD
 # =============================================
 with st.sidebar:
-    st.subheader("Add New Record")
+    st.subheader("➕ Add New Record")
     rec_type = st.selectbox("Type", ["", "Goat", "Breeding", "Health", "Sales", "Worker"])
 
     if rec_type == "Goat":
@@ -238,11 +250,14 @@ with st.sidebar:
             if st.form_submit_button("Save"):
                 if tag and breed:
                     add_record("goats", {
-                        "tag_number": tag, "breed": breed, "gender": gender,
-                        "dob": str(dob), "created_at": datetime.now().isoformat()
+                        "tag_number": tag,
+                        "breed": breed,
+                        "gender": gender,
+                        "dob": str(dob),
+                        "created_at": datetime.now().isoformat()
                     })
                 else:
-                    st.error("Fill required")
+                    st.error("Fill all required fields")
 
     elif rec_type == "Breeding":
         with st.form("add_breed", clear_on_submit=True):
@@ -253,8 +268,10 @@ with st.sidebar:
             if st.form_submit_button("Save"):
                 if f and m:
                     add_record("breeding", {
-                        "female_id": f, "male_id": m,
-                        "mating_date": str(mate), "expected_birth": str(exp)
+                        "female_id": f,
+                        "male_id": m,
+                        "mating_date": str(mate),
+                        "expected_birth": str(exp)
                     })
                 else:
                     st.error("Tags required")
@@ -268,7 +285,9 @@ with st.sidebar:
             if st.form_submit_button("Save"):
                 if g:
                     add_record("health", {
-                        "goat_id": g, "condition": c, "treatment": t,
+                        "goat_id": g,
+                        "condition": c,
+                        "treatment": t,
                         "checkup_date": str(d)
                     })
 
@@ -281,7 +300,9 @@ with st.sidebar:
             if st.form_submit_button("Save"):
                 if g:
                     add_record("sales", {
-                        "goat_id": g, "buyer_name": b, "price": p,
+                        "goat_id": g,
+                        "buyer_name": b,
+                        "price": p,
                         "sale_date": str(d)
                     })
 
@@ -293,5 +314,7 @@ with st.sidebar:
             if st.form_submit_button("Save"):
                 if n:
                     add_record("user_profile", {
-                        "full_name": n, "phone": p, "location": l
+                        "full_name": n,
+                        "phone": p,
+                        "location": l
                     })

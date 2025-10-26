@@ -13,3 +13,4 @@ requests-toolbelt
 setuptools
 feedparser
 plotly
+scikit-learn

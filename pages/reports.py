@@ -1,4 +1,4 @@
-# pages/Reports.py
+# pages/reports.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -140,7 +140,13 @@ def predict_revenue():
     ])
     df["Date"] = pd.to_datetime(df["Date"], errors='coerce')
     df = df.dropna()
-    df = df.groupby(df["Date"].dt.to_period("M")).sum().reset_index()
+
+    if df.empty:
+        st.info("No valid sales date data available.")
+        return
+
+    # ✅ Fix: Group only numeric data (avoid summing datetimes)
+    df = df.groupby(df["Date"].dt.to_period("M"))["Price"].sum().reset_index()
     df["Month"] = df["Date"].astype(str)
     df["t"] = range(len(df))
 

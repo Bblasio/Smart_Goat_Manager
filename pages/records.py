@@ -1,56 +1,104 @@
+# pages/Manage Records.py
 import streamlit as st
-import pyrebase
-import datetime
 import uuid
+from datetime import datetime
 
-# =========================
-# Firebase Configuration
-# =========================
-firebaseConfig = {
-    "apiKey": "AIzaSyCCwzzr-F8qgDVwPK6xSy2mGLUulQ9F3bE",
-    "authDomain": "goat-smart-farm.firebaseapp.com",
-    "databaseURL": "ENV_VARIABLE",
-    "projectId": "goat-smart-farm",
-    "storageBucket": "goat-smart-farm.appspot.com",
-    "messagingSenderId": "595909170929",
-    "appId": "1:595909170929:web:db210c5ec8e6cd1c539ae4"
-}
+# -------------------------------------------------
+# 1. AUTH GUARD – only logged-in users
+# -------------------------------------------------
+if "authenticated" not in st.session_state or not st.session_state.authenticated:
+    st.warning("Please log in first.")
+    st.stop()
 
-firebase = pyrebase.initialize_app(firebaseConfig)
-db = firebase.database()
+user = st.session_state.user
+uid = user["localId"]
+id_token = user["idToken"]
 
-# =========================
-# Helpers
-# =========================
-def generate_id():
+# -------------------------------------------------
+# 2. IMPORT DB FROM app.py (shared firebase instance)
+# -------------------------------------------------
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app import db          # <-- same db you use in login / dashboard
+
+# -------------------------------------------------
+# 3. HELPERS (user-scoped)
+# -------------------------------------------------
+def gen_id():
     return str(uuid.uuid4())
 
-def add_record(collection, data):
-    record_id = generate_id()
-    db.child(collection).child(record_id).set(data)
-    st.success(f"{collection.capitalize()} record added successfully ✅")
+def add_record(collection: str, data: dict):
+    """Add a record under the current user."""
+    rid = gen_id()
+    db.child("users").child(uid).child("records").child(collection).child(rid).set(
+        data, token=id_token
+    )
+    st.success(f"{collection.title()} added!")
 
-def delete_record(collection, record_id, record_name="record"):
+def delete_record(collection: str, rid: str, name: str = "record"):
+    """Delete a record under the current user."""
     try:
-        record_ref = db.child(collection).child(record_id)
-        record_data = record_ref.get().val()
-
-        if record_data is not None:
-            record_ref.remove()
-            st.success(f"✅ {record_name} deleted from {collection.capitalize()}")
-            st.experimental_rerun()
-        else:
-            st.warning("⚠️ Record already deleted or does not exist.")
+        db.child("users").child(uid).child("records").child(collection).child(rid).remove(
+            token=id_token
+        )
+        st.success(f"{name} deleted!")
+        st.rerun()
     except Exception as e:
-        st.error(f"❌ Error deleting record: {e}")
+        st.error(f"Delete error: {e}")
 
-def get_records(collection):
-    records = db.child(collection).get()
-    return records.val() if records.val() else {}
+def get_records(collection: str) -> dict:
+    """Return dict of records (empty dict if none)."""
+    resp = db.child("users").child(uid).child("records").child(collection).get(token=id_token)
+    return resp.val() if resp and resp.val() else {}
 
-# =========================
-# CSS for Floating Button
-# =========================
+# -------------------------------------------------
+# 4. PAGE UI
+# -------------------------------------------------
+st.set_page_config(page_title="Farm Records", layout="wide")
+st.title("Farm Records Management")
+
+tabs = st.tabs(["Goats", "Breeding", "Health", "Sales", "User Profile"])
+
+# -------------------------------------------------
+# 5. DISPLAY + DELETE (one tab per collection)
+# -------------------------------------------------
+def show_tab(collection: str, fields: list, name_key: str):
+    """Generic tab that lists records and offers delete."""
+    records = get_records(collection)
+    if records:
+        for rid, rec in records.items():
+            cols = st.columns(len(fields) + 1)   # +1 for delete button
+            for i, f in enumerate(fields):
+                cols[i].write(rec.get(f, "—"))
+            if cols[-1].button("Delete", key=f"del_{collection}_{rid}"):
+                if st.button(f"Confirm delete {rec.get(name_key, rid)}?", key=f"conf_{rid}"):
+                    delete_record(collection, rid, rec.get(name_key, rid))
+    else:
+        st.info(f"No {collection} found.")
+
+with tabs[0]:   # Goats
+    st.subheader("All Goats")
+    show_tab("goats", ["tag_number", "breed", "gender", "dob"], "tag_number")
+
+with tabs[1]:   # Breeding
+    st.subheader("All Breeding Records")
+    show_tab("breeding", ["female_id", "male_id", "mating_date", "expected_birth"], "female_id")
+
+with tabs[2]:   # Health
+    st.subheader("All Health Records")
+    show_tab("health", ["goat_id", "condition", "treatment", "checkup_date"], "goat_id")
+
+with tabs[3]:   # Sales
+    st.subheader("All Sales Records")
+    show_tab("sales", ["goat_id", "buyer_name", "price", "sale_date"], "goat_id")
+
+with tabs[4]:   # User Profile (optional – you already have auth data)
+    st.subheader("User Profile")
+    show_tab("user_profile", ["full_name", "phone", "location"], "full_name")
+
+# -------------------------------------------------
+# 6. FLOATING “+” BUTTON (just a visual cue)
+# -------------------------------------------------
 st.markdown(
     """
     <style>
@@ -58,197 +106,120 @@ st.markdown(
         position: fixed;
         bottom: 30px;
         right: 30px;
-        background-color: white;
-        color: black;
-        border: none;
-        border-radius: 50%;
-        width: 60px;
-        height: 60px;
-        font-size: 30px;
-        cursor: pointer;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
-        transition: 0.3s;
+        background:#fff;
+        color:#000;
+        border:none;
+        border-radius:50%;
+        width:60px;height:60px;
+        font-size:30px;
+        box-shadow:0 4px 10px rgba(0,0,0,.3);
+        cursor:pointer;
     }
-    .floating-btn:hover {
-        background-color: #f0f0f0;
-    }
+    .floating-btn:hover{background:#f0f0f0}
     </style>
+    <button class="floating-btn" onclick="document.getElementById('add-section').scrollIntoView()">+</button>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
-# =========================
-# Main Page
-# =========================
-st.set_page_config(page_title="Farm Records", layout="wide")
-st.title("📋 Farm Records Management")
-
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["🐐 Goats", "🧬 Breeding", "🩺 Health", "💰 Sales", "👤 User Profile"]
-)
-
-# =========================
-# Display Tables with Delete Confirmation
-# =========================
-with tab1:
-    st.subheader("All Goats")
-    goats = get_records("goats")
-    if goats:
-        for record_id, g in goats.items():
-            col1, col2, col3, col4, col5 = st.columns(5)
-            col1.write(f"🐐 {g['tag_number']}")
-            col2.write(g['breed'])
-            col3.write(g['gender'])
-            col4.write(g['dob'])
-            if col5.button("🗑️", key=f"del_goat_btn_{record_id}"):
-                if st.confirm(f"Delete Goat {g['tag_number']}?"):
-                    delete_record("goats", record_id, g['tag_number'])
-    else:
-        st.info("No goats found.")
-
-with tab2:
-    st.subheader("All Breeding Records")
-    breeding = get_records("breeding")
-    if breeding:
-        for record_id, b in breeding.items():
-            col1, col2, col3, col4, col5 = st.columns(5)
-            col1.write(f"♀ {b['female_id']}")
-            col2.write(f"♂ {b['male_id']}")
-            col3.write(b['mating_date'])
-            col4.write(b['expected_birth'])
-            if col5.button("🗑️", key=f"del_breed_btn_{record_id}"):
-                if st.confirm(f"Delete breeding record for Female {b['female_id']}?"):
-                    delete_record("breeding", record_id, f"{b['female_id']}")
-    else:
-        st.info("No breeding records found.")
-
-with tab3:
-    st.subheader("All Health Records")
-    health = get_records("health")
-    if health:
-        for record_id, h in health.items():
-            col1, col2, col3, col4, col5 = st.columns(5)
-            col1.write(h['goat_id'])
-            col2.write(h['condition'])
-            col3.write(h['treatment'])
-            col4.write(h['checkup_date'])
-            if col5.button("🗑️", key=f"del_health_btn_{record_id}"):
-                if st.confirm(f"Delete health record for Goat {h['goat_id']}?"):
-                    delete_record("health", record_id, f"{h['goat_id']}")
-    else:
-        st.info("No health records found.")
-
-with tab4:
-    st.subheader("All Sales Records")
-    sales = get_records("sales")
-    if sales:
-        for record_id, s in sales.items():
-            col1, col2, col3, col4, col5 = st.columns(5)
-            col1.write(s['goat_id'])
-            col2.write(s['buyer_name'])
-            col3.write(f"Ksh {s['price']}")
-            col4.write(s['sale_date'])
-            if col5.button("🗑️", key=f"del_sale_btn_{record_id}"):
-                if st.confirm(f"Delete sale record for Goat {s['goat_id']}?"):
-                    delete_record("sales", record_id, f"{s['goat_id']}")
-    else:
-        st.info("No sales records found.")
-
-with tab5:
-    st.subheader("All User Profiles")
-    users = get_records("user_profile")
-    if users:
-        for record_id, u in users.items():
-            col1, col2, col3, col4 = st.columns(4)
-            col1.write(u['full_name'])
-            col2.write(u['phone'])
-            col3.write(u['location'])
-            if col4.button("🗑️", key=f"del_user_btn_{record_id}"):
-                if st.confirm(f"Delete user {u['full_name']}?"):
-                    delete_record("user_profile", record_id, u['full_name'])
-    else:
-        st.info("No user profiles found.")
-
-# =========================
-# Floating Add Button
-# =========================
-button_placeholder = st.empty()
-button_placeholder.markdown(
-    '<button class="floating-btn" onclick="window.location.reload()">+</button>',
-    unsafe_allow_html=True
-)
-
-# =========================
-# Sidebar for Adding Records
-# =========================
+# -------------------------------------------------
+# 7. SIDEBAR – ADD NEW RECORD
+# -------------------------------------------------
 with st.sidebar:
-    st.subheader("➕ Add New Record")
-    record_type = st.selectbox("Choose record type", ["", "Goat", "Breeding", "Health", "Sales", "User Profile"])
+    st.subheader("Add New Record")
+    rec_type = st.selectbox(
+        "Type", ["", "Goat", "Breeding", "Health", "Sales", "User Profile"]
+    )
 
-    if record_type == "Goat":
-        tag = st.text_input("Tag Number")
-        breed = st.text_input("Breed")
-        gender = st.selectbox("Gender", ["Male", "Female"])
-        dob = st.date_input("Date of Birth")
-        if st.button("Save Goat"):
-            add_record("goats", {
-                "tag_number": tag,
-                "breed": breed,
-                "gender": gender,
-                "dob": str(dob),
-                "created_at": str(datetime.datetime.now())
-            })
+    # ---------- GOAT ----------
+    if rec_type == "Goat":
+        with st.form("add_goat", clear_on_submit=True):
+            tag = st.text_input("Tag Number *")
+            breed = st.text_input("Breed *")
+            gender = st.selectbox("Gender", ["Male", "Female"])
+            dob = st.date_input("Date of Birth")
+            submitted = st.form_submit_button("Save Goat")
+            if submitted and tag and breed:
+                add_record("goats", {
+                    "tag_number": tag,
+                    "breed": breed,
+                    "gender": gender,
+                    "dob": str(dob),
+                    "created_at": datetime.now().isoformat(),
+                })
+            elif submitted:
+                st.error("Tag & Breed required")
 
-    elif record_type == "Breeding":
-        female = st.text_input("Female ID")
-        male = st.text_input("Male ID")
-        mating_date = st.date_input("Mating Date")
-        expected_birth = st.date_input("Expected Birth Date")
-        if st.button("Save Breeding"):
-            add_record("breeding", {
-                "female_id": female,
-                "male_id": male,
-                "mating_date": str(mating_date),
-                "expected_birth": str(expected_birth),
-                "created_at": str(datetime.datetime.now())
-            })
+    # ---------- BREEDING ----------
+    elif rec_type == "Breeding":
+        with st.form("add_breeding", clear_on_submit=True):
+            female = st.text_input("Female Tag *")
+            male = st.text_input("Male Tag *")
+            mating = st.date_input("Mating Date")
+            expected = st.date_input("Expected Birth")
+            submitted = st.form_submit_button("Save Breeding")
+            if submitted and female and male:
+                add_record("breeding", {
+                    "female_id": female,
+                    "male_id": male,
+                    "mating_date": str(mating),
+                    "expected_birth": str(expected),
+                    "created_at": datetime.now().isoformat(),
+                })
+            elif submitted:
+                st.error("Both tags required")
 
-    elif record_type == "Health":
-        goat = st.text_input("Goat ID")
-        condition = st.text_input("Condition")
-        treatment = st.text_input("Treatment")
-        checkup_date = st.date_input("Checkup Date")
-        if st.button("Save Health"):
-            add_record("health", {
-                "goat_id": goat,
-                "condition": condition,
-                "treatment": treatment,
-                "checkup_date": str(checkup_date),
-                "created_at": str(datetime.datetime.now())
-            })
+    # ---------- HEALTH ----------
+    elif rec_type == "Health":
+        with st.form("add_health", clear_on_submit=True):
+            goat = st.text_input("Goat Tag *")
+            cond = st.text_input("Condition")
+            treat = st.text_input("Treatment")
+            chk = st.date_input("Check-up Date")
+            submitted = st.form_submit_button("Save Health")
+            if submitted and goat:
+                add_record("health", {
+                    "goat_id": goat,
+                    "condition": cond,
+                    "treatment": treat,
+                    "checkup_date": str(chk),
+                    "created_at": datetime.now().isoformat(),
+                })
+            elif submitted:
+                st.error("Goat tag required")
 
-    elif record_type == "Sales":
-        goat = st.text_input("Goat ID")
-        buyer = st.text_input("Buyer Name")
-        price = st.number_input("Price", min_value=0.0)
-        sale_date = st.date_input("Sale Date")
-        if st.button("Save Sale"):
-            add_record("sales", {
-                "goat_id": goat,
-                "buyer_name": buyer,
-                "price": price,
-                "sale_date": str(sale_date),
-                "created_at": str(datetime.datetime.now())
-            })
+    # ---------- SALES ----------
+    elif rec_type == "Sales":
+        with st.form("add_sale", clear_on_submit=True):
+            goat = st.text_input("Goat Tag *")
+            buyer = st.text_input("Buyer Name")
+            price = st.number_input("Price (Ksh)", min_value=0.0)
+            sdate = st.date_input("Sale Date")
+            submitted = st.form_submit_button("Save Sale")
+            if submitted and goat:
+                add_record("sales", {
+                    "goat_id": goat,
+                    "buyer_name": buyer,
+                    "price": price,
+                    "sale_date": str(sdate),
+                    "created_at": datetime.now().isoformat(),
+                })
+            elif submitted:
+                st.error("Goat tag required")
 
-    elif record_type == "User Profile":
-        name = st.text_input("Full Name")
-        phone = st.text_input("Phone Number")
-        location = st.text_input("Location")
-        if st.button("Save User"):
-            add_record("user_profile", {
-                "full_name": name,
-                "phone": phone,
-                "location": location,
-                "created_at": str(datetime.datetime.now())
-            })
+    # ---------- USER PROFILE ----------
+    elif rec_type == "User Profile":
+        with st.form("add_profile", clear_on_submit=True):
+            name = st.text_input("Full Name")
+            phone = st.text_input("Phone")
+            loc = st.text_input("Location")
+            submitted = st.form_submit_button("Save Profile")
+            if submitted and name:
+                add_record("user_profile", {
+                    "full_name": name,
+                    "phone": phone,
+                    "location": loc,
+                    "created_at": datetime.now().isoformat(),
+                })
+            elif submitted:
+                st.error("Name required")

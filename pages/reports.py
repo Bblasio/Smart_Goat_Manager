@@ -35,89 +35,6 @@ breeding = get_val(db.child("users").child(uid).child("records").child("breeding
 sales = get_val(db.child("users").child(uid).child("records").child("sales").get(token=id_token))
 health = get_val(db.child("users").child(uid).child("records").child("health").get(token=id_token))
 
-# =============================================
-# 🎨 CAPRASENSE DARK THEME STYLING
-# =============================================
-st.markdown("""
-    <style>
-    /* App Background */
-    .stApp {
-        background-color: #121212;
-        color: #EAEAEA;
-    }
-
-    /* Title */
-    h1, h2, h3, h4 {
-        color: #A5D6A7;
-        font-weight: 700;
-    }
-
-    /* Subheaders */
-    .stSubheader, h3 {
-        color: #5E35B1 !important;
-    }
-
-    /* Metrics */
-    [data-testid="stMetricLabel"] {
-        color: #5E35B1;
-        font-size: 0.85rem;
-    }
-    [data-testid="stMetricValue"] {
-        color: #A5D6A7;
-        font-weight: bold;
-    }
-
-    /* Expanders (Cards) */
-    div.streamlit-expanderHeader {
-        background-color: #1E1E1E;
-        color: #EAEAEA;
-        border-radius: 10px;
-        font-weight: 600;
-    }
-    div.streamlit-expanderContent {
-        background-color: #181818;
-        border-left: 4px solid #2E7D32;
-        padding: 1rem;
-        border-radius: 0 0 10px 10px;
-    }
-
-    /* Info Boxes */
-    .stAlert {
-        border-radius: 10px;
-        background-color: #1E1E1E;
-        border-left: 5px solid #5E35B1;
-    }
-
-    /* Success, Warning, Error Styling */
-    .stSuccess {
-        color: #2E7D32 !important;
-        background-color: #1B5E20 !important;
-    }
-    .stWarning {
-        color: #F9A825 !important;
-    }
-    .stError {
-        color: #E53935 !important;
-    }
-
-    /* Tables */
-    .stDataFrame {
-        background-color: #1E1E1E;
-        color: #EAEAEA;
-        border-radius: 8px;
-    }
-
-    /* Sidebar */
-    section[data-testid="stSidebar"] {
-        background-color: #1E1E1E !important;
-        color: #EAEAEA !important;
-    }
-    section[data-testid="stSidebar"] * {
-        color: #EAEAEA !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 # --- 1️⃣ Highest Sales ---
 def highest_sales():
     st.subheader("💰 Highest Sales")
@@ -181,9 +98,10 @@ def predicted_births():
     else:
         st.info("No valid dates found.")
 
-# --- 3️⃣ AI: Detect Sales/Health Anomalies ---
+# --- 3️⃣ ML: Detect Sales or Health Anomalies ---
 def detect_anomalies():
     st.subheader("🧠 AI Anomaly Detection")
+
     if sales:
         df = pd.DataFrame([
             {"Date": s.get("sale_date"), "Price": float(s.get("price", 0))}
@@ -198,18 +116,20 @@ def detect_anomalies():
             df["Anomaly"] = model.predict(X)
             outliers = df[df["Anomaly"] == -1]
             if not outliers.empty:
-                st.error(f"🚨 Detected {len(outliers)} unusual sale(s) — possible pricing outliers.")
+                st.error(f"🚨 Detected {len(outliers)} unusual sale(s) — possible pricing errors or outliers.")
                 st.dataframe(outliers, use_container_width=True)
             else:
                 st.success("✅ No anomalies detected in sales data.")
         else:
             st.info("Not enough sales data for anomaly detection.")
+
     elif health:
         st.info("Health anomaly analysis coming soon (requires health metrics).")
 
-# --- 4️⃣ AI Revenue Forecast ---
+# --- 4️⃣ ML: Predict Future Revenue (Linear Regression) ---
 def predict_revenue():
     st.subheader("📈 AI Revenue Forecast")
+
     if not sales:
         st.info("No sales data for prediction.")
         return
@@ -225,6 +145,7 @@ def predict_revenue():
         st.info("No valid sales date data available.")
         return
 
+    # ✅ Fix: Group only numeric data (avoid summing datetimes)
     df = df.groupby(df["Date"].dt.to_period("M"))["Price"].sum().reset_index()
     df["Month"] = df["Date"].astype(str)
     df["t"] = range(len(df))
@@ -241,18 +162,20 @@ def predict_revenue():
             "Predicted Revenue (Ksh)": [round(p, 2) for p in pred]
         })
         st.dataframe(forecast_df, use_container_width=True)
-        st.success("📊 Forecast generated using Linear Regression.")
+        st.success("📊 Forecast generated using linear regression.")
     else:
         st.info("Not enough data for revenue forecasting.")
 
-# --- 5️⃣ AI Recommendations ---
+# --- 5️⃣ AI Insights ---
 def ai_recommendations():
     st.subheader("💡 AI Recommendations")
+
     recs = []
     total_goats = len(goats) if goats else 0
     total_sales = sum(float(s.get("price", 0)) for s in sales.values()) if sales else 0
     sick_goats = [h for h in health.values() if "sick" in str(h).lower()] if health else []
 
+    # --- Intelligent Recommendations ---
     if total_goats > 0 and breeding:
         pregnant = sum(1 for b in breeding.values() if b.get("mating_date"))
         ratio = pregnant / total_goats
@@ -277,7 +200,7 @@ def ai_recommendations():
     else:
         st.success("🌿 Your farm is performing optimally!")
 
-# --- 6️⃣ Summary ---
+# --- 6️⃣ Farm Summary ---
 def farm_summary():
     st.subheader("📋 Farm Summary")
     col1, col2, col3, col4 = st.columns(4)

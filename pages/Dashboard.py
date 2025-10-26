@@ -1,6 +1,9 @@
 # pages/Dashboard.py
 import streamlit as st
 from datetime import datetime
+import sys, os
+import pandas as pd
+import plotly.express as px
 
 # =============================================
 # 1. AUTH GUARD
@@ -19,7 +22,6 @@ id_token = user["idToken"]
 # =============================================
 # 3. IMPORT DB
 # =============================================
-import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import db
 
@@ -42,8 +44,8 @@ created_at = farm_data.get("created_at")
 # =============================================
 st.set_page_config(
     page_title=f"{farm_name} – Dashboard",
-    page_icon="goat",
-    layout="centered",  # Better for mobile
+    page_icon="🐐",
+    layout="centered",
     initial_sidebar_state="auto"
 )
 st.title(f"{farm_name}")
@@ -65,11 +67,11 @@ pregnant_count = len(breeding)
 total_workers = len(workers)
 
 # =============================================
-# 9. RESPONSIVE METRICS (Stack on Mobile)
+# 9. FARM OVERVIEW METRICS
 # =============================================
-st.markdown("### Farm Overview")
+st.markdown("### 🧮 Farm Overview")
 
-# Use CSS to stack on small screens
+# Mobile-friendly layout
 st.markdown(
     """
     <style>
@@ -81,7 +83,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 4 Metrics in 2x2 grid on large, stacked on mobile
 col1, col2 = st.columns(2)
 with col1:
     st.metric("Total Goats", total_goats)
@@ -90,7 +91,6 @@ with col2:
     st.metric("Female Goats", females)
     st.metric("Pregnant Goats", pregnant_count)
 
-# Workers below
 st.markdown("---")
 st.metric("Total Workers", total_workers)
 
@@ -108,11 +108,39 @@ else:
     st.caption("Farm age: Just created")
 
 # =============================================
-# 11. OPTIONAL: Quick Stats Table (Mobile-Friendly)
+# 11. DATA VISUALIZATION SECTION
 # =============================================
-with st.expander("View All Stats"):
-    stats = {
-        "Metric": ["Total Goats", "Males", "Females", "Pregnant", "Workers"],
-        "Count": [total_goats, males, females, pregnant_count, total_workers]
-    }
-    st.table(stats)
+st.markdown("### 📊 Farm Insights")
+
+# --- Gender Distribution Pie Chart ---
+if total_goats > 0:
+    gender_data = pd.DataFrame({
+        "Gender": ["Male", "Female"],
+        "Count": [males, females]
+    })
+    fig_gender = px.pie(
+        gender_data,
+        names="Gender",
+        values="Count",
+        title="Gender Distribution Among Goats",
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    st.plotly_chart(fig_gender, use_container_width=True)
+else:
+    st.info("No goats recorded yet to display gender distribution.")
+
+# --- Breeding Trend (if date exists) ---
+if breeding:
+    df_breed = pd.DataFrame(list(breeding.values()))
+    if "date" in df_breed.columns:
+        try:
+            df_breed["Month"] = pd.to_datetime(df_breed["date"], errors="coerce").dt.strftime("%b")
+            trend = df_breed["Month"].value_counts().sort_index()
+            st.markdown("### 🐐 Breeding Activity Over Time")
+            st.bar_chart(trend)
+        except Exception:
+            st.info("Breeding dates missing or not properly formatted.")
+    else:
+        st.info("No breeding date data available for chart.")
+else:
+    st.info("No breeding records available yet.")

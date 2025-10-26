@@ -19,14 +19,14 @@ uid = user["localId"]
 id_token = user["idToken"]
 
 # =============================================
-# 3. IMPORT DB
+# 3. IMPORT DB (unchanged)
 # =============================================
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import db
 
 # =============================================
-# 4. HELPER
+# 4. HELPER: Safe .val()
 # =============================================
 def get_val(resp):
     return resp.val() if resp and resp.val() is not None else {}
@@ -40,7 +40,7 @@ farm_name = farm_data.get("farm_name", "My Farm")
 created_at = farm_data.get("created_at")
 
 # =============================================
-# 6. PAGE CONFIG
+# 6. PAGE CONFIG (MOBILE FRIENDLY)
 # =============================================
 st.set_page_config(
     page_title=f"{farm_name} – Dashboard",
@@ -48,77 +48,17 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="auto"
 )
+st.title(f"{farm_name}")
 
 # =============================================
-# 🎨 CUSTOM THEME COLORS (CapraSense Theme)
-# =============================================
-st.markdown("""
-    <style>
-    /* Global Background */
-    .stApp {
-        background-color: #F4F1E8;
-        color: #1E1E1E;
-    }
-
-    /* Headers */
-    h1, h2, h3, h4 {
-        color: #2E7D32;
-        font-weight: 700;
-    }
-
-    /* Metric Labels */
-    [data-testid="stMetricLabel"] {
-        color: #5E35B1;
-        font-size: 0.9rem;
-    }
-
-    /* Metric Values */
-    [data-testid="stMetricValue"] {
-        color: #2E7D32;
-        font-weight: bold;
-    }
-
-    /* Divider Line */
-    hr {
-        border-color: #2E7D32;
-    }
-
-    /* Info Boxes */
-    .stAlert {
-        border-radius: 10px;
-        background-color: #E8F5E9;
-        border-left: 6px solid #2E7D32;
-    }
-
-    /* Sidebar (if visible) */
-    section[data-testid="stSidebar"] {
-        background-color: #2E7D32 !important;
-    }
-    section[data-testid="stSidebar"] * {
-        color: white !important;
-    }
-
-    /* Chart title color */
-    .js-plotly-plot .plotly .gtitle {
-        fill: #2E7D32 !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# =============================================
-# 7. PAGE TITLE
-# =============================================
-st.title(f"🌿 {farm_name}")
-
-# =============================================
-# 8. FETCH RECORDS
+# 7. FETCH RECORDS
 # =============================================
 goats = get_val(db.child("users").child(uid).child("records").child("goats").get(token=id_token))
 breeding = get_val(db.child("users").child(uid).child("records").child("breeding").get(token=id_token))
 workers = get_val(db.child("users").child(uid).child("records").child("user_profile").get(token=id_token))
 
 # =============================================
-# 9. CALCULATE METRICS
+# 8. CALCULATE METRICS
 # =============================================
 total_goats = len(goats)
 males = sum(1 for g in goats.values() if str(g.get("gender") or "").lower().startswith("m"))
@@ -127,10 +67,11 @@ pregnant_count = len(breeding)
 total_workers = len(workers)
 
 # =============================================
-# 10. FARM OVERVIEW
+# 9. FARM OVERVIEW METRICS
 # =============================================
 st.markdown("### 🧮 Farm Overview")
 
+# Display metrics in a responsive layout
 col1, col2 = st.columns(2)
 with col1:
     st.metric("Total Goats", total_goats)
@@ -143,20 +84,20 @@ st.markdown("---")
 st.metric("Total Workers", total_workers)
 
 # =============================================
-# 11. FARM AGE
+# 10. FARM AGE
 # =============================================
 if created_at:
     try:
         created_date = datetime.fromisoformat(created_at.split("T")[0])
         days_active = (datetime.now() - created_date).days
-        st.caption(f"🌾 Farm active for **{days_active} days**")
+        st.caption(f"Farm active for **{days_active} days**")
     except:
         st.caption("Farm age: Unknown")
 else:
     st.caption("Farm age: Just created")
 
 # =============================================
-# 12. VISUALIZATIONS
+# 11. VISUALIZATIONS
 # =============================================
 st.markdown("### 📊 Farm Insights")
 
@@ -171,7 +112,7 @@ if total_goats > 0:
         names="Gender",
         values="Count",
         title="Gender Distribution Among Goats",
-        color_discrete_sequence=["#5E35B1", "#2E7D32"]  # Accent + Primary
+        color_discrete_sequence=px.colors.qualitative.Pastel
     )
     st.plotly_chart(fig_gender, use_container_width=True)
 else:

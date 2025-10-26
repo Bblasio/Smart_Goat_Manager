@@ -18,16 +18,12 @@ firebaseConfig = json.loads(st.secrets["firebase_config"])
 # -------------------------------------------------
 firebase = pyrebase.initialize_app(firebaseConfig)
 auth = firebase.auth()
-db = firebase.database()          # Realtime Database
+db = firebase.database()
 
 # -------------------------------------------------
 # 3. Page config
 # -------------------------------------------------
-st.set_page_config(
-    page_title="Smart Goat Farm",
-    page_icon="goat",
-    layout="wide",
-)
+st.set_page_config(page_title="Smart Goat Farm", page_icon="goat", layout="wide")
 
 # -------------------------------------------------
 # 4. Session state defaults
@@ -56,7 +52,7 @@ def parse_pyrebase_error(e):
     if "permission" in msg or "denied" in msg:
         return "Database permission denied – check Firebase rules."
     if "invalid" in msg and "password" in msg:
-        return "Password is too weak (min 6 chars)."
+        return "Password too weak (min 6 chars)."
     return f"Error: {e}"
 
 # -------------------------------------------------
@@ -86,10 +82,14 @@ def login_page():
         pwd = st.text_input("Password", type="password")
         if st.form_submit_button("Login"):
             try:
+                # Sign in
                 user = auth.sign_in_with_email_and_password(email, pwd)
                 uid = user["localId"]
-                # fetch farm name
-                farm = db.child("users").child(uid).child("farm_name").get().val()
+                id_token = user["idToken"]
+
+                # Read farm name with token
+                farm = db.child("users").child(uid).child("farm_name").get(token=id_token).val()
+
                 st.session_state.update({
                     "authenticated": True,
                     "user": user,
@@ -123,10 +123,14 @@ def signup_page():
                 st.error("Farm name is required.")
             else:
                 try:
+                    # Create user
                     user = auth.create_user_with_email_and_password(email, pwd)
                     uid = user["localId"]
-                    # write farm name (rules allow only own uid)
-                    db.child("users").child(uid).child("farm_name").set(farm_name)
+                    id_token = user["idToken"]
+
+                    # Save farm name with token
+                    db.child("users").child(uid).child("farm_name").set(farm_name, token=id_token)
+
                     st.success("Account created – you can now log in.")
                     st.session_state.show_signup = False
                     st.rerun()
@@ -156,13 +160,12 @@ elif st.session_state.show_reset:
 elif not st.session_state.authenticated:
     login_page()
 else:
-    # ---- Authenticated UI ----
     with st.sidebar:
         st.markdown(f"### {st.session_state.farm_name}")
         logout_button()
         st.session_state.selected_page = option_menu(
-            menu_title="Smart Goat Farm",
-            options=["Dashboard", "Manage Goats", "Breeding"],
+            "Smart Goat Farm",
+            ["Dashboard", "Manage Goats", "Breeding"],
             icons=["speedometer", "clipboard-data", "heart"],
             default_index=["Dashboard", "Manage Goats", "Breeding"]
             .index(st.session_state.selected_page),

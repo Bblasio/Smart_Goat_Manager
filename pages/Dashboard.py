@@ -1,9 +1,8 @@
 # pages/Dashboard.py
 import streamlit as st
 from datetime import datetime
-import sys, os
-import pandas as pd
 import plotly.express as px
+import pandas as pd
 
 # =============================================
 # 1. AUTH GUARD
@@ -20,8 +19,9 @@ uid = user["localId"]
 id_token = user["idToken"]
 
 # =============================================
-# 3. IMPORT DB
+# 3. IMPORT DB (unchanged)
 # =============================================
+import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import db
 
@@ -40,7 +40,7 @@ farm_name = farm_data.get("farm_name", "My Farm")
 created_at = farm_data.get("created_at")
 
 # =============================================
-# 6. PAGE CONFIG (MOBILE-OPTIMIZED)
+# 6. PAGE CONFIG (MOBILE FRIENDLY)
 # =============================================
 st.set_page_config(
     page_title=f"{farm_name} – Dashboard",
@@ -71,18 +71,7 @@ total_workers = len(workers)
 # =============================================
 st.markdown("### 🧮 Farm Overview")
 
-# Mobile-friendly layout
-st.markdown(
-    """
-    <style>
-    @media (max-width: 640px) {
-        .stMetric { margin-bottom: 1rem; }
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
+# Display metrics in a responsive layout
 col1, col2 = st.columns(2)
 with col1:
     st.metric("Total Goats", total_goats)
@@ -108,11 +97,11 @@ else:
     st.caption("Farm age: Just created")
 
 # =============================================
-# 11. DATA VISUALIZATION SECTION
+# 11. VISUALIZATIONS
 # =============================================
 st.markdown("### 📊 Farm Insights")
 
-# --- Gender Distribution Pie Chart ---
+# --- Gender Distribution Chart ---
 if total_goats > 0:
     gender_data = pd.DataFrame({
         "Gender": ["Male", "Female"],
@@ -129,18 +118,15 @@ if total_goats > 0:
 else:
     st.info("No goats recorded yet to display gender distribution.")
 
-# --- Breeding Trend (if date exists) ---
+# --- Breeding Activity Trend ---
 if breeding:
     df_breed = pd.DataFrame(list(breeding.values()))
-    if "date" in df_breed.columns:
-        try:
-            df_breed["Month"] = pd.to_datetime(df_breed["date"], errors="coerce").dt.strftime("%b")
-            trend = df_breed["Month"].value_counts().sort_index()
-            st.markdown("### 🐐 Breeding Activity Over Time")
-            st.bar_chart(trend)
-        except Exception:
-            st.info("Breeding dates missing or not properly formatted.")
+    if "mating_date" in df_breed.columns:
+        df_breed["Month"] = pd.to_datetime(df_breed["mating_date"], errors="coerce").dt.strftime("%b")
+        trend = df_breed["Month"].value_counts().sort_index()
+        st.markdown("### 🐐 Breeding Activity Over Time")
+        st.bar_chart(trend)
     else:
-        st.info("No breeding date data available for chart.")
+        st.info("Breeding records exist but no valid date field found.")
 else:
     st.info("No breeding records available yet.")

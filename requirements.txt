@@ -14,4 +14,4 @@ setuptools
 feedparser
 plotly
 scikit-learn
-base64
+streamlit==1.38.0

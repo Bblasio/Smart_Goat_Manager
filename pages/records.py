@@ -64,30 +64,41 @@ sales = get_records("sales")
 workers = get_records("user_profile")
 
 # =============================================
-# 6. DISPLAY TABLES (with Delete Button per Row)
+# 6. CUSTOM TABLE DISPLAY (NO ID COLUMN)
 # =============================================
-def show_table(collection: str, records: dict, columns: list):
-    """Render table for a collection with per-row Delete button"""
+def show_table(collection: str, records: dict, columns: list, label_map: dict = None):
+    """
+    Render clean table: only desired fields and one Delete button per row.
+    """
     if not records:
         st.info(f"No {collection} records found.")
         return
 
-    table_data = []
+    label_map = label_map or {}
+    table_rows = []
     for rid, rec in records.items():
-        row = {col: rec.get(col.lower(), "—") for col in columns}
-        table_data.append((rid, row))
+        row = {}
+        for col in columns:
+            key = col.lower()
+            row[label_map.get(col, col)] = rec.get(key, "—")
+        row["Action"] = f'<button style="background-color:#ff4b4b;color:white;border:none;padding:5px 10px;border-radius:5px;" onclick="window.location.href=\'?delete={rid}&col={collection}\'">🗑️ Delete</button>'
+        table_rows.append((rid, row))
 
-    df = pd.DataFrame([r for _, r in table_data])
-    df["Action"] = [st.button("🗑️ Delete", key=f"del_{collection}_{rid}", on_click=delete_record, args=(collection, rid)) for rid, _ in table_data]
+    # Convert to DataFrame
+    df = pd.DataFrame([r for _, r in table_rows])
+    st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-    st.dataframe(df, use_container_width=True)
+    # Handle delete request via query param (Streamlit limitation for inline HTML)
+    query_params = st.experimental_get_query_params()
+    if "delete" in query_params and "col" in query_params:
+        delete_record(query_params["col"][0], query_params["delete"][0])
 
 # =============================================
 # 7. GOATS
 # =============================================
 with tabs[0]:
     st.subheader("Goats")
-    show_table("goats", goats, ["Tag_Number", "Breed", "Gender", "Dob"])
+    show_table("goats", goats, ["tag_number", "breed", "gender", "dob"], {"tag_number": "Tag", "dob": "Date of Birth"})
 
 # =============================================
 # 8. BREEDING
@@ -95,23 +106,26 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("Breeding & Births")
     if breeding:
-        table_data = []
+        table_rows = []
         for rid, b in breeding.items():
             try:
                 exp = datetime.fromisoformat(b.get("expected_birth", "").split("T")[0])
                 days_left = (exp.date() - datetime.now().date()).days
             except:
                 days_left = "—"
-            table_data.append({
+            table_rows.append({
                 "Female": b.get("female_id", "—"),
                 "Male": b.get("male_id", "—"),
-                "Mating_Date": b.get("mating_date", "—"),
-                "Expected_Birth": b.get("expected_birth", "—"),
-                "Days_Left": days_left
+                "Mating Date": b.get("mating_date", "—"),
+                "Expected Birth": b.get("expected_birth", "—"),
+                "Days Left": days_left,
+                "Action": f'<button style="background-color:#ff4b4b;color:white;border:none;padding:5px 10px;border-radius:5px;" onclick="window.location.href=\'?delete={rid}&col=breeding\'">🗑️ Delete</button>'
             })
-        df = pd.DataFrame(table_data)
-        df["Action"] = [st.button("🗑️ Delete", key=f"del_breeding_{rid}", on_click=delete_record, args=("breeding", rid)) for rid in breeding.keys()]
-        st.dataframe(df, use_container_width=True)
+        df = pd.DataFrame(table_rows)
+        st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+        query_params = st.experimental_get_query_params()
+        if "delete" in query_params and query_params.get("col", [""])[0] == "breeding":
+            delete_record("breeding", query_params["delete"][0])
     else:
         st.info("No breeding records found.")
 
@@ -121,17 +135,20 @@ with tabs[1]:
 with tabs[2]:
     st.subheader("Health Records")
     if health:
-        table_data = []
+        table_rows = []
         for rid, h in health.items():
-            table_data.append({
+            table_rows.append({
                 "Goat": h.get("goat_id", "—"),
                 "Condition": h.get("condition", "—"),
                 "Treatment": h.get("treatment", "—"),
-                "Checkup_Date": h.get("checkup_date", "—")
+                "Checkup Date": h.get("checkup_date", "—"),
+                "Action": f'<button style="background-color:#ff4b4b;color:white;border:none;padding:5px 10px;border-radius:5px;" onclick="window.location.href=\'?delete={rid}&col=health\'">🗑️ Delete</button>'
             })
-        df = pd.DataFrame(table_data)
-        df["Action"] = [st.button("🗑️ Delete", key=f"del_health_{rid}", on_click=delete_record, args=("health", rid)) for rid in health.keys()]
-        st.dataframe(df, use_container_width=True)
+        df = pd.DataFrame(table_rows)
+        st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+        query_params = st.experimental_get_query_params()
+        if "delete" in query_params and query_params.get("col", [""])[0] == "health":
+            delete_record("health", query_params["delete"][0])
     else:
         st.info("No health records found.")
 
@@ -141,17 +158,20 @@ with tabs[2]:
 with tabs[3]:
     st.subheader("Sales")
     if sales:
-        table_data = []
+        table_rows = []
         for rid, s in sales.items():
-            table_data.append({
+            table_rows.append({
                 "Goat": s.get("goat_id", "—"),
                 "Buyer": s.get("buyer_name", "—"),
                 "Price": f"Ksh {s.get('price', 0):,}",
-                "Sale_Date": s.get("sale_date", "—")
+                "Sale Date": s.get("sale_date", "—"),
+                "Action": f'<button style="background-color:#ff4b4b;color:white;border:none;padding:5px 10px;border-radius:5px;" onclick="window.location.href=\'?delete={rid}&col=sales\'">🗑️ Delete</button>'
             })
-        df = pd.DataFrame(table_data)
-        df["Action"] = [st.button("🗑️ Delete", key=f"del_sales_{rid}", on_click=delete_record, args=("sales", rid)) for rid in sales.keys()]
-        st.dataframe(df, use_container_width=True)
+        df = pd.DataFrame(table_rows)
+        st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+        query_params = st.experimental_get_query_params()
+        if "delete" in query_params and query_params.get("col", [""])[0] == "sales":
+            delete_record("sales", query_params["delete"][0])
     else:
         st.info("No sales found.")
 
@@ -161,16 +181,19 @@ with tabs[3]:
 with tabs[4]:
     st.subheader("Workers")
     if workers:
-        table_data = []
+        table_rows = []
         for rid, w in workers.items():
-            table_data.append({
-                "Full_Name": w.get("full_name", "—"),
+            table_rows.append({
+                "Full Name": w.get("full_name", "—"),
                 "Phone": w.get("phone", "—"),
-                "Location": w.get("location", "—")
+                "Location": w.get("location", "—"),
+                "Action": f'<button style="background-color:#ff4b4b;color:white;border:none;padding:5px 10px;border-radius:5px;" onclick="window.location.href=\'?delete={rid}&col=user_profile\'">🗑️ Delete</button>'
             })
-        df = pd.DataFrame(table_data)
-        df["Action"] = [st.button("🗑️ Delete", key=f"del_worker_{rid}", on_click=delete_record, args=("user_profile", rid)) for rid in workers.keys()]
-        st.dataframe(df, use_container_width=True)
+        df = pd.DataFrame(table_rows)
+        st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+        query_params = st.experimental_get_query_params()
+        if "delete" in query_params and query_params.get("col", [""])[0] == "user_profile":
+            delete_record("user_profile", query_params["delete"][0])
     else:
         st.info("No workers found.")
 
@@ -208,75 +231,3 @@ with tabs[5]:
 
     for r in recs:
         st.write(f"• {r}")
-
-# =============================================
-# 13. SIDEBAR: ADD RECORDS
-# =============================================
-with st.sidebar:
-    st.subheader("Add New Record")
-    rec_type = st.selectbox("Type", ["", "Goat", "Breeding", "Health", "Sales", "Worker"])
-
-    if rec_type == "Goat":
-        with st.form("add_goat", clear_on_submit=True):
-            tag = st.text_input("Tag *")
-            breed = st.text_input("Breed *")
-            gender = st.selectbox("Gender", ["Male", "Female"])
-            dob = st.date_input("DOB")
-            if st.form_submit_button("Save"):
-                if tag and breed:
-                    add_record("goats", {
-                        "tag_number": tag, "breed": breed, "gender": gender,
-                        "dob": str(dob), "created_at": datetime.now().isoformat()
-                    })
-                else:
-                    st.error("Fill required fields")
-
-    elif rec_type == "Breeding":
-        with st.form("add_breed", clear_on_submit=True):
-            f = st.text_input("Female Tag *")
-            m = st.text_input("Male Tag *")
-            mate = st.date_input("Mating Date")
-            exp = st.date_input("Expected Birth", value=mate + timedelta(days=150))
-            if st.form_submit_button("Save"):
-                if f and m:
-                    add_record("breeding", {
-                        "female_id": f, "male_id": m,
-                        "mating_date": str(mate), "expected_birth": str(exp)
-                    })
-                else:
-                    st.error("Tags required")
-
-    elif rec_type == "Health":
-        with st.form("add_health", clear_on_submit=True):
-            g = st.text_input("Goat Tag *")
-            c = st.text_input("Condition")
-            t = st.text_input("Treatment")
-            d = st.date_input("Check-up Date")
-            if st.form_submit_button("Save"):
-                if g:
-                    add_record("health", {
-                        "goat_id": g, "condition": c, "treatment": t, "checkup_date": str(d)
-                    })
-
-    elif rec_type == "Sales":
-        with st.form("add_sale", clear_on_submit=True):
-            g = st.text_input("Goat Tag *")
-            b = st.text_input("Buyer")
-            p = st.number_input("Price", min_value=0.0)
-            d = st.date_input("Sale Date")
-            if st.form_submit_button("Save"):
-                if g:
-                    add_record("sales", {
-                        "goat_id": g, "buyer_name": b, "price": p, "sale_date": str(d)
-                    })
-
-    elif rec_type == "Worker":
-        with st.form("add_worker", clear_on_submit=True):
-            n = st.text_input("Name *")
-            p = st.text_input("Phone")
-            l = st.text_input("Location")
-            if st.form_submit_button("Save"):
-                if n:
-                    add_record("user_profile", {
-                        "full_name": n, "phone": p, "location": l
-                    })

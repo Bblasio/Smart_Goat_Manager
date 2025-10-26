@@ -45,14 +45,10 @@ for k, v in defaults.items():
 # -------------------------------------------------
 def parse_pyrebase_error(e):
     msg = str(e).lower()
-    if "email" in msg and "already" in msg:
-        return "Email already in use."
-    if "network" in msg or "timeout" in msg:
-        return "Network error – try again."
-    if "permission" in msg or "denied" in msg:
-        return "Database permission denied – check Firebase rules."
-    if "invalid" in msg and "password" in msg:
-        return "Password too weak (min 6 chars)."
+    if "email" in msg and "already" in msg: return "Email already in use."
+    if "network" in msg or "timeout" in msg: return "Network error – try again."
+    if "permission" in msg or "denied" in msg: return "Database permission denied."
+    if "invalid" in msg and "password" in msg: return "Password too weak (min 6 chars)."
     return f"Error: {e}"
 
 # -------------------------------------------------
@@ -65,15 +61,12 @@ def forgot_password_page():
         if st.form_submit_button("Send Reset Link"):
             try:
                 auth.send_password_reset_email(email)
-                st.success("Reset link sent – check your inbox.")
+                st.success("Reset link sent.")
                 st.session_state.show_reset = False
                 st.rerun()
             except Exception as e:
                 st.error(parse_pyrebase_error(e))
-    if st.button("Back to Login"):
-        st.session_state.show_reset = False
-        st.rerun()
-
+    if st.button("Back"): st.session_state.show_reset = False; st.rerun()
 
 def login_page():
     st.title("Login")
@@ -82,35 +75,30 @@ def login_page():
         pwd = st.text_input("Password", type="password")
         if st.form_submit_button("Login"):
             try:
-                # Sign in
                 user = auth.sign_in_with_email_and_password(email, pwd)
                 uid = user["localId"]
                 id_token = user["idToken"]
-
-                # Read farm name with token
                 farm = db.child("users").child(uid).child("farm_name").get(token=id_token).val()
 
+                # Update session
                 st.session_state.update({
                     "authenticated": True,
                     "user": user,
                     "farm_name": farm or "My Farm",
                     "selected_page": "Dashboard",
                 })
-                st.success("Logged in – welcome!")
-                st.rerun()
+
+                st.success("Welcome! Redirecting to Dashboard...")
+                st.rerun()  # Forces immediate redirect
+
             except Exception as e:
                 st.error(parse_pyrebase_error(e))
 
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("Create Account"):
-            st.session_state.show_signup = True
-            st.rerun()
+        if st.button("Create Account"): st.session_state.show_signup = True; st.rerun()
     with c2:
-        if st.button("Forgot Password"):
-            st.session_state.show_reset = True
-            st.rerun()
-
+        if st.button("Forgot Password"): st.session_state.show_reset = True; st.rerun()
 
 def signup_page():
     st.title("Create Account")
@@ -120,35 +108,19 @@ def signup_page():
         pwd = st.text_input("Password", type="password")
         if st.form_submit_button("Sign Up"):
             if not farm_name.strip():
-                st.error("Farm name is required.")
+                st.error("Farm name required.")
             else:
                 try:
-                    # Create user
                     user = auth.create_user_with_email_and_password(email, pwd)
                     uid = user["localId"]
                     id_token = user["idToken"]
-
-                    # Save farm name with token
                     db.child("users").child(uid).child("farm_name").set(farm_name, token=id_token)
-
-                    st.success("Account created – you can now log in.")
+                    st.success("Account created! Please log in.")
                     st.session_state.show_signup = False
                     st.rerun()
                 except Exception as e:
                     st.error(parse_pyrebase_error(e))
-
-    if st.button("Back to Login"):
-        st.session_state.show_signup = False
-        st.rerun()
-
-
-def logout_button():
-    if st.sidebar.button("Logout"):
-        for k in ["authenticated", "user", "farm_name"]:
-            st.session_state[k] = None if k != "authenticated" else False
-        st.session_state.selected_page = "Dashboard"
-        st.rerun()
-
+    if st.button("Back"): st.session_state.show_signup = False; st.rerun()
 
 # -------------------------------------------------
 # 7. Routing
@@ -160,23 +132,30 @@ elif st.session_state.show_reset:
 elif not st.session_state.authenticated:
     login_page()
 else:
+    # === USER IS LOGGED IN → GO TO PAGES FOLDER ===
+    import os
+    page_path = f"pages/{st.session_state.selected_page}.py"
+    
+    if os.path.exists(page_path):
+        with open(page_path) as f:
+            exec(f.read(), globals())
+    else:
+        st.error(f"Page '{st.session_state.selected_page}' not found.")
+        st.write("Available: Dashboard, Manage Goats, Breeding")
+
+    # Sidebar (only after login)
     with st.sidebar:
         st.markdown(f"### {st.session_state.farm_name}")
-        logout_button()
+        if st.button("Logout"):
+            for k in ["authenticated", "user", "farm_name"]:
+                st.session_state[k] = None if k != "authenticated" else False
+            st.session_state.selected_page = "Dashboard"
+            st.rerun()
+
         st.session_state.selected_page = option_menu(
-            "Smart Goat Farm",
+            "Navigation",
             ["Dashboard", "Manage Goats", "Breeding"],
             icons=["speedometer", "clipboard-data", "heart"],
             default_index=["Dashboard", "Manage Goats", "Breeding"]
             .index(st.session_state.selected_page),
         )
-
-    if st.session_state.selected_page == "Dashboard":
-        st.title(f"Welcome to {st.session_state.farm_name}")
-        st.write("Dashboard content goes here…")
-    elif st.session_state.selected_page == "Manage Goats":
-        st.title("Manage Goats")
-        st.write("Add / edit goat records…")
-    elif st.session_state.selected_page == "Breeding":
-        st.title("Breeding Management")
-        st.write("AI-powered breeding predictions…")

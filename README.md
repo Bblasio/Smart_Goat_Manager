@@ -1,4 +1,4 @@
-<div align="center">
+<div align="left">
 
 # 🐐 **Smart Goat Management System**
 ### *AI-Powered Farm Management for Modern Goat Farmers*
@@ -52,4 +52,5 @@ streamlit run app.py
 
 🌱 Vision    
 Empowering goat farmers with smart, data-driven insights that make livestock management simple, predictive, and profitable. 
+
 

@@ -6,6 +6,7 @@ import { BreedingEstimatorView } from './pages/BreedingEstimatorView';
 import { RecordsView } from './pages/RecordsView';
 import { HealthCareView } from './pages/HealthCareView';
 import { ReportsView } from './pages/ReportsView';
+import { ProfileView } from './pages/ProfileView';
 import { AuthView } from './pages/AuthView';
 import { AddRecordModal } from './components/AddRecordModal';
 import { RecordType, AppView } from './types';
@@ -107,7 +108,9 @@ const MainLayout: React.FC = () => {
               onNavigateToRecords={() => setActiveTab('records')}
               onNavigateToReports={() => setActiveTab('reports')}
               onNavigateToBreedingEstimator={() => setActiveTab('breeding_estimator')}
+              onNavigateToHealth={() => setActiveTab('health_vet')}
               onOpenAddModal={() => handleOpenAddModal('goat')}
+              onOpenAddHealthModal={() => handleOpenAddModal('health')}
             />
           )}
 
@@ -128,6 +131,14 @@ const MainLayout: React.FC = () => {
           )}
 
           {activeTab === 'reports' && <ReportsView />}
+
+          {activeTab === 'profile' && (
+            <ProfileView
+              onNavigateToRecords={() => setActiveTab('records')}
+              onNavigateToReports={() => setActiveTab('reports')}
+              onOpenAddModal={() => handleOpenAddModal('goat')}
+            />
+          )}
         </main>
 
         <footer className="border-t border-stone-200 bg-white py-5 mt-auto">

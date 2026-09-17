@@ -12,7 +12,9 @@ import {
   FileSpreadsheet,
   CheckCircle2,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Download,
+  FileText
 } from 'lucide-react';
 import {
   LineChart,
@@ -26,7 +28,7 @@ import {
 } from 'recharts';
 
 export const ReportsView: React.FC = () => {
-  const { farmName, goats, breeding, sales, health } = useFarm();
+  const { farmName, user, goats, breeding, sales, health, milk, workers } = useFarm();
 
   // Collapsible section states (matching the 6 expanders in reports.py)
   const [expandHighestSales, setExpandHighestSales] = useState(true);
@@ -35,6 +37,145 @@ export const ReportsView: React.FC = () => {
   const [expandRevenueForecast, setExpandRevenueForecast] = useState(true);
   const [expandAIRecommendations, setExpandAIRecommendations] = useState(true);
   const [expandFarmSummary, setExpandFarmSummary] = useState(true);
+
+  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  const escapeCsv = (val: any): string => {
+    if (val === null || val === undefined) return '""';
+    const str = String(val).replace(/"/g, '""');
+    return `"${str}"`;
+  };
+
+  const handleDownloadReport = (format: 'all' | 'sales' | 'gestation' | 'inventory' = 'all') => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const dateReadable = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    let csv = '';
+
+    if (format === 'all') {
+      csv += `# SMART GOAT MANAGEMENT - ${farmName.toUpperCase()} EXPORT\n`;
+      csv += `# Generated Date: ${dateReadable} at ${new Date().toLocaleTimeString()}\n`;
+      csv += `# Farm Owner: ${user?.owner_name || 'Registered Farm Manager'}\n`;
+      csv += `# Location: ${user?.location || 'Main Farm'}\n`;
+      csv += `# Total Registered Goats: ${goats.length}\n`;
+      csv += `# Total Revenue: Ksh ${sales.reduce((sum, s) => sum + s.price, 0).toLocaleString()}\n\n`;
+    }
+
+    if (format === 'all' || format === 'sales') {
+      csv += `--- SALES & REVENUE TRANSACTIONS ---\n`;
+      csv += ['Sale ID', 'Goat Tag ID', 'Price (Ksh)', 'Buyer Name', 'Sale Date'].map(escapeCsv).join(',') + '\n';
+      if (sales.length === 0) {
+        csv += ['No sales recorded', '', '', '', ''].map(escapeCsv).join(',') + '\n';
+      } else {
+        sales.forEach(s => {
+          csv += [s.id, s.goat_id, s.price, s.buyer_name || '—', s.sale_date || '—'].map(escapeCsv).join(',') + '\n';
+        });
+      }
+      csv += '\n';
+    }
+
+    if (format === 'all' || format === 'gestation') {
+      csv += `--- BREEDING & PREDICTED GESTATION RECORDS ---\n`;
+      csv += ['Breeding ID', 'Female Tag', 'Male Buck Tag', 'Mating Date', 'Expected Kidding Date', 'Gestation Days', 'Status', 'Kids Born', 'Clinical Notes'].map(escapeCsv).join(',') + '\n';
+      if (breeding.length === 0) {
+        csv += ['No breeding records', '', '', '', '', '', '', '', ''].map(escapeCsv).join(',') + '\n';
+      } else {
+        breeding.forEach(b => {
+          csv += [
+            b.id,
+            b.female_id,
+            b.male_id,
+            b.mating_date,
+            b.expected_birth || '—',
+            b.gestation_days || 150,
+            b.status || 'Active',
+            b.kids_born != null ? b.kids_born : '—',
+            b.notes || '—',
+          ].map(escapeCsv).join(',') + '\n';
+        });
+      }
+      csv += '\n';
+    }
+
+    if (format === 'all' || format === 'inventory') {
+      csv += `--- HERD LIVESTOCK INVENTORY ---\n`;
+      csv += ['Goat Tag ID', 'Breed', 'Gender', 'Date of Birth', 'Weight (kg)', 'Current Status', 'Registration Date'].map(escapeCsv).join(',') + '\n';
+      if (goats.length === 0) {
+        csv += ['No goats registered in herd', '', '', '', '', '', ''].map(escapeCsv).join(',') + '\n';
+      } else {
+        goats.forEach(g => {
+          csv += [
+            g.tag_number,
+            g.breed,
+            g.gender,
+            g.dob,
+            g.weight_kg != null ? g.weight_kg : '—',
+            g.status || 'Active',
+            g.created_at,
+          ].map(escapeCsv).join(',') + '\n';
+        });
+      }
+      csv += '\n';
+
+      csv += `--- VETERINARY & HEALTH INTERVENTIONS ---\n`;
+      csv += ['Health ID', 'Goat Tag ID', 'Checkup Date', 'Diagnosis/Condition', 'Treatment Administered', 'Checkup Type', 'Attending Vet'].map(escapeCsv).join(',') + '\n';
+      if (health.length === 0) {
+        csv += ['No health records registered', '', '', '', '', '', ''].map(escapeCsv).join(',') + '\n';
+      } else {
+        health.forEach(h => {
+          csv += [
+            h.id,
+            h.goat_id,
+            h.checkup_date,
+            h.condition,
+            h.treatment,
+            h.checkup_type || 'Routine',
+            h.vet_name || '—',
+          ].map(escapeCsv).join(',') + '\n';
+        });
+      }
+      csv += '\n';
+
+      if (milk.length > 0) {
+        csv += `--- MILK YIELD PRODUCTION ---\n`;
+        csv += ['Log ID', 'Goat Tag ID', 'Date', 'Morning Liters', 'Evening Liters', 'Total Liters'].map(escapeCsv).join(',') + '\n';
+        milk.forEach(m => {
+          csv += [m.id, m.goat_id, m.date, m.morning_liters, m.evening_liters, m.total_liters].map(escapeCsv).join(',') + '\n';
+        });
+        csv += '\n';
+      }
+
+      if (workers.length > 0) {
+        csv += `--- FARM STAFF & WORKERS ---\n`;
+        csv += ['Staff ID', 'Full Name', 'Phone Contact', 'Station / Location'].map(escapeCsv).join(',') + '\n';
+        workers.forEach(w => {
+          csv += [w.id, w.full_name, w.phone || '—', w.location || '—'].map(escapeCsv).join(',') + '\n';
+        });
+        csv += '\n';
+      }
+    }
+
+    // Trigger instant browser download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const sanitizedFarm = farmName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    link.setAttribute('download', `${sanitizedFarm}_farm_report_${format}_${timestamp.slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setShowExportMenu(false);
+    setDownloadSuccess(`Farm report exported to CSV successfully!`);
+    setTimeout(() => setDownloadSuccess(null), 4000);
+  };
 
   const today = new Date();
 
@@ -207,19 +348,111 @@ export const ReportsView: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Title */}
-      <div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-2">
-          <BrainCircuit className="w-3.5 h-3.5" />
-          Predictive Analytics Engine
+      {/* Title & Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-2">
+            <BrainCircuit className="w-3.5 h-3.5" />
+            Predictive Analytics Engine
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
+            {farmName} — AI Reports Dashboard
+          </h2>
+          <p className="text-stone-500 text-sm mt-1">
+            Machine learning models, anomaly detection, gestation calendars, and linear regression revenue forecasts.
+          </p>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
-          {farmName} — AI Reports Dashboard
-        </h2>
-        <p className="text-stone-500 text-sm mt-1">
-          Machine learning models, anomaly detection, gestation calendars, and linear regression revenue forecasts.
-        </p>
+
+        {/* Download Report Actions */}
+        <div className="relative shrink-0 flex items-center gap-2">
+          <div className="relative inline-block text-left">
+            <button
+              id="btn-download-report-main"
+              type="button"
+              onClick={() => handleDownloadReport('all')}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download Report (CSV)</span>
+            </button>
+            <button
+              id="btn-toggle-export-menu"
+              type="button"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="ml-1 px-2.5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors border-l border-emerald-600/40"
+              aria-label="Export options"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+
+            {showExportMenu && (
+              <div
+                id="export-options-menu"
+                className="absolute right-0 mt-2 w-64 bg-white border border-stone-200 rounded-2xl shadow-xl z-20 py-2 text-xs font-medium"
+              >
+                <div className="px-3 py-1.5 text-[11px] font-bold text-stone-400 uppercase tracking-wider">
+                  CSV Export Options
+                </div>
+                <button
+                  type="button"
+                  id="btn-export-all-csv"
+                  onClick={() => handleDownloadReport('all')}
+                  className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <div className="font-semibold text-stone-900">Complete Farm Dossier</div>
+                    <div className="text-[11px] text-stone-500">All herd, sales, breeding & health data</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  id="btn-export-sales-csv"
+                  onClick={() => handleDownloadReport('sales')}
+                  className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 border-t border-stone-100"
+                >
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <div className="font-semibold text-stone-900">Sales & Valuation Only</div>
+                    <div className="text-[11px] text-stone-500">Financial transactions and buyer log</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  id="btn-export-gestation-csv"
+                  onClick={() => handleDownloadReport('gestation')}
+                  className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 border-t border-stone-100"
+                >
+                  <Calendar className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <div className="font-semibold text-stone-900">Breeding & Gestation Calendar</div>
+                    <div className="text-[11px] text-stone-500">Sire, dam, mating & expected delivery</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  id="btn-export-inventory-csv"
+                  onClick={() => handleDownloadReport('inventory')}
+                  className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 border-t border-stone-100"
+                >
+                  <FileText className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <div className="font-semibold text-stone-900">Herd Inventory & Health</div>
+                    <div className="text-[11px] text-stone-500">Goat tags, breeds, weights & checkups</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {downloadSuccess && (
+        <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-emerald-800 text-xs font-semibold animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{downloadSuccess}</span>
+        </div>
+      )}
 
       {/* 1. HIGHEST SALES SECTION */}
       <div className="bg-white border border-stone-200 rounded-2xl shadow-xs overflow-hidden">

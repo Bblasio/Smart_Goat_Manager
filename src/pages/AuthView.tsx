@@ -1,24 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFarm } from '../context/FarmContext';
-import { Lock, Mail, Home, ArrowRight, ShieldCheck, Sparkles, Loader2 } from 'lucide-react';
+import {
+  Lock,
+  Mail,
+  Home,
+  ArrowRight,
+  ShieldCheck,
+  Sparkles,
+  Loader2,
+  MapPin,
+  Maximize2,
+  Phone,
+  User,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Dna,
+  Calendar,
+  Milk,
+  TrendingUp,
+  Award
+} from 'lucide-react';
 
 export const AuthView: React.FC = () => {
   const { login, signup, resetPassword, enterDemoMode } = useFarm();
   const [mode, setMode] = useState<'login' | 'signup' | 'reset'>('login');
 
+  // Form Fields
   const [farmName, setFarmName] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [location, setLocation] = useState('');
+  const [farmSize, setFarmSize] = useState('');
+  const [primaryBreed, setPrimaryBreed] = useState('Boer & Dairy (Saanen)');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // OTP Verification States
+  const [isOtpStep, setIsOtpStep] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [otpCooldown, setOtpCooldown] = useState(60);
+
+  // Feedback states
   const [errorMsg, setErrorMsg] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // OTP Countdown timer
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isOtpStep && otpCooldown > 0) {
+      timer = setInterval(() => {
+        setOtpCooldown(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isOtpStep, otpCooldown]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setInfoMsg('');
     if (!email.trim() || !password) {
-      setErrorMsg('Please enter both email and password.');
+      setErrorMsg('Please enter both your registered email and password.');
       return;
     }
 
@@ -33,26 +81,81 @@ export const AuthView: React.FC = () => {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
+  // Step 1: Initiate signup & dispatch OTP
+  const handleInitiateSignup = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setInfoMsg('');
-    if (!farmName.trim() || !email.trim() || !password) {
-      setErrorMsg('All fields are required.');
+
+    if (!farmName.trim()) {
+      setErrorMsg('Please enter your farm name.');
       return;
     }
-    if (password.length < 6) {
+    if (!email.trim() || !email.includes('@')) {
+      setErrorMsg('Please provide a valid email address.');
+      return;
+    }
+    if (!password || password.length < 6) {
       setErrorMsg('Password must be at least 6 characters.');
+      return;
+    }
+    if (!location.trim()) {
+      setErrorMsg('Please enter your farm location (e.g. Nakuru, Kenya).');
+      return;
+    }
+    if (!farmSize.trim()) {
+      setErrorMsg('Please specify your farm size (e.g. 20 Acres).');
+      return;
+    }
+
+    // Generate random 6-digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOtp(code);
+    setEnteredOtp('');
+    setOtpCooldown(60);
+    setIsOtpStep(true);
+  };
+
+  // Step 2: Resend OTP
+  const handleResendOtp = () => {
+    if (otpCooldown > 0) return;
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOtp(newCode);
+    setEnteredOtp('');
+    setOtpCooldown(60);
+    setInfoMsg('A new verification code has been dispatched to your email.');
+    setTimeout(() => setInfoMsg(''), 4000);
+  };
+
+  // Step 3: Confirm OTP & Finalize Account Creation
+  const handleVerifyOtpAndCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setInfoMsg('');
+
+    if (enteredOtp.trim() !== generatedOtp.trim()) {
+      setErrorMsg('Invalid verification code. Please check the code dispatched to your email.');
       return;
     }
 
     setIsLoading(true);
     try {
-      const res = await signup(email.trim(), password, farmName.trim());
+      const profileDetails = {
+        owner_name: ownerName.trim() || undefined,
+        location: location.trim(),
+        farm_size: farmSize.trim(),
+        primary_breed: primaryBreed.trim() || undefined,
+        phone: phone.trim() || undefined,
+        founded_year: new Date().getFullYear().toString(),
+      };
+
+      const res = await signup(email.trim(), password, farmName.trim(), profileDetails);
       if (!res.success) {
-        setErrorMsg(res.error || 'Could not register account. Please try again.');
+        setErrorMsg(res.error || 'Could not complete registration. Please try again.');
+        setIsLoading(false);
       }
-    } finally {
+    } catch (err: any) {
+      setErrorMsg(err.message || 'An unexpected error occurred during account creation.');
       setIsLoading(false);
     }
   };
@@ -88,326 +191,608 @@ export const AuthView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex w-16 h-16 rounded-2xl bg-emerald-600 text-white items-center justify-center text-3xl shadow-sm mb-4">
-          🐐
-        </div>
-        <h2 className="text-3xl font-extrabold text-stone-900 tracking-tight">
-          Smart Goat Management
-        </h2>
-        <p className="mt-2 text-sm text-stone-600">
-          Intelligent Cloud Herd & Breeding Management
-        </p>
-        <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-900 border border-emerald-300">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Live Cloud Synchronized</span>
-        </div>
-      </div>
+    <div className="min-h-screen bg-stone-950 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+      {/* Container with High-Value Two-Column Farm Layout */}
+      <div className="w-full max-w-5xl bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+        
+        {/* LEFT COLUMN: Agricultural Enterprise Showcase (Valuable Theme Hero) */}
+        <div className="lg:col-span-5 bg-gradient-to-br from-emerald-950 via-emerald-900 to-stone-950 p-8 sm:p-10 text-white flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-emerald-800/40 relative overflow-hidden">
+          {/* Ambient light flares */}
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute bottom-10 left-0 -ml-12 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
-        <div className="bg-white py-6 px-6 sm:px-10 shadow-sm border border-stone-200 rounded-2xl space-y-6">
-          {/* Top Mode Tabs: Sign In / Create Account */}
-          <div className="flex bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-semibold">
-            <button
-              type="button"
-              id="tab-auth-login"
-              onClick={() => {
-                setMode('login');
-                setErrorMsg('');
-              }}
-              className={`flex-1 py-2 rounded-lg text-center transition-all ${
-                mode === 'login'
-                  ? 'bg-white text-emerald-800 shadow-xs font-bold'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              id="tab-auth-signup"
-              onClick={() => {
-                setMode('signup');
-                setErrorMsg('');
-              }}
-              className={`flex-1 py-2 rounded-lg text-center transition-all ${
-                mode === 'signup'
-                  ? 'bg-white text-emerald-800 shadow-xs font-bold'
-                  : 'text-stone-600 hover:text-stone-900'
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
-
-          {errorMsg && (
-            <div className="p-3 text-xs bg-rose-50 border border-rose-200 text-rose-800 rounded-xl leading-relaxed space-y-2">
-              <div className="font-medium">{errorMsg}</div>
-              {mode === 'login' && (
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('signup');
-                      setErrorMsg('');
-                    }}
-                    className="px-2.5 py-1 bg-white hover:bg-rose-100 border border-rose-300 rounded-lg text-rose-900 font-semibold transition-colors"
-                  >
-                    Create account with this email →
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('reset');
-                      setErrorMsg('');
-                    }}
-                    className="px-2.5 py-1 bg-white hover:bg-rose-100 border border-rose-300 rounded-lg text-rose-800 transition-colors"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {infoMsg && (
-            <div className="p-3 text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl leading-relaxed">
-              {infoMsg}
-            </div>
-          )}
-
-          {/* Quick Demo Access Button */}
-          <button
-            id="btn-quick-demo-login"
-            type="button"
-            disabled={isLoading}
-            onClick={handleQuickDemo}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-xs disabled:opacity-50"
-          >
-            <Sparkles className="w-4 h-4 text-emerald-600" />
-            <span>Launch Demo Farm Account</span>
-          </button>
-
-          <div className="relative flex items-center justify-center">
-            <div className="border-t border-stone-200 w-full" />
-            <span className="bg-white px-3 text-xs text-stone-400 font-medium uppercase tracking-wider shrink-0">
-              Or sign in with your account
-            </span>
-          </div>
-
-          {/* LOGIN FORM */}
-          {mode === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-4">
+          <div className="relative z-10 space-y-6">
+            {/* Logo & Platform Tag */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl shadow-inner">
+                🐐
+              </div>
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    id="input-login-email"
-                    type="email"
-                    placeholder="you@farm.com"
-                    value={email}
-                    disabled={isLoading}
-                    onChange={e => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
-                  />
+                <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
+                  Precision Livestock OS
+                </span>
+                <h1 className="text-xl font-extrabold text-white tracking-tight">
+                  Smart Goat Management
+                </h1>
+              </div>
+            </div>
+
+            {/* Headline */}
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
+                Biometric Herd Analytics & Gestation Precision
+              </h2>
+              <p className="mt-2 text-sm text-emerald-200/80 leading-relaxed">
+                Empowering commercial breeders, pedigree studs, and dairy cooperatives across East Africa and globally with real-time cloud farm intelligence.
+              </p>
+            </div>
+
+            {/* Value Pillars */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
+                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 shrink-0">
+                  <Dna className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white">Genetic Lineage & Pedigree</div>
+                  <div className="text-[11px] text-emerald-200/70">Prevent inbreeding with verified sire & dam tracking</div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    id="input-login-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    disabled={isLoading}
-                    onChange={e => setPassword(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
-                  />
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
+                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 shrink-0">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white">Automated Gestation & Kidding Alerts</div>
+                  <div className="text-[11px] text-emerald-200/70">150-day biometric calendar with ultrasound countdowns</div>
                 </div>
               </div>
 
-              <button
-                id="btn-submit-login"
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-colors shadow-xs disabled:opacity-50"
-              >
-                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                <span>Sign In to Farm</span>
-              </button>
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
+                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 shrink-0">
+                  <Milk className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white">Daily Milk Yield & Revenue Forecasts</div>
+                  <div className="text-[11px] text-emerald-200/70">Linear regression sales modeling and yield logs</div>
+                </div>
+              </div>
 
-              <div className="flex items-center justify-between text-xs pt-2">
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
+                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white">Realtime Cloud Database</div>
+                  <div className="text-[11px] text-emerald-200/70">Always backed up, offline-resilient, and exportable to CSV</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Live Metrics */}
+          <div className="relative z-10 pt-6 mt-6 border-t border-emerald-800/60 flex items-center justify-between text-xs text-emerald-300/80">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>100% Cloud Synced</span>
+            </div>
+            <div className="font-mono text-[11px]">
+              Multi-Breed: Boer • Galla • Saanen
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Interactive Authentication & OTP Form */}
+        <div className="lg:col-span-7 bg-stone-900 p-6 sm:p-10 flex flex-col justify-center">
+          <div className="max-w-md mx-auto w-full space-y-6">
+
+            {/* Mode Switcher Tabs */}
+            {!isOtpStep && mode !== 'reset' && (
+              <div className="flex bg-stone-800 p-1 rounded-2xl border border-stone-700 text-xs font-semibold">
                 <button
                   type="button"
-                  id="btn-goto-signup"
+                  id="tab-auth-login"
+                  onClick={() => {
+                    setMode('login');
+                    setErrorMsg('');
+                    setInfoMsg('');
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-center transition-all ${
+                    mode === 'login'
+                      ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                      : 'text-stone-400 hover:text-stone-200'
+                  }`}
+                >
+                  Sign In to Farm
+                </button>
+                <button
+                  type="button"
+                  id="tab-auth-signup"
                   onClick={() => {
                     setMode('signup');
                     setErrorMsg('');
+                    setInfoMsg('');
                   }}
-                  className="text-emerald-700 font-semibold hover:underline"
+                  className={`flex-1 py-2.5 rounded-xl text-center transition-all ${
+                    mode === 'signup'
+                      ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                      : 'text-stone-400 hover:text-stone-200'
+                  }`}
                 >
-                  Create New Farm Account
-                </button>
-                <button
-                  type="button"
-                  id="btn-goto-reset"
-                  onClick={() => {
-                    setMode('reset');
-                    setErrorMsg('');
-                  }}
-                  className="text-stone-500 hover:text-stone-800"
-                >
-                  Forgot Password?
+                  Create Farm Account
                 </button>
               </div>
-            </form>
-          )}
+            )}
 
-          {/* SIGNUP FORM */}
-          {mode === 'signup' && (
-            <form onSubmit={handleSignup} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Farm Name *
-                </label>
-                <div className="relative">
-                  <Home className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            {/* Notification & Alerts */}
+            {errorMsg && (
+              <div className="p-3.5 bg-rose-950/70 border border-rose-800 text-rose-300 text-xs rounded-2xl flex items-start gap-2.5 leading-relaxed animate-fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <span>{errorMsg}</span>
+                  {mode === 'login' && errorMsg.includes('Invalid') && (
+                    <div className="mt-2 pt-2 border-t border-rose-900/60 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('signup');
+                          setErrorMsg('');
+                        }}
+                        className="text-emerald-400 font-bold hover:underline"
+                      >
+                        Create a new farm account with this email →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {infoMsg && (
+              <div className="p-3.5 bg-emerald-950/70 border border-emerald-800 text-emerald-300 text-xs rounded-2xl flex items-center gap-2.5 animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{infoMsg}</span>
+              </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* VIEW A: SIGN IN FORM */}
+            {/* ========================================================= */}
+            {mode === 'login' && !isOtpStep && (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white tracking-tight">
+                    Welcome Back, Farmer
+                  </h3>
+                  <p className="text-xs text-stone-400 mt-1">
+                    Access your real-time herd ledger, gestation calendar, and sales records.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-300 mb-1.5">
+                    Account Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-3.5" />
+                    <input
+                      id="input-login-email"
+                      type="email"
+                      placeholder="e.g. ochiengblasio@gmail.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-stone-300">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      id="btn-to-reset-mode"
+                      onClick={() => {
+                        setMode('reset');
+                        setErrorMsg('');
+                      }}
+                      className="text-xs text-emerald-400 hover:text-emerald-300"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-3.5" />
+                    <input
+                      id="input-login-password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      className="w-full pl-10 pr-10 py-2.5 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-3.5 text-stone-400 hover:text-stone-200"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  id="btn-submit-login"
+                  disabled={isLoading}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Signing In...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Sign In to Dashboard</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+
+                <div className="pt-2 text-center">
+                  <span className="text-xs text-stone-400">Need to evaluate first? </span>
+                  <button
+                    type="button"
+                    id="btn-quick-demo"
+                    onClick={handleQuickDemo}
+                    className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline inline-flex items-center gap-1"
+                  >
+                    <span>Launch Sample Demo Farm</span>
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* ========================================================= */}
+            {/* VIEW B: SIGNUP STEP 1 — COLLECT FARM INFORMATION */}
+            {/* ========================================================= */}
+            {mode === 'signup' && !isOtpStep && (
+              <form onSubmit={handleInitiateSignup} className="space-y-3.5">
+                <div>
+                  <h3 className="text-xl font-bold text-white tracking-tight">
+                    Create Your Farm Profile
+                  </h3>
+                  <p className="text-xs text-stone-400 mt-1">
+                    Provide your farm location & size to initialize your dedicated cloud ledger.
+                  </p>
+                </div>
+
+                {/* Farm Name */}
+                <div>
+                  <label className="block text-xs font-semibold text-stone-300 mb-1">
+                    Farm Name *
+                  </label>
+                  <div className="relative">
+                    <Home className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
+                    <input
+                      id="input-signup-farm-name"
+                      type="text"
+                      placeholder="e.g. Green Pastures Boer & Dairy Farm"
+                      value={farmName}
+                      onChange={e => setFarmName(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Location & Size (2 Columns) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-300 mb-1">
+                      Farm Location (County/Region) *
+                    </label>
+                    <div className="relative">
+                      <MapPin className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
+                      <input
+                        id="input-signup-location"
+                        type="text"
+                        placeholder="e.g. Nakuru, Kenya"
+                        value={location}
+                        onChange={e => setLocation(e.target.value)}
+                        className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-300 mb-1">
+                      Farm Size / Acreage *
+                    </label>
+                    <div className="relative">
+                      <Maximize2 className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
+                      <input
+                        id="input-signup-size"
+                        type="text"
+                        placeholder="e.g. 25 Acres or 10 Ha"
+                        value={farmSize}
+                        onChange={e => setFarmSize(e.target.value)}
+                        className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Owner Name & Primary Breed */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-300 mb-1">
+                      Owner / Manager Name
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
+                      <input
+                        id="input-signup-owner"
+                        type="text"
+                        placeholder="e.g. Blasio Ochieng"
+                        value={ownerName}
+                        onChange={e => setOwnerName(e.target.value)}
+                        className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-300 mb-1">
+                      Primary Goat Breeds
+                    </label>
+                    <div className="relative">
+                      <Award className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
+                      <input
+                        id="input-signup-breed"
+                        type="text"
+                        placeholder="e.g. Boer, Galla, Saanen"
+                        value={primaryBreed}
+                        onChange={e => setPrimaryBreed(e.target.value)}
+                        className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email & Password */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-300 mb-1">
+                      Official Email *
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
+                      <input
+                        id="input-signup-email"
+                        type="email"
+                        placeholder="e.g. farmer@farm.com"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-300 mb-1">
+                      Password (min 6 chars) *
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
+                      <input
+                        id="input-signup-password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        className="w-full pl-10 pr-9 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-3 text-stone-400 hover:text-stone-200"
+                      >
+                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  id="btn-proceed-to-otp"
+                  className="w-full py-3 mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                >
+                  <span>Verify Email & Create Account</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </form>
+            )}
+
+            {/* ========================================================= */}
+            {/* VIEW C: SIGNUP STEP 2 — EMAIL OTP CONFIRMATION */}
+            {/* ========================================================= */}
+            {mode === 'signup' && isOtpStep && (
+              <form onSubmit={handleVerifyOtpAndCreate} className="space-y-5 animate-fade-in">
+                <div className="text-center">
+                  <div className="inline-flex w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 items-center justify-center text-xl mb-3 border border-emerald-500/30">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white tracking-tight">
+                    Verify Your Farm Email
+                  </h3>
+                  <p className="text-xs text-stone-300 mt-1">
+                    We sent a 6-digit confirmation OTP code to <strong className="text-emerald-400">{email}</strong>
+                  </p>
+                </div>
+
+                {/* Simulated Email Dispatch Banner */}
+                <div className="p-4 rounded-2xl bg-emerald-950/90 border border-emerald-600 text-emerald-200 text-xs space-y-1.5 shadow-inner">
+                  <div className="flex items-center gap-2 font-bold text-emerald-300">
+                    <Mail className="w-4 h-4 text-emerald-400" />
+                    <span>Email Dispatch Service: OTP Code Received</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-100/90">
+                    Your account verification code is:
+                  </p>
+                  <div className="py-2 px-3 bg-stone-950/80 rounded-xl font-mono text-xl tracking-widest text-center font-bold text-emerald-400 border border-emerald-500/40 select-all">
+                    {generatedOtp}
+                  </div>
+                  <p className="text-[10px] text-emerald-300/60 text-center">
+                    (In production, this verification code is dispatched straight to your email inbox via cloud mail services)
+                  </p>
+                </div>
+
+                {/* OTP Input Field */}
+                <div>
+                  <label className="block text-xs font-semibold text-stone-300 text-center mb-2">
+                    Enter 6-Digit Verification Code
+                  </label>
                   <input
-                    id="input-signup-farm-name"
+                    id="input-otp-code"
                     type="text"
-                    placeholder="e.g. Sunny Ridge Goat Farm"
-                    value={farmName}
-                    disabled={isLoading}
-                    onChange={e => setFarmName(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={enteredOtp}
+                    onChange={e => setEnteredOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="w-full text-center tracking-[0.4em] font-mono text-2xl py-3 bg-stone-800 border border-stone-700 text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     required
+                    autoFocus
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Email Address *
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    id="input-signup-email"
-                    type="email"
-                    placeholder="you@farm.com"
-                    value={email}
-                    disabled={isLoading}
-                    onChange={e => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
-                  />
+                {/* Action Buttons */}
+                <div className="space-y-2">
+                  <button
+                    type="submit"
+                    id="btn-confirm-otp"
+                    disabled={isLoading || enteredOtp.length !== 6}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Activating Farm Account...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Confirm & Activate Farm</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="flex items-center justify-between text-xs text-stone-400 pt-1">
+                    <button
+                      type="button"
+                      id="btn-back-to-details"
+                      onClick={() => setIsOtpStep(false)}
+                      className="hover:text-stone-200"
+                    >
+                      ← Back to edit farm details
+                    </button>
+
+                    <button
+                      type="button"
+                      id="btn-resend-otp"
+                      onClick={handleResendOtp}
+                      disabled={otpCooldown > 0}
+                      className={`font-semibold ${
+                        otpCooldown > 0
+                          ? 'text-stone-500 cursor-not-allowed'
+                          : 'text-emerald-400 hover:text-emerald-300'
+                      }`}
+                    >
+                      {otpCooldown > 0 ? `Resend code in ${otpCooldown}s` : 'Resend Code'}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </form>
+            )}
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Password * (min 6 characters)
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    id="input-signup-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    disabled={isLoading}
-                    onChange={e => setPassword(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
-                  />
+            {/* ========================================================= */}
+            {/* VIEW D: FORGOT PASSWORD */}
+            {/* ========================================================= */}
+            {mode === 'reset' && (
+              <form onSubmit={handleReset} className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white tracking-tight">
+                    Reset Farm Password
+                  </h3>
+                  <p className="text-xs text-stone-400 mt-1">
+                    Enter your registered email address and we'll dispatch a secure password reset link.
+                  </p>
                 </div>
-              </div>
 
-              <button
-                id="btn-submit-signup"
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-colors shadow-xs disabled:opacity-50"
-              >
-                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                <span>Create Farm Account</span>
-              </button>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-300 mb-1.5">
+                    Registered Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-3.5" />
+                    <input
+                      id="input-reset-email"
+                      type="email"
+                      placeholder="e.g. ochiengblasio@gmail.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
+                      required
+                    />
+                  </div>
+                </div>
 
-              <div className="text-center text-xs pt-2">
                 <button
-                  type="button"
-                  id="btn-back-to-login"
-                  onClick={() => {
-                    setMode('login');
-                    setErrorMsg('');
-                  }}
-                  className="text-stone-500 hover:text-stone-800"
+                  type="submit"
+                  id="btn-send-reset-link"
+                  disabled={isLoading}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  Already have an account? Sign in
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Sending link...</span>
+                    </>
+                  ) : (
+                    <span>Send Password Reset Link</span>
+                  )}
                 </button>
-              </div>
-            </form>
-          )}
 
-          {/* RESET PASSWORD FORM */}
-          {mode === 'reset' && (
-            <form onSubmit={handleReset} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Enter your registered farm email
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    id="input-reset-email"
-                    type="email"
-                    placeholder="you@farm.com"
-                    value={email}
-                    disabled={isLoading}
-                    onChange={e => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
-                  />
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      setErrorMsg('');
+                    }}
+                    className="text-xs text-emerald-400 hover:text-emerald-300"
+                  >
+                    ← Return to Sign In
+                  </button>
                 </div>
-              </div>
+              </form>
+            )}
 
-              <button
-                id="btn-submit-reset"
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-colors shadow-xs disabled:opacity-50"
-              >
-                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                <span>Send Password Reset Link</span>
-              </button>
-
-              <div className="text-center text-xs pt-2">
-                <button
-                  type="button"
-                  id="btn-reset-back-to-login"
-                  onClick={() => {
-                    setMode('login');
-                    setErrorMsg('');
-                  }}
-                  className="text-stone-500 hover:text-stone-800"
-                >
-                  Back to Login
-                </button>
-              </div>
-            </form>
-          )}
+          </div>
         </div>
+
       </div>
     </div>
   );

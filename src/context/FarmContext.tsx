@@ -56,7 +56,21 @@ interface FarmContextType {
   workers: WorkerRecord[];
   milk: MilkRecord[];
   login: (email: string, password?: string, farmName?: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (email: string, password: string, farmName: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (
+    email: string,
+    password: string,
+    farmName: string,
+    profileDetails?: {
+      owner_name?: string;
+      location?: string;
+      farm_size?: string;
+      primary_breed?: string;
+      phone?: string;
+      bio?: string;
+      founded_year?: string;
+    }
+  ) => Promise<{ success: boolean; error?: string }>;
+  updateFarmProfile: (profile: Partial<FarmUser>) => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   enterDemoMode: () => void;
@@ -317,17 +331,26 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (snapshot.exists()) {
           const userData = snapshot.val();
 
-          // Sync farm name from profile if present
+          // Sync full profile if present
           const profile = userData.user_profile || userData.profile;
-          if (profile && (profile.farm_name || profile.farmName)) {
-            const cloudFarmName = profile.farm_name || profile.farmName;
+          if (profile) {
+            const cloudFarmName = profile.farm_name || profile.farmName || 'Smart Goat Farm';
             setUser(prev => {
-              if (prev && prev.farm_name !== cloudFarmName) {
-                const updated = { ...prev, farm_name: cloudFarmName };
-                localStorage.setItem('sgm_user', JSON.stringify(updated));
-                return updated;
-              }
-              return prev;
+              const updated: FarmUser = {
+                uid: prev?.uid || uid,
+                email: profile.email || prev?.email || firebaseUser?.email || '',
+                farm_name: cloudFarmName,
+                owner_name: profile.owner_name || profile.ownerName || prev?.owner_name || '',
+                location: profile.location || prev?.location || '',
+                farm_size: profile.farm_size || profile.farmSize || prev?.farm_size || '',
+                primary_breed: profile.primary_breed || profile.primaryBreed || prev?.primary_breed || '',
+                phone: profile.phone || prev?.phone || '',
+                bio: profile.bio || prev?.bio || '',
+                founded_year: profile.founded_year || profile.foundedYear || prev?.founded_year || '',
+                created_at: profile.created_at || prev?.created_at || new Date().toISOString(),
+              };
+              localStorage.setItem('sgm_user', JSON.stringify(updated));
+              return updated;
             });
           }
 
@@ -576,7 +599,20 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (email: string, password: string, farmName: string): Promise<{ success: boolean; error?: string }> => {
+  const signup = async (
+    email: string,
+    password: string,
+    farmName: string,
+    profileDetails?: {
+      owner_name?: string;
+      location?: string;
+      farm_size?: string;
+      primary_breed?: string;
+      phone?: string;
+      bio?: string;
+      founded_year?: string;
+    }
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       setIsDemoMode(false);
       localStorage.removeItem('sgm_is_demo');
@@ -598,6 +634,13 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: fbUser.uid,
         email: fbUser.email || email,
         farm_name: cleanedFarmName,
+        owner_name: profileDetails?.owner_name?.trim() || '',
+        location: profileDetails?.location?.trim() || '',
+        farm_size: profileDetails?.farm_size?.trim() || '',
+        primary_breed: profileDetails?.primary_breed?.trim() || '',
+        phone: profileDetails?.phone?.trim() || '',
+        bio: profileDetails?.bio?.trim() || '',
+        founded_year: profileDetails?.founded_year?.trim() || new Date().getFullYear().toString(),
         created_at: new Date().toISOString(),
       };
 
@@ -619,13 +662,20 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await set(ref(rtdb, `users/${fbUser.uid}/user_profile`), {
         farm_name: newProfile.farm_name,
         email: newProfile.email,
+        owner_name: newProfile.owner_name,
+        location: newProfile.location,
+        farm_size: newProfile.farm_size,
+        primary_breed: newProfile.primary_breed,
+        phone: newProfile.phone,
+        bio: newProfile.bio,
+        founded_year: newProfile.founded_year,
         created_at: newProfile.created_at,
         updated_at: new Date().toISOString(),
       });
 
       return { success: true };
     } catch (err: any) {
-      console.error('Signup error:', err);
+      console.warn('Signup error:', err);
       let userFriendlyMessage = err.message || 'Failed to create account';
       if (err.code === 'auth/email-already-in-use') {
         userFriendlyMessage = 'This email is already registered. Please sign in or use a different email.';
@@ -633,6 +683,50 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userFriendlyMessage = 'Password should be at least 6 characters.';
       }
       return { success: false, error: userFriendlyMessage };
+    }
+  };
+
+  const updateFarmProfile = async (updates: Partial<FarmUser>): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const activeUid = firebaseUser?.uid;
+      const current = user || initialFarmUser;
+      const merged: FarmUser = {
+        ...current,
+        ...updates,
+        farm_name: updates.farm_name ? updates.farm_name.trim() : current.farm_name,
+      };
+
+      setUser(merged);
+      localStorage.setItem('sgm_user', JSON.stringify(merged));
+
+      if (activeUid) {
+        await set(ref(rtdb, `users/${activeUid}/user_profile`), {
+          farm_name: merged.farm_name,
+          email: merged.email,
+          owner_name: merged.owner_name || '',
+          location: merged.location || '',
+          farm_size: merged.farm_size || '',
+          primary_breed: merged.primary_breed || '',
+          phone: merged.phone || '',
+          bio: merged.bio || '',
+          founded_year: merged.founded_year || '',
+          updated_at: new Date().toISOString(),
+          created_at: merged.created_at || new Date().toISOString(),
+        });
+
+        if (firebaseUser && updates.farm_name) {
+          try {
+            await updateProfile(firebaseUser, { displayName: updates.farm_name.trim() });
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.warn('Update profile error:', err);
+      return { success: false, error: err.message || 'Failed to update farm profile' };
     }
   };
 
@@ -1199,6 +1293,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         milk,
         login,
         signup,
+        updateFarmProfile,
         resetPassword,
         logout,
         enterDemoMode,

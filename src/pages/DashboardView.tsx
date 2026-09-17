@@ -30,12 +30,15 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
+import { DailyTasksWidget } from '../components/DailyTasksWidget';
 
 interface DashboardViewProps {
   onNavigateToRecords: () => void;
   onNavigateToReports: () => void;
   onNavigateToBreedingEstimator: () => void;
   onOpenAddModal: () => void;
+  onNavigateToHealth?: () => void;
+  onOpenAddHealthModal?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -43,6 +46,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToReports,
   onNavigateToBreedingEstimator,
   onOpenAddModal,
+  onNavigateToHealth,
+  onOpenAddHealthModal,
 }) => {
   const {
     farmName,
@@ -294,6 +299,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Daily Tasks Widget: Health Checks, Feeding Schedules & Vaccination Reminders */}
+      <DailyTasksWidget
+        onNavigateToHealth={onNavigateToHealth}
+        onNavigateToRecords={onNavigateToRecords}
+        onNavigateToBreedingEstimator={onNavigateToBreedingEstimator}
+        onOpenAddHealthModal={onOpenAddHealthModal}
+      />
 
       {/* Farm Overview Metrics */}
       <div>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { RecordType } from '../types';
-import { X, Check, Baby, Milk, Stethoscope } from 'lucide-react';
+import { X, Check, Baby, Milk, Stethoscope, FileSpreadsheet } from 'lucide-react';
+import { ExcelImportModal } from './ExcelImportModal';
 
 interface AddRecordModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
 }) => {
   const { addGoat, addBreeding, addHealth, addSale, addWorker, addMilk, goats } = useFarm();
   const [recordType, setRecordType] = useState<RecordType>(defaultType);
+  const [isExcelOpen, setIsExcelOpen] = useState(false);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -257,6 +259,22 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                 <span className="text-[11px] truncate">{item.label}</span>
               </button>
             ))}
+          </div>
+
+          {/* Constant Excel Spreadsheet Ingestion Banner */}
+          <div className="mt-3 px-3.5 py-2.5 bg-emerald-50/90 border border-emerald-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-emerald-900 font-medium">
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Have spreadsheet logs? Upload Excel (.xlsx)</span>
+            </div>
+            <button
+              type="button"
+              id="btn-add-record-open-excel"
+              onClick={() => setIsExcelOpen(true)}
+              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shrink-0 transition-colors shadow-xs text-[11px]"
+            >
+              Upload Excel File →
+            </button>
           </div>
         </div>
 
@@ -765,6 +783,21 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Embedded Excel Import Modal for constant access */}
+      <ExcelImportModal
+        isOpen={isExcelOpen}
+        onClose={() => setIsExcelOpen(false)}
+        defaultCategory={
+          recordType === 'breeding'
+            ? 'breeding'
+            : recordType === 'health'
+            ? 'health'
+            : recordType === 'milk'
+            ? 'milk'
+            : 'goats'
+        }
+      />
     </div>
   );
 };

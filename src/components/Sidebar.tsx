@@ -17,7 +17,8 @@ import {
   Stethoscope,
   ChevronRight,
   Menu,
-  X
+  X,
+  Building2
 } from 'lucide-react';
 import { AppView } from '../types';
 
@@ -70,6 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'records', label: 'Herd & Farm Records', icon: ClipboardList },
     { id: 'health_vet', label: 'Veterinary & Health', icon: Stethoscope },
     { id: 'reports', label: 'AI Reports & Forecasts', icon: Sparkles },
+    { id: 'profile', label: 'Farm Profile', icon: Building2 },
   ];
 
   return (

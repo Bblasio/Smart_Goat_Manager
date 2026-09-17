@@ -4,6 +4,13 @@ export const initialFarmUser: FarmUser = {
   uid: 'usr-default-01',
   email: 'ochiengblasio@farm.com',
   farm_name: 'Sunny Ridge Goat Farm',
+  owner_name: 'Blasio Ochieng',
+  location: 'Nakuru, Rift Valley, Kenya',
+  farm_size: '25 Acres',
+  primary_breed: 'Boer & Galla Dairy',
+  phone: '+254 712 345 678',
+  bio: 'Premier pedigree goat breeding and sustainable dairy production farm dedicated to high-yield genetic conservation.',
+  founded_year: '2021',
   created_at: '2026-01-15T08:00:00Z',
 };
 

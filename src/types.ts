@@ -63,8 +63,19 @@ export interface FarmUser {
   uid: string;
   email: string;
   farm_name: string;
+  owner_name?: string;
+  manager_name?: string;
+  location?: string;
+  farm_size?: string;
+  size?: string;
+  primary_breed?: string;
+  phone?: string;
+  bio?: string;
+  founded_year?: string;
+  established_year?: string;
+  farm_type?: string;
   created_at: string;
 }
 
 export type RecordType = 'goat' | 'breeding' | 'health' | 'sale' | 'worker' | 'milk';
-export type AppView = 'dashboard' | 'breeding_estimator' | 'records' | 'health_vet' | 'reports';
+export type AppView = 'dashboard' | 'breeding_estimator' | 'records' | 'health_vet' | 'reports' | 'profile';

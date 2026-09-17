@@ -4,6 +4,7 @@ import {
   BreedingRecord,
   HealthRecord,
   SaleRecord,
+  ExpenseRecord,
   WorkerRecord,
   MilkRecord,
   FarmUser
@@ -14,6 +15,7 @@ import {
   initialBreeding,
   initialHealth,
   initialSales,
+  initialExpenses,
   initialWorkers,
   initialMilk
 } from '../data/mockData';
@@ -53,6 +55,7 @@ interface FarmContextType {
   breeding: BreedingRecord[];
   health: HealthRecord[];
   sales: SaleRecord[];
+  expenses: ExpenseRecord[];
   workers: WorkerRecord[];
   milk: MilkRecord[];
   login: (email: string, password?: string, farmName?: string) => Promise<{ success: boolean; error?: string }>;
@@ -83,6 +86,8 @@ interface FarmContextType {
   deleteHealth: (id: string) => Promise<void>;
   addSale: (sale: Omit<SaleRecord, 'id'>) => Promise<void>;
   deleteSale: (id: string) => Promise<void>;
+  addExpense: (expense: Omit<ExpenseRecord, 'id'>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
   addWorker: (worker: Omit<WorkerRecord, 'id'>) => Promise<void>;
   deleteWorker: (id: string) => Promise<void>;
   addMilk: (milkItem: Omit<MilkRecord, 'id'>) => Promise<void>;
@@ -160,6 +165,21 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [sales, setSales] = useState<SaleRecord[]>(() => {
     if (localStorage.getItem('sgm_is_demo') === 'true') {
       return initialSales;
+    }
+    return [];
+  });
+
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => {
+    if (localStorage.getItem('sgm_is_demo') === 'true') {
+      return initialExpenses;
+    }
+    const saved = localStorage.getItem('sgm_expenses');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return [];
+      }
     }
     return [];
   });
@@ -431,6 +451,23 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setSales([]);
           }
 
+          // Parse Expenses
+          if (recordsContainer.expenses) {
+            const rawExpenses = recordsContainer.expenses;
+            const parsedExpenses: ExpenseRecord[] = Object.entries(rawExpenses).map(([key, val]: [string, any]) => ({
+              id: key,
+              category: val.category || 'Other',
+              title: val.title || val.description || 'Expense',
+              amount: Number(val.amount) || 0,
+              date: val.date || new Date().toISOString().split('T')[0],
+              notes: val.notes || '',
+              receipt_number: val.receipt_number || val.receiptNumber || '',
+            }));
+            setExpenses(parsedExpenses);
+          } else {
+            setExpenses([]);
+          }
+
           // Parse Workers
           if (recordsContainer.workers) {
             const rawWorkers = recordsContainer.workers;
@@ -563,6 +600,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setBreeding([]);
             setHealth([]);
             setSales([]);
+            setExpenses([]);
             setWorkers([]);
             setMilk([]);
             setRecordsLoaded(true);
@@ -654,6 +692,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setBreeding([]);
       setHealth([]);
       setSales([]);
+      setExpenses([]);
       setWorkers([]);
       setMilk([]);
       setRecordsLoaded(true);
@@ -748,6 +787,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBreeding(initialBreeding);
     setHealth(initialHealth);
     setSales(initialSales);
+    setExpenses(initialExpenses);
     setWorkers(initialWorkers);
     setMilk(initialMilk);
     setSyncStatus('local_fallback');
@@ -769,6 +809,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBreeding([]);
     setHealth([]);
     setSales([]);
+    setExpenses([]);
     setWorkers([]);
     setMilk([]);
     setSyncStatus('local_fallback');
@@ -955,6 +996,47 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     setSales(prev => prev.filter(s => s.id !== id));
+  };
+
+  const addExpense = async (data: Omit<ExpenseRecord, 'id'>) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        const expensesRef = ref(rtdb, `users/${activeUid}/records/expenses`);
+        const newRef = push(expensesRef);
+        await set(newRef, data);
+        return;
+      } catch (err) {
+        console.warn('Firebase addExpense error:', err);
+      }
+    }
+
+    const newRecord: ExpenseRecord = {
+      ...data,
+      id: 'exp-' + Date.now().toString(36),
+    };
+    setExpenses(prev => {
+      const updated = [newRecord, ...prev];
+      localStorage.setItem('sgm_expenses', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const deleteExpense = async (id: string) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/expenses/${id}`));
+        return;
+      } catch (err) {
+        console.warn('Firebase deleteExpense error:', err);
+      }
+    }
+    setExpenses(prev => {
+      const updated = prev.filter(e => e.id !== id);
+      localStorage.setItem('sgm_expenses', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const addWorker = async (data: Omit<WorkerRecord, 'id'>) => {
@@ -1211,6 +1293,18 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       });
 
+      const expensesObj: Record<string, any> = {};
+      initialExpenses.forEach(e => {
+        expensesObj[e.id] = {
+          category: e.category,
+          title: e.title,
+          amount: e.amount,
+          date: e.date,
+          notes: e.notes || '',
+          receipt_number: e.receipt_number || '',
+        };
+      });
+
       const workersObj: Record<string, any> = {};
       initialWorkers.forEach(w => {
         workersObj[w.id] = {
@@ -1236,6 +1330,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         breeding: breedingObj,
         health: healthObj,
         sales: salesObj,
+        expenses: expensesObj,
         workers: workersObj,
         milk: milkObj,
       });
@@ -1261,6 +1356,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setBreeding(initialBreeding);
       setHealth(initialHealth);
       setSales(initialSales);
+      setExpenses(initialExpenses);
       setWorkers(initialWorkers);
       setMilk(initialMilk);
     }
@@ -1289,6 +1385,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         breeding,
         health,
         sales,
+        expenses,
         workers,
         milk,
         login,
@@ -1306,6 +1403,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteHealth,
         addSale,
         deleteSale,
+        addExpense,
+        deleteExpense,
         addWorker,
         deleteWorker,
         addMilk,

@@ -1,6 +1,7 @@
 export interface GoatRecord {
   id: string;
   tag_number: string;
+  name?: string;
   breed: string;
   gender: 'Male' | 'Female';
   dob: string;
@@ -29,6 +30,7 @@ export interface HealthRecord {
   treatment: string;
   checkup_date: string;
   checkup_type?: 'Routine' | 'Pregnancy Check' | 'Vaccination' | 'Deworming' | 'Illness';
+  status?: 'Healthy' | 'Under Treatment' | 'Critical' | 'Recovered' | 'Observation';
   is_pregnant?: boolean;
   fetal_age_days?: number;
   custom_gestation_days?: number;
@@ -41,6 +43,18 @@ export interface SaleRecord {
   buyer_name: string;
   price: number;
   sale_date: string;
+}
+
+export type ExpenseCategory = 'Feed' | 'Vet' | 'Equipment' | 'Labor' | 'Other';
+
+export interface ExpenseRecord {
+  id: string;
+  category: ExpenseCategory;
+  title: string;
+  amount: number;
+  date: string;
+  notes?: string;
+  receipt_number?: string;
 }
 
 export interface WorkerRecord {
@@ -74,8 +88,10 @@ export interface FarmUser {
   founded_year?: string;
   established_year?: string;
   farm_type?: string;
+  production_focus?: string;
+  grazing_system?: string;
   created_at: string;
 }
 
-export type RecordType = 'goat' | 'breeding' | 'health' | 'sale' | 'worker' | 'milk';
+export type RecordType = 'goat' | 'breeding' | 'health' | 'sale' | 'expense' | 'worker' | 'milk';
 export type AppView = 'dashboard' | 'breeding_estimator' | 'records' | 'health_vet' | 'reports' | 'profile';

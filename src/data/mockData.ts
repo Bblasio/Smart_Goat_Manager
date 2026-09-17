@@ -1,4 +1,4 @@
-import { GoatRecord, BreedingRecord, HealthRecord, SaleRecord, WorkerRecord, MilkRecord, FarmUser } from '../types';
+import { GoatRecord, BreedingRecord, HealthRecord, SaleRecord, WorkerRecord, MilkRecord, FarmUser, ExpenseRecord } from '../types';
 
 export const initialFarmUser: FarmUser = {
   uid: 'usr-default-01',
@@ -10,6 +10,8 @@ export const initialFarmUser: FarmUser = {
   primary_breed: 'Boer & Galla Dairy',
   phone: '+254 712 345 678',
   bio: 'Premier pedigree goat breeding and sustainable dairy production farm dedicated to high-yield genetic conservation.',
+  production_focus: 'Dual-Purpose (Dairy Milk & Stud Breeding Stock)',
+  grazing_system: 'Semi-Intensive Pasture & Paddock Rotation',
   founded_year: '2021',
   created_at: '2026-01-15T08:00:00Z',
 };
@@ -18,6 +20,7 @@ export const initialGoats: GoatRecord[] = [
   {
     id: 'goat-1',
     tag_number: 'GT-101',
+    name: 'Apollo',
     breed: 'Boer',
     gender: 'Male',
     dob: '2024-03-12',
@@ -28,6 +31,7 @@ export const initialGoats: GoatRecord[] = [
   {
     id: 'goat-2',
     tag_number: 'GT-102',
+    name: 'Bella',
     breed: 'Galla',
     gender: 'Female',
     dob: '2024-05-18',
@@ -38,6 +42,7 @@ export const initialGoats: GoatRecord[] = [
   {
     id: 'goat-3',
     tag_number: 'GT-103',
+    name: 'Nala',
     breed: 'Toggenburg',
     gender: 'Female',
     dob: '2024-08-01',
@@ -48,6 +53,7 @@ export const initialGoats: GoatRecord[] = [
   {
     id: 'goat-4',
     tag_number: 'GT-104',
+    name: 'Daisy',
     breed: 'Saanen',
     gender: 'Female',
     dob: '2025-01-20',
@@ -58,6 +64,7 @@ export const initialGoats: GoatRecord[] = [
   {
     id: 'goat-5',
     tag_number: 'GT-105',
+    name: 'Chloe',
     breed: 'Boer',
     gender: 'Female',
     dob: '2025-02-14',
@@ -68,6 +75,7 @@ export const initialGoats: GoatRecord[] = [
   {
     id: 'goat-6',
     tag_number: 'GT-106',
+    name: 'Simba',
     breed: 'East African Dwarf',
     gender: 'Male',
     dob: '2025-04-10',
@@ -78,6 +86,7 @@ export const initialGoats: GoatRecord[] = [
   {
     id: 'goat-7',
     tag_number: 'GT-107',
+    name: 'Maya',
     breed: 'Alpine',
     gender: 'Female',
     dob: '2025-06-05',
@@ -88,12 +97,13 @@ export const initialGoats: GoatRecord[] = [
   {
     id: 'goat-8',
     tag_number: 'GT-108',
+    name: 'Luna',
     breed: 'Galla',
     gender: 'Female',
     dob: '2025-07-22',
     created_at: '2025-07-22T09:00:00Z',
     weight_kg: 45,
-    status: 'Active',
+    status: 'Quarantine',
   }
 ];
 
@@ -148,6 +158,7 @@ export const initialHealth: HealthRecord[] = [
     treatment: 'Antibiotic course & electrolyte booster',
     checkup_date: '2026-09-15',
     checkup_type: 'Illness',
+    status: 'Under Treatment',
     vet_name: 'Dr. Kariuki',
   },
   {
@@ -157,6 +168,7 @@ export const initialHealth: HealthRecord[] = [
     treatment: 'Routine deworming (Albendazole) & Vitamin AD3E',
     checkup_date: '2026-08-20',
     checkup_type: 'Deworming',
+    status: 'Healthy',
     vet_name: 'Dr. Kariuki',
   },
   {
@@ -166,6 +178,7 @@ export const initialHealth: HealthRecord[] = [
     treatment: 'Pre-kidding CD/T booster vaccine and mineral block',
     checkup_date: '2026-09-10',
     checkup_type: 'Pregnancy Check',
+    status: 'Healthy',
     is_pregnant: true,
     fetal_age_days: 139,
     custom_gestation_days: 150,
@@ -178,6 +191,7 @@ export const initialHealth: HealthRecord[] = [
     treatment: 'Hoof trimming and teat dip sanitization',
     checkup_date: '2026-08-30',
     checkup_type: 'Routine',
+    status: 'Healthy',
     vet_name: 'Mary Wambui (Herder)',
   },
   {
@@ -187,6 +201,7 @@ export const initialHealth: HealthRecord[] = [
     treatment: 'Nutritional flush and selenium drench',
     checkup_date: '2026-08-05',
     checkup_type: 'Pregnancy Check',
+    status: 'Healthy',
     is_pregnant: true,
     fetal_age_days: 64,
     custom_gestation_days: 150,
@@ -199,6 +214,7 @@ export const initialHealth: HealthRecord[] = [
     treatment: 'High-energy pasture supplement',
     checkup_date: '2026-08-25',
     checkup_type: 'Pregnancy Check',
+    status: 'Healthy',
     is_pregnant: true,
     fetal_age_days: 46,
     custom_gestation_days: 150,
@@ -306,3 +322,61 @@ export const initialMilk: MilkRecord[] = [
     total_liters: 2.8,
   }
 ];
+
+export const initialExpenses: ExpenseRecord[] = [
+  {
+    id: 'exp-1',
+    category: 'Feed',
+    title: 'High-Protein Lucerne & Dairy Meal (12 bags)',
+    amount: 19800,
+    date: '2026-08-28',
+    notes: 'Bulk feed delivery from Rift Feeds Millers',
+    receipt_number: 'REC-2026-881'
+  },
+  {
+    id: 'exp-2',
+    category: 'Vet',
+    title: 'Herd CCPP Vaccinations & Deworming Drenches',
+    amount: 9400,
+    date: '2026-08-16',
+    notes: 'Administered by Dr. Mutua to all active does and bucks',
+    receipt_number: 'VET-9021'
+  },
+  {
+    id: 'exp-3',
+    category: 'Equipment',
+    title: 'Automatic Stainless Nipple Drinkers & Feed Troughs',
+    amount: 14500,
+    date: '2026-08-04',
+    notes: 'Installation in Maternity and Weaner Pens',
+    receipt_number: 'EQP-552'
+  },
+  {
+    id: 'exp-4',
+    category: 'Feed',
+    title: 'Rhodes Grass Bales & Mineral Lick Blocks',
+    amount: 12600,
+    date: '2026-07-25',
+    notes: 'Dry forage reserves for grazing paddocks',
+    receipt_number: 'REC-2026-742'
+  },
+  {
+    id: 'exp-5',
+    category: 'Vet',
+    title: 'Ultrasound Scan Kit & Maternity Sterile Supplies',
+    amount: 8200,
+    date: '2026-07-12',
+    notes: 'Pregnancy confirmation scans and obstetric antiseptic',
+    receipt_number: 'VET-8834'
+  },
+  {
+    id: 'exp-6',
+    category: 'Equipment',
+    title: 'Solar Fence Energizer & Perimeter Polywire',
+    amount: 17800,
+    date: '2026-06-20',
+    notes: 'Predator-proof paddock fencing upgrade',
+    receipt_number: 'EQP-491'
+  }
+];
+

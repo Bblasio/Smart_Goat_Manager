@@ -59,6 +59,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [editLocation, setEditLocation] = useState(user?.location || 'Rift Valley, Kenya');
   const [editFarmSize, setEditFarmSize] = useState(user?.farm_size || '25 Acres');
   const [editPrimaryBreed, setEditPrimaryBreed] = useState(user?.primary_breed || 'Boer, Galla, Dairy (Saanen)');
+  const [editProductionFocus, setEditProductionFocus] = useState(
+    user?.production_focus || 'Dual-Purpose (Dairy Milk & Stud Breeding Stock)'
+  );
+  const [editGrazingSystem, setEditGrazingSystem] = useState(
+    user?.grazing_system || 'Semi-Intensive Pasture & Paddock Rotation'
+  );
   const [editPhone, setEditPhone] = useState(user?.phone || '+254 712 345 678');
   const [editBio, setEditBio] = useState(
     user?.bio ||
@@ -81,6 +87,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setEditLocation(user?.location || 'Rift Valley, Kenya');
     setEditFarmSize(user?.farm_size || '25 Acres');
     setEditPrimaryBreed(user?.primary_breed || 'Boer, Galla, Dairy (Saanen)');
+    setEditProductionFocus(
+      user?.production_focus || 'Dual-Purpose (Dairy Milk & Stud Breeding Stock)'
+    );
+    setEditGrazingSystem(
+      user?.grazing_system || 'Semi-Intensive Pasture & Paddock Rotation'
+    );
     setEditPhone(user?.phone || '+254 712 345 678');
     setEditBio(
       user?.bio ||
@@ -108,6 +120,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       location: editLocation.trim(),
       farm_size: editFarmSize.trim(),
       primary_breed: editPrimaryBreed.trim(),
+      production_focus: editProductionFocus.trim(),
+      grazing_system: editGrazingSystem.trim(),
       phone: editPhone.trim(),
       bio: editBio.trim(),
       founded_year: editFoundedYear.trim(),
@@ -141,16 +155,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               🐐
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2 mb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                  Registered Farm Dossier
+                  {user?.production_focus || 'Dual-Purpose Commercial Goat Farming'}
                 </span>
-                {syncStatus === 'connected' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/30 text-emerald-200 border border-emerald-500/40">
-                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                    Cloud Verified
-                  </span>
-                )}
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-stone-200 border border-white/15">
+                  Est. {user?.founded_year || '2021'}
+                </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
                 {user?.farm_name || farmName}
@@ -166,7 +177,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  Est. {user?.founded_year || '2021'} ({daysActive}d on platform)
+                  {user?.grazing_system || 'Semi-Intensive Grazing'}
                 </span>
               </p>
             </div>
@@ -212,7 +223,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs">
             <h2 className="text-base font-bold text-stone-900 flex items-center gap-2 mb-3">
               <Building2 className="w-4 h-4 text-emerald-700" />
-              About the Farm
+              Farm Overview & Operations
             </h2>
             <p className="text-stone-600 text-sm leading-relaxed whitespace-pre-line">
               {user?.bio ||
@@ -240,7 +251,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
                 <div>
                   <div className="text-xs font-semibold text-stone-400 uppercase tracking-wider">
-                    Farm Acreage / Size
+                    Farm Acreage / Land Size
                   </div>
                   <div className="font-semibold text-stone-900">
                     {user?.farm_size || '25 Acres'}
@@ -268,7 +279,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
                 <div>
                   <div className="text-xs font-semibold text-stone-400 uppercase tracking-wider">
-                    Founded / Established
+                    Established Year
                   </div>
                   <div className="font-semibold text-stone-900">
                     Year {user?.founded_year || '2021'}
@@ -278,32 +289,32 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           </div>
 
-          {/* Farm Administration & Contact Details */}
+          {/* Farm Leadership & Operational Details */}
           <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs">
             <h2 className="text-base font-bold text-stone-900 flex items-center gap-2 mb-4">
               <Users className="w-4 h-4 text-emerald-700" />
-              Administration & Management
+              Farm Management & Operational Information
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
-                <div className="text-xs text-stone-500 font-medium">Farm Owner / Lead Manager</div>
+                <div className="text-xs text-stone-500 font-medium">Farm Owner / Lead Operator</div>
                 <div className="text-base font-bold text-stone-900 mt-0.5">
                   {user?.owner_name || 'Blasio Ochieng'}
                 </div>
-                <div className="text-xs text-emerald-700 font-medium mt-1">Authorized Administrator</div>
+                <div className="text-xs text-emerald-700 font-medium mt-1">Farm Manager & Herd Director</div>
               </div>
 
               <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
-                <div className="text-xs text-stone-500 font-medium">Official Contact Email</div>
-                <div className="text-sm font-semibold text-stone-900 mt-0.5 break-all">
-                  {user?.email || 'ochiengblasio@farm.com'}
+                <div className="text-xs text-stone-500 font-medium">Production Focus</div>
+                <div className="text-sm font-semibold text-stone-900 mt-0.5">
+                  {user?.production_focus || 'Dual-Purpose Dairy & Stud Breeding Stock'}
                 </div>
-                <div className="text-xs text-stone-500 mt-1">Primary cloud communications</div>
+                <div className="text-xs text-stone-500 mt-1">Primary farm revenue stream</div>
               </div>
 
               <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
-                <div className="text-xs text-stone-500 font-medium">Official Contact Telephone</div>
+                <div className="text-xs text-stone-500 font-medium">Direct Telephone</div>
                 <div className="text-sm font-semibold text-stone-900 mt-0.5">
                   {user?.phone || '+254 712 345 678'}
                 </div>
@@ -311,11 +322,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
 
               <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
-                <div className="text-xs text-stone-500 font-medium">Platform Membership</div>
+                <div className="text-xs text-stone-500 font-medium">Grazing & Feeding System</div>
                 <div className="text-sm font-semibold text-stone-900 mt-0.5">
-                  {syncStatus === 'connected' ? 'Cloud Verified Account' : 'Local / Offline Active'}
+                  {user?.grazing_system || 'Semi-Intensive Pasture & Paddock Rotation'}
                 </div>
-                <div className="text-xs text-stone-500 mt-1">Full feature tier activated</div>
+                <div className="text-xs text-stone-500 mt-1">Fodder & pasture management</div>
               </div>
             </div>
           </div>
@@ -566,6 +577,35 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     placeholder="e.g. +254 712 345 678"
                     value={editPhone}
                     onChange={e => setEditPhone(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Production Focus
+                  </label>
+                  <input
+                    id="input-edit-production-focus"
+                    type="text"
+                    placeholder="e.g. Dual-Purpose Dairy & Stud Breeding"
+                    value={editProductionFocus}
+                    onChange={e => setEditProductionFocus(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Grazing & Feeding System
+                  </label>
+                  <input
+                    id="input-edit-grazing-system"
+                    type="text"
+                    placeholder="e.g. Semi-Intensive Pasture & Paddock Rotation"
+                    value={editGrazingSystem}
+                    onChange={e => setEditGrazingSystem(e.target.value)}
                     className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>

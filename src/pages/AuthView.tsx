@@ -17,7 +17,6 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
-  Dna,
   Calendar,
   Milk,
   TrendingUp,
@@ -195,13 +194,13 @@ export const AuthView: React.FC = () => {
       {/* Container with High-Value Two-Column Farm Layout */}
       <div className="w-full max-w-5xl bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
         
-        {/* LEFT COLUMN: Agricultural Enterprise Showcase (Valuable Theme Hero) */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-emerald-950 via-emerald-900 to-stone-950 p-8 sm:p-10 text-white flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-emerald-800/40 relative overflow-hidden">
-          {/* Ambient light flares */}
+        {/* LEFT COLUMN: Clean Brand Identity */}
+        <div className="lg:col-span-5 bg-gradient-to-br from-emerald-950 via-emerald-900 to-stone-950 p-8 sm:p-10 text-white flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-emerald-800/40 relative overflow-hidden">
+          {/* Ambient subtle light glow */}
           <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute bottom-10 left-0 -ml-12 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
-          <div className="relative z-10 space-y-6">
+          <div className="relative z-10 space-y-6 max-w-sm">
             {/* Logo & Platform Tag */}
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl shadow-inner">
@@ -209,7 +208,7 @@ export const AuthView: React.FC = () => {
               </div>
               <div>
                 <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
-                  Precision Livestock OS
+                  Farm Management System
                 </span>
                 <h1 className="text-xl font-extrabold text-white tracking-tight">
                   Smart Goat Management
@@ -217,68 +216,14 @@ export const AuthView: React.FC = () => {
               </div>
             </div>
 
-            {/* Headline */}
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
-                Biometric Herd Analytics & Gestation Precision
+            {/* Headline & Description */}
+            <div className="pt-2">
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white leading-tight">
+                Simple & Efficient Goat Farm Records
               </h2>
-              <p className="mt-2 text-sm text-emerald-200/80 leading-relaxed">
-                Empowering commercial breeders, pedigree studs, and dairy cooperatives across East Africa and globally with real-time cloud farm intelligence.
+              <p className="mt-3 text-sm text-emerald-200/80 leading-relaxed">
+                A simple and reliable digital management tool for your farm. Track your goat herd records, health checkups, breeding dates, milk yields, and farm expenses and sales.
               </p>
-            </div>
-
-            {/* Value Pillars */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 shrink-0">
-                  <Dna className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white">Genetic Lineage & Pedigree</div>
-                  <div className="text-[11px] text-emerald-200/70">Prevent inbreeding with verified sire & dam tracking</div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 shrink-0">
-                  <Calendar className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white">Automated Gestation & Kidding Alerts</div>
-                  <div className="text-[11px] text-emerald-200/70">150-day biometric calendar with ultrasound countdowns</div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 shrink-0">
-                  <Milk className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white">Daily Milk Yield & Revenue Forecasts</div>
-                  <div className="text-[11px] text-emerald-200/70">Linear regression sales modeling and yield logs</div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 shrink-0">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white">Realtime Cloud Database</div>
-                  <div className="text-[11px] text-emerald-200/70">Always backed up, offline-resilient, and exportable to CSV</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Live Metrics */}
-          <div className="relative z-10 pt-6 mt-6 border-t border-emerald-800/60 flex items-center justify-between text-xs text-emerald-300/80">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>100% Cloud Synced</span>
-            </div>
-            <div className="font-mono text-[11px]">
-              Multi-Breed: Boer • Galla • Saanen
             </div>
           </div>
         </div>
@@ -470,7 +415,7 @@ export const AuthView: React.FC = () => {
                     Create Your Farm Profile
                   </h3>
                   <p className="text-xs text-stone-400 mt-1">
-                    Provide your farm location & size to initialize your dedicated cloud ledger.
+                    Provide your farm location & size to initialize your dedicated farm ledger.
                   </p>
                 </div>
 
@@ -643,20 +588,14 @@ export const AuthView: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Simulated Email Dispatch Banner */}
-                <div className="p-4 rounded-2xl bg-emerald-950/90 border border-emerald-600 text-emerald-200 text-xs space-y-1.5 shadow-inner">
-                  <div className="flex items-center gap-2 font-bold text-emerald-300">
-                    <Mail className="w-4 h-4 text-emerald-400" />
-                    <span>Email Dispatch Service: OTP Code Received</span>
+                {/* Email Dispatch Notice */}
+                <div className="p-4 rounded-2xl bg-stone-800/80 border border-stone-700 text-stone-200 text-xs space-y-2 shadow-inner">
+                  <div className="flex items-center gap-2 font-bold text-emerald-400">
+                    <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Verification Code Dispatched</span>
                   </div>
-                  <p className="text-[11px] text-emerald-100/90">
-                    Your account verification code is:
-                  </p>
-                  <div className="py-2 px-3 bg-stone-950/80 rounded-xl font-mono text-xl tracking-widest text-center font-bold text-emerald-400 border border-emerald-500/40 select-all">
-                    {generatedOtp}
-                  </div>
-                  <p className="text-[10px] text-emerald-300/60 text-center">
-                    (In production, this verification code is dispatched straight to your email inbox via cloud mail services)
+                  <p className="text-stone-300 text-xs leading-relaxed">
+                    A 6-digit verification code has been sent to <strong className="text-white font-semibold">{email}</strong>. Please check your email inbox (and spam or junk folder) and enter the code below to confirm and activate your farm account.
                   </p>
                 </div>
 

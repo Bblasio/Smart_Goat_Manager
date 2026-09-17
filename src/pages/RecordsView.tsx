@@ -17,7 +17,10 @@ import {
   ExternalLink,
   ChevronRight,
   FileSpreadsheet,
-  Upload
+  Upload,
+  X,
+  Filter,
+  Tag
 } from 'lucide-react';
 import { ExcelImportModal } from '../components/ExcelImportModal';
 
@@ -46,6 +49,8 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     'goats' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor'
   >('goats');
   const [searchQuery, setSearchQuery] = useState('');
+  const [goatStatusFilter, setGoatStatusFilter] = useState<'all' | 'Active' | 'Pregnant' | 'Quarantine' | 'Sold'>('all');
+  const [healthStatusFilter, setHealthStatusFilter] = useState<'all' | 'Healthy' | 'Under Treatment' | 'Critical' | 'Pregnancy Check'>('all');
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
 
   const today = new Date();
@@ -60,30 +65,73 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     h =>
       h.condition.toLowerCase().includes('sick') ||
       h.condition.toLowerCase().includes('weak') ||
-      h.condition.toLowerCase().includes('fever')
+      h.condition.toLowerCase().includes('fever') ||
+      h.status === 'Under Treatment' ||
+      h.status === 'Critical'
   );
 
   const totalSalesRevenue = sales.reduce((sum, s) => sum + (s.price || 0), 0);
 
-  // Search filters
-  const filteredGoats = goats.filter(
-    g =>
-      g.tag_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.breed.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Map goats by tag for quick name and detail lookup
+  const goatMap = new Map(goats.map(g => [g.tag_number.toUpperCase(), g]));
 
-  const filteredBreeding = breeding.filter(
-    b =>
-      b.female_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.male_id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Search & Status filters
+  const filteredGoats = goats.filter(g => {
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      g.tag_number.toLowerCase().includes(q) ||
+      (g.name && g.name.toLowerCase().includes(q)) ||
+      (g.status && g.status.toLowerCase().includes(q)) ||
+      g.breed.toLowerCase().includes(q) ||
+      g.gender.toLowerCase().includes(q);
 
-  const filteredHealth = health.filter(
-    h =>
-      h.goat_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      h.condition.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      h.treatment.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    const matchesStatus =
+      goatStatusFilter === 'all' ||
+      (g.status && g.status.toLowerCase() === goatStatusFilter.toLowerCase());
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const filteredBreeding = breeding.filter(b => {
+    const q = searchQuery.trim().toLowerCase();
+    const female = goatMap.get(b.female_id.toUpperCase());
+    const male = goatMap.get(b.male_id.toUpperCase());
+    return (
+      !q ||
+      b.female_id.toLowerCase().includes(q) ||
+      b.male_id.toLowerCase().includes(q) ||
+      (female?.name && female.name.toLowerCase().includes(q)) ||
+      (male?.name && male.name.toLowerCase().includes(q)) ||
+      (b.status && b.status.toLowerCase().includes(q))
+    );
+  });
+
+  const filteredHealth = health.filter(h => {
+    const q = searchQuery.trim().toLowerCase();
+    const matchedGoat = goatMap.get(h.goat_id.toUpperCase());
+    const goatName = matchedGoat?.name || '';
+
+    const matchesSearch =
+      !q ||
+      h.goat_id.toLowerCase().includes(q) ||
+      goatName.toLowerCase().includes(q) ||
+      (h.status && h.status.toLowerCase().includes(q)) ||
+      h.condition.toLowerCase().includes(q) ||
+      h.treatment.toLowerCase().includes(q) ||
+      (h.checkup_type && h.checkup_type.toLowerCase().includes(q)) ||
+      (h.vet_name && h.vet_name.toLowerCase().includes(q)) ||
+      (h.is_pregnant && 'pregnant'.includes(q));
+
+    const matchesStatus =
+      healthStatusFilter === 'all' ||
+      (healthStatusFilter === 'Healthy' && (h.status === 'Healthy' || h.condition.toLowerCase().includes('healthy') || h.condition.toLowerCase().includes('good'))) ||
+      (healthStatusFilter === 'Under Treatment' && (h.status === 'Under Treatment' || h.condition.toLowerCase().includes('sick') || h.condition.toLowerCase().includes('weak') || h.condition.toLowerCase().includes('fever'))) ||
+      (healthStatusFilter === 'Pregnancy Check' && (h.checkup_type === 'Pregnancy Check' || h.is_pregnant)) ||
+      (healthStatusFilter === 'Critical' && (h.status === 'Critical' || h.condition.toLowerCase().includes('critical')));
+
+    return matchesSearch && matchesStatus;
+  });
 
   const filteredMilk = milk.filter(
     m =>
@@ -216,10 +264,9 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         </button>
       </div>
 
-      {/* Tabs and Search Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-stone-200 pb-3">
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+      {/* Navigation Tabs */}
+      <div className="flex flex-col gap-3 border-b border-stone-200 pb-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {[
             { id: 'goats', label: 'Goats', count: goats.length },
             { id: 'breeding', label: 'Breeding', count: breeding.length },
@@ -232,7 +279,10 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
             <button
               key={tab.id}
               id={`tab-btn-${tab.id}`}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => {
+                setActiveTab(tab.id as any);
+                setSearchQuery('');
+              }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-emerald-600 text-white shadow-xs'
@@ -262,18 +312,191 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
           ))}
         </div>
 
-        {/* Search Bar */}
+        {/* Dedicated Search & Filter Bar */}
         {activeTab !== 'advisor' && (
-          <div className="relative w-full md:w-64 shrink-0">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              id="input-record-search"
-              type="text"
-              placeholder={`Search ${activeTab}...`}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-white border border-stone-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+          <div className="flex flex-col gap-2.5 bg-stone-50/80 p-3 rounded-2xl border border-stone-200">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  id="input-record-search"
+                  type="text"
+                  placeholder={
+                    activeTab === 'goats'
+                      ? 'Filter goats by ear tag (e.g. GT-101), name (Apollo), breed, or status (Active, Pregnant, Quarantine)...'
+                      : activeTab === 'health'
+                      ? 'Filter health records by ear tag (e.g. GT-103), goat name (Nala), or status (Healthy, Under Treatment)...'
+                      : `Filter ${activeTab} records by keyword or tag...`
+                  }
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-9 py-2 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                />
+                {searchQuery && (
+                  <button
+                    id="btn-clear-search"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  id="btn-export-csv"
+                  onClick={() => {
+                    if (activeTab === 'goats') exportToCSV(filteredGoats, 'goats-records.csv');
+                    else if (activeTab === 'health') exportToCSV(filteredHealth, 'health-records.csv');
+                    else if (activeTab === 'breeding') exportToCSV(filteredBreeding, 'breeding-records.csv');
+                    else if (activeTab === 'milk') exportToCSV(filteredMilk, 'milk-records.csv');
+                    else if (activeTab === 'sales') exportToCSV(filteredSales, 'sales-records.csv');
+                    else if (activeTab === 'workers') exportToCSV(filteredWorkers, 'workers-records.csv');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
+                >
+                  <Download className="w-3.5 h-3.5 text-stone-500" />
+                  <span>Export CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Status Filter Pills for Goats */}
+            {activeTab === 'goats' && (
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-semibold text-stone-500 flex items-center gap-1 mr-1">
+                    <Filter className="w-3 h-3 text-stone-400" />
+                    Status:
+                  </span>
+                  {[
+                    { id: 'all', label: 'All Goats', count: goats.length },
+                    { id: 'Active', label: 'Active', count: goats.filter(g => (g.status || 'Active') === 'Active').length },
+                    { id: 'Pregnant', label: 'Pregnant', count: goats.filter(g => g.status === 'Pregnant').length },
+                    { id: 'Quarantine', label: 'Quarantine', count: goats.filter(g => g.status === 'Quarantine').length },
+                    { id: 'Sold', label: 'Sold', count: goats.filter(g => g.status === 'Sold').length },
+                  ].map(pill => (
+                    <button
+                      key={pill.id}
+                      id={`pill-goat-status-${pill.id}`}
+                      onClick={() => setGoatStatusFilter(pill.id as any)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                        goatStatusFilter === pill.id
+                          ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                          : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                      }`}
+                    >
+                      <span>{pill.label}</span>
+                      <span
+                        className={`text-[10px] px-1 rounded-full ${
+                          goatStatusFilter === pill.id
+                            ? 'bg-emerald-800 text-white'
+                            : 'bg-stone-100 text-stone-600'
+                        }`}
+                      >
+                        {pill.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-stone-500">
+                  <span>
+                    Showing <strong className="text-stone-800">{filteredGoats.length}</strong> of{' '}
+                    <strong className="text-stone-800">{goats.length}</strong> goats
+                  </span>
+                  {(searchQuery || goatStatusFilter !== 'all') && (
+                    <button
+                      onClick={() => {
+                        setSearchQuery('');
+                        setGoatStatusFilter('all');
+                      }}
+                      className="text-xs text-emerald-700 hover:underline font-medium"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Status Filter Pills for Health */}
+            {activeTab === 'health' && (
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-semibold text-stone-500 flex items-center gap-1 mr-1">
+                    <Filter className="w-3 h-3 text-stone-400" />
+                    Status:
+                  </span>
+                  {[
+                    { id: 'all', label: 'All Records', count: health.length },
+                    {
+                      id: 'Healthy',
+                      label: 'Healthy',
+                      count: health.filter(h => h.status === 'Healthy' || h.condition.toLowerCase().includes('healthy') || h.condition.toLowerCase().includes('good')).length
+                    },
+                    {
+                      id: 'Under Treatment',
+                      label: 'Under Treatment / Sick',
+                      count: health.filter(h => h.status === 'Under Treatment' || h.condition.toLowerCase().includes('sick') || h.condition.toLowerCase().includes('fever')).length
+                    },
+                    {
+                      id: 'Pregnancy Check',
+                      label: 'Pregnancy / Ultrasound',
+                      count: health.filter(h => h.checkup_type === 'Pregnancy Check' || h.is_pregnant).length
+                    },
+                    {
+                      id: 'Critical',
+                      label: 'Critical',
+                      count: health.filter(h => h.status === 'Critical' || h.condition.toLowerCase().includes('critical')).length
+                    },
+                  ].map(pill => (
+                    <button
+                      key={pill.id}
+                      id={`pill-health-status-${pill.id.replace(/\s+/g, '-').toLowerCase()}`}
+                      onClick={() => setHealthStatusFilter(pill.id as any)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                        healthStatusFilter === pill.id
+                          ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                          : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                      }`}
+                    >
+                      <span>{pill.label}</span>
+                      <span
+                        className={`text-[10px] px-1 rounded-full ${
+                          healthStatusFilter === pill.id
+                            ? 'bg-emerald-800 text-white'
+                            : 'bg-stone-100 text-stone-600'
+                        }`}
+                      >
+                        {pill.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-stone-500">
+                  <span>
+                    Showing <strong className="text-stone-800">{filteredHealth.length}</strong> of{' '}
+                    <strong className="text-stone-800">{health.length}</strong> health records
+                  </span>
+                  {(searchQuery || healthStatusFilter !== 'all') && (
+                    <button
+                      onClick={() => {
+                        setSearchQuery('');
+                        setHealthStatusFilter('all');
+                      }}
+                      className="text-xs text-emerald-700 hover:underline font-medium"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -285,7 +508,8 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
             <table className="w-full text-left text-sm">
               <thead className="bg-stone-50 border-b border-stone-200 text-xs font-semibold text-stone-600 uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3.5">Tag Number</th>
+                  <th className="px-6 py-3.5">Ear Tag & Name</th>
+                  <th className="px-6 py-3.5">Herd Status</th>
                   <th className="px-6 py-3.5">Breed</th>
                   <th className="px-6 py-3.5">Gender</th>
                   <th className="px-6 py-3.5">Weight (kg)</th>
@@ -297,9 +521,32 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                 {filteredGoats.length > 0 ? (
                   filteredGoats.map(goat => (
                     <tr key={goat.id} className="hover:bg-stone-50/75 transition-colors">
-                      <td className="px-6 py-4 font-bold text-stone-900 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        {goat.tag_number}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                          <span className="font-bold text-stone-900 font-mono text-sm">{goat.tag_number}</span>
+                          {goat.name && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <Tag className="w-2.5 h-2.5 text-emerald-600" />
+                              {goat.name}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+                            goat.status === 'Pregnant'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : goat.status === 'Quarantine'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : goat.status === 'Sold'
+                              ? 'bg-stone-100 text-stone-600 border-stone-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}
+                        >
+                          {goat.status || 'Active'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-stone-700">{goat.breed}</td>
                       <td className="px-6 py-4">
@@ -333,8 +580,22 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-stone-400">
-                      No goat records found.
+                    <td colSpan={7} className="px-6 py-12 text-center">
+                      <div className="max-w-xs mx-auto text-center space-y-2">
+                        <p className="text-stone-500 font-medium">No goats match your filter</p>
+                        <p className="text-xs text-stone-400">
+                          Try searching with a different tag (e.g. GT-101), name (Apollo), or change the status filter.
+                        </p>
+                        <button
+                          onClick={() => {
+                            setSearchQuery('');
+                            setGoatStatusFilter('all');
+                          }}
+                          className="mt-2 text-xs font-semibold text-emerald-700 hover:underline"
+                        >
+                          Clear Search & Filters
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -435,60 +696,118 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
             <table className="w-full text-left text-sm">
               <thead className="bg-stone-50 border-b border-stone-200 text-xs font-semibold text-stone-600 uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3.5">Goat Tag</th>
+                  <th className="px-6 py-3.5">Goat Tag & Name</th>
+                  <th className="px-6 py-3.5">Health Status</th>
                   <th className="px-6 py-3.5">Checkup Date</th>
-                  <th className="px-6 py-3.5">Condition</th>
-                  <th className="px-6 py-3.5">Treatment / Intervention</th>
-                  <th className="px-6 py-3.5">Pregnancy / Fetal Age</th>
+                  <th className="px-6 py-3.5">Condition & Type</th>
+                  <th className="px-6 py-3.5">Treatment / Medication</th>
+                  <th className="px-6 py-3.5">Gestation / Ultrasound</th>
+                  <th className="px-6 py-3.5">Attending Vet</th>
                   <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {filteredHealth.length > 0 ? (
-                  filteredHealth.map(item => (
-                    <tr key={item.id} className="hover:bg-stone-50/75 transition-colors">
-                      <td className="px-6 py-4 font-bold text-stone-900">{item.goat_id}</td>
-                      <td className="px-6 py-4 text-stone-600 font-mono text-xs">
-                        {item.checkup_date || '—'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${
-                            item.condition.toLowerCase().includes('healthy') ||
-                            item.condition.toLowerCase().includes('good')
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
-                          }`}
-                        >
-                          {item.condition}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-stone-700 text-xs max-w-xs">{item.treatment}</td>
-                      <td className="px-6 py-4">
-                        {item.fetal_age_days ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                            {item.fetal_age_days}d pregnant
+                  filteredHealth.map(item => {
+                    const matchedGoat = goatMap.get(item.goat_id.toUpperCase());
+                    const isUnderTreatment =
+                      item.status === 'Under Treatment' ||
+                      item.condition.toLowerCase().includes('sick') ||
+                      item.condition.toLowerCase().includes('weak') ||
+                      item.condition.toLowerCase().includes('fever');
+                    const isCritical = item.status === 'Critical' || item.condition.toLowerCase().includes('critical');
+                    const isHealthy =
+                      !isUnderTreatment && !isCritical && (item.status === 'Healthy' || item.condition.toLowerCase().includes('healthy') || item.condition.toLowerCase().includes('good'));
+
+                    return (
+                      <tr key={item.id} className="hover:bg-stone-50/75 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-stone-900 font-mono text-sm">{item.goat_id}</span>
+                            {matchedGoat?.name && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                <Tag className="w-2.5 h-2.5 text-emerald-600" />
+                                {matchedGoat.name}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+                              isCritical
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : isUnderTreatment
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}
+                          >
+                            {item.status || (isCritical ? 'Critical' : isUnderTreatment ? 'Under Treatment' : 'Healthy')}
                           </span>
-                        ) : (
-                          <span className="text-stone-400 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          id={`btn-del-health-${item.id}`}
-                          onClick={() => deleteHealth(item.id)}
-                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Delete Health Record"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="px-6 py-4 text-stone-600 font-mono text-xs">
+                          {item.checkup_date || '—'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-stone-800 font-medium text-xs">
+                              {item.condition}
+                            </span>
+                            {item.checkup_type && (
+                              <span className="text-[10px] text-stone-500 font-mono">
+                                Type: {item.checkup_type}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-stone-700 text-xs max-w-xs">{item.treatment}</td>
+                        <td className="px-6 py-4">
+                          {item.fetal_age_days ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                              {item.fetal_age_days}d fetal age
+                            </span>
+                          ) : item.is_pregnant ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                              Pregnant
+                            </span>
+                          ) : (
+                            <span className="text-stone-400 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-stone-600 text-xs font-medium">
+                          {item.vet_name || 'Staff Attendant'}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            id={`btn-del-health-${item.id}`}
+                            onClick={() => deleteHealth(item.id)}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Delete Health Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-stone-400">
-                      No health records found.
+                    <td colSpan={8} className="px-6 py-12 text-center">
+                      <div className="max-w-xs mx-auto text-center space-y-2">
+                        <p className="text-stone-500 font-medium">No health records match your filter</p>
+                        <p className="text-xs text-stone-400">
+                          Try searching by tag (e.g. GT-103), goat name, or status (Healthy, Under Treatment).
+                        </p>
+                        <button
+                          onClick={() => {
+                            setSearchQuery('');
+                            setHealthStatusFilter('all');
+                          }}
+                          className="mt-2 text-xs font-semibold text-emerald-700 hover:underline"
+                        >
+                          Clear Search & Filters
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}

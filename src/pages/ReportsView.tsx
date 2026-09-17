@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { FinancialTrackingModule } from '../components/FinancialTrackingModule';
 import {
   Sparkles,
   ChevronDown,
@@ -14,7 +15,8 @@ import {
   Calendar,
   AlertCircle,
   Download,
-  FileText
+  FileText,
+  DollarSign
 } from 'lucide-react';
 import {
   LineChart,
@@ -28,9 +30,10 @@ import {
 } from 'recharts';
 
 export const ReportsView: React.FC = () => {
-  const { farmName, user, goats, breeding, sales, health, milk, workers } = useFarm();
+  const { farmName, user, goats, breeding, sales, expenses, health, milk, workers } = useFarm();
 
-  // Collapsible section states (matching the 6 expanders in reports.py)
+  // Collapsible section states
+  const [expandFinancialTracking, setExpandFinancialTracking] = useState(true);
   const [expandHighestSales, setExpandHighestSales] = useState(true);
   const [expandPredictedBirths, setExpandPredictedBirths] = useState(true);
   const [expandAnomalyDetection, setExpandAnomalyDetection] = useState(true);
@@ -47,7 +50,7 @@ export const ReportsView: React.FC = () => {
     return `"${str}"`;
   };
 
-  const handleDownloadReport = (format: 'all' | 'sales' | 'gestation' | 'inventory' = 'all') => {
+  const handleDownloadReport = (format: 'all' | 'sales' | 'gestation' | 'inventory' | 'financial' = 'all') => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const dateReadable = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
@@ -57,13 +60,32 @@ export const ReportsView: React.FC = () => {
 
     let csv = '';
 
+    const totalRev = sales.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+    const totalExp = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const netProfit = totalRev - totalExp;
+
     if (format === 'all') {
       csv += `# SMART GOAT MANAGEMENT - ${farmName.toUpperCase()} EXPORT\n`;
       csv += `# Generated Date: ${dateReadable} at ${new Date().toLocaleTimeString()}\n`;
       csv += `# Farm Owner: ${user?.owner_name || 'Registered Farm Manager'}\n`;
       csv += `# Location: ${user?.location || 'Main Farm'}\n`;
       csv += `# Total Registered Goats: ${goats.length}\n`;
-      csv += `# Total Revenue: Ksh ${sales.reduce((sum, s) => sum + s.price, 0).toLocaleString()}\n\n`;
+      csv += `# Total Revenue: Ksh ${totalRev.toLocaleString()}\n`;
+      csv += `# Total Operating Expenses: Ksh ${totalExp.toLocaleString()}\n`;
+      csv += `# Net Farm Profit: Ksh ${netProfit.toLocaleString()}\n\n`;
+    }
+
+    if (format === 'all' || format === 'financial') {
+      csv += `--- OPERATING EXPENSES (FEED, VET, EQUIPMENT, LABOR) ---\n`;
+      csv += ['Expense ID', 'Category', 'Description / Item', 'Amount (Ksh)', 'Date', 'Receipt Number', 'Notes'].map(escapeCsv).join(',') + '\n';
+      if (expenses.length === 0) {
+        csv += ['No expenses recorded', '', '', '', '', '', ''].map(escapeCsv).join(',') + '\n';
+      } else {
+        expenses.forEach(e => {
+          csv += [e.id, e.category, e.title, e.amount, e.date || '—', e.receipt_number || '—', e.notes || '—'].map(escapeCsv).join(',') + '\n';
+        });
+      }
+      csv += '\n';
     }
 
     if (format === 'all' || format === 'sales') {
@@ -407,6 +429,18 @@ export const ReportsView: React.FC = () => {
                 </button>
                 <button
                   type="button"
+                  id="btn-export-financial-csv"
+                  onClick={() => handleDownloadReport('financial')}
+                  className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 border-t border-stone-100"
+                >
+                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <div className="font-semibold text-stone-900">Financial Ledger & Expenses (P&L)</div>
+                    <div className="text-[11px] text-stone-500">Feed, vet, equipment costs vs sales revenue</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
                   id="btn-export-sales-csv"
                   onClick={() => handleDownloadReport('sales')}
                   className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 border-t border-stone-100"
@@ -453,6 +487,38 @@ export const ReportsView: React.FC = () => {
           <span>{downloadSuccess}</span>
         </div>
       )}
+
+      {/* 0. FINANCIAL TRACKING & OPERATIONAL LEDGER (FEED, VET, EQUIPMENT VS SALES) */}
+      <div className="bg-white border border-stone-200 rounded-2xl shadow-xs overflow-hidden">
+        <button
+          id="btn-toggle-financial-tracking"
+          onClick={() => setExpandFinancialTracking(!expandFinancialTracking)}
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-stone-50 transition-colors text-left"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">📊</span>
+            <div>
+              <h3 className="text-base font-bold text-stone-900">
+                Financial Tracking & Operational Expenses (Feed, Vet, Equipment)
+              </h3>
+              <p className="text-xs text-stone-500">
+                Live ledger tracking operating costs and sales revenue with summary balance table
+              </p>
+            </div>
+          </div>
+          {expandFinancialTracking ? (
+            <ChevronUp className="w-5 h-5 text-stone-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-stone-400" />
+          )}
+        </button>
+
+        {expandFinancialTracking && (
+          <div className="p-6 pt-3 border-t border-stone-100">
+            <FinancialTrackingModule />
+          </div>
+        )}
+      </div>
 
       {/* 1. HIGHEST SALES SECTION */}
       <div className="bg-white border border-stone-200 rounded-2xl shadow-xs overflow-hidden">
@@ -807,7 +873,7 @@ export const ReportsView: React.FC = () => {
 
         {expandFarmSummary && (
           <div className="p-6 pt-2 border-t border-stone-100">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
                 <span className="text-xs font-semibold text-stone-500 uppercase">Total Goats</span>
                 <div className="text-2xl font-bold text-stone-900 mt-1">{goats.length}</div>
@@ -819,6 +885,10 @@ export const ReportsView: React.FC = () => {
               <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
                 <span className="text-xs font-semibold text-stone-500 uppercase">Sales</span>
                 <div className="text-2xl font-bold text-stone-900 mt-1">{sales.length}</div>
+              </div>
+              <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
+                <span className="text-xs font-semibold text-stone-500 uppercase">Expenses</span>
+                <div className="text-2xl font-bold text-stone-900 mt-1">{expenses.length}</div>
               </div>
               <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
                 <span className="text-xs font-semibold text-stone-500 uppercase">Health Records</span>

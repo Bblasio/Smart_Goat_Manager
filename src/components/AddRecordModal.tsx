@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
-import { RecordType } from '../types';
+import { RecordType, ExpenseCategory } from '../types';
 import { X, Check, Baby, Milk, Stethoscope, FileSpreadsheet } from 'lucide-react';
 import { ExcelImportModal } from './ExcelImportModal';
 
@@ -15,7 +15,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   onClose,
   defaultType = 'goat',
 }) => {
-  const { addGoat, addBreeding, addHealth, addSale, addWorker, addMilk, goats } = useFarm();
+  const { addGoat, addBreeding, addHealth, addSale, addExpense, addWorker, addMilk, goats } = useFarm();
   const [recordType, setRecordType] = useState<RecordType>(defaultType);
   const [isExcelOpen, setIsExcelOpen] = useState(false);
 
@@ -32,12 +32,22 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
     }
   };
 
+  // Expense form state
+  const [expCategory, setExpCategory] = useState<ExpenseCategory>('Feed');
+  const [expTitle, setExpTitle] = useState('');
+  const [expAmount, setExpAmount] = useState('');
+  const [expDate, setExpDate] = useState(todayStr);
+  const [expReceipt, setExpReceipt] = useState('');
+  const [expNotes, setExpNotes] = useState('');
+
   // Goat form state
   const [goatTag, setGoatTag] = useState('');
+  const [goatName, setGoatName] = useState('');
   const [goatBreed, setGoatBreed] = useState('Boer');
   const [goatGender, setGoatGender] = useState<'Male' | 'Female'>('Female');
   const [goatDob, setGoatDob] = useState(todayStr);
   const [goatWeight, setGoatWeight] = useState('45');
+  const [goatStatus, setGoatStatus] = useState<'Active' | 'Pregnant' | 'Quarantine' | 'Sold'>('Active');
 
   // Breeding form state
   const [breedFemale, setBreedFemale] = useState('');
@@ -50,6 +60,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   const [healthGoatId, setHealthGoatId] = useState('');
   const [healthCondition, setHealthCondition] = useState('');
   const [healthTreatment, setHealthTreatment] = useState('');
+  const [healthStatus, setHealthStatus] = useState<'Healthy' | 'Under Treatment' | 'Critical' | 'Recovered' | 'Observation'>('Healthy');
   const [healthDate, setHealthDate] = useState(todayStr);
   const [checkupType, setCheckupType] = useState<'Routine' | 'Pregnancy Check' | 'Vaccination' | 'Deworming' | 'Illness'>('Routine');
   const [isPregnant, setIsPregnant] = useState(false);
@@ -98,14 +109,16 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
         }
         addGoat({
           tag_number: goatTag.trim().toUpperCase(),
+          name: goatName.trim() || undefined,
           breed: goatBreed.trim(),
           gender: goatGender,
           dob: goatDob,
           weight_kg: parseFloat(goatWeight) || 45,
-          status: 'Active',
+          status: goatStatus,
         });
-        setSuccessMsg(`Goat ${goatTag.trim().toUpperCase()} added successfully!`);
+        setSuccessMsg(`Goat ${goatTag.trim().toUpperCase()}${goatName ? ` (${goatName})` : ''} added successfully!`);
         setGoatTag('');
+        setGoatName('');
       } else if (recordType === 'breeding') {
         if (!breedFemale.trim() || !breedMale.trim()) {
           setErrorMsg('Both Female Tag and Male Tag are required.');
@@ -134,6 +147,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           goat_id: healthGoatId.trim().toUpperCase(),
           condition: healthCondition.trim() || 'General Health Check',
           treatment: healthTreatment.trim() || 'Observation',
+          status: healthStatus,
           checkup_date: healthDate,
           checkup_type: checkupType,
           is_pregnant: isPregnant,
@@ -165,6 +179,29 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
         setSaleGoatId('');
         setSaleBuyer('');
         setSalePrice('');
+      } else if (recordType === 'expense') {
+        if (!expTitle.trim()) {
+          setErrorMsg('Expense description is required.');
+          return;
+        }
+        const numericAmount = parseFloat(expAmount);
+        if (isNaN(numericAmount) || numericAmount <= 0) {
+          setErrorMsg('Please enter a valid expense amount.');
+          return;
+        }
+        addExpense({
+          category: expCategory,
+          title: expTitle.trim(),
+          amount: numericAmount,
+          date: expDate || todayStr,
+          receipt_number: expReceipt.trim() || undefined,
+          notes: expNotes.trim() || undefined,
+        });
+        setSuccessMsg(`Expense "${expTitle.trim()}" of Ksh ${numericAmount.toLocaleString()} recorded!`);
+        setExpTitle('');
+        setExpAmount('');
+        setExpReceipt('');
+        setExpNotes('');
       } else if (recordType === 'worker') {
         if (!workerName.trim()) {
           setErrorMsg('Worker full name is required.');
@@ -229,7 +266,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-2">
             Record Type
           </label>
-          <div className="grid grid-cols-6 gap-1 p-1 bg-stone-100 rounded-xl">
+          <div className="grid grid-cols-7 gap-1 p-1 bg-stone-100 rounded-xl">
             {(
               [
                 { type: 'goat', label: 'Goat', icon: '🐐' },
@@ -237,6 +274,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                 { type: 'health', label: 'Health', icon: '💊' },
                 { type: 'milk', label: 'Milk', icon: '🥛' },
                 { type: 'sale', label: 'Sale', icon: '💰' },
+                { type: 'expense', label: 'Expense', icon: '💸' },
                 { type: 'worker', label: 'Staff', icon: '👷' },
               ] as const
             ).map(item => (
@@ -296,22 +334,37 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           {/* TYPE: GOAT */}
           {recordType === 'goat' && (
             <>
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Tag Number (Unique Ear ID) *
-                </label>
-                <input
-                  id="input-goat-tag"
-                  type="text"
-                  placeholder="e.g. GT-109"
-                  value={goatTag}
-                  onChange={e => setGoatTag(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Tag Number (Unique Ear ID) *
+                  </label>
+                  <input
+                    id="input-goat-tag"
+                    type="text"
+                    placeholder="e.g. GT-109"
+                    value={goatTag}
+                    onChange={e => setGoatTag(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Goat Name (Optional)
+                  </label>
+                  <input
+                    id="input-goat-name"
+                    type="text"
+                    placeholder="e.g. Bella, Apollo"
+                    value={goatName}
+                    onChange={e => setGoatName(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
                     Breed *
@@ -339,6 +392,23 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                   >
                     <option value="Female">Female (Doe)</option>
                     <option value="Male">Male (Buck)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Herd Status *
+                  </label>
+                  <select
+                    id="select-goat-status"
+                    value={goatStatus}
+                    onChange={e => setGoatStatus(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Pregnant">Pregnant</option>
+                    <option value="Quarantine">Quarantine</option>
+                    <option value="Sold">Sold</option>
                   </select>
                 </div>
               </div>
@@ -491,18 +561,38 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Condition / Clinical Observation
-                </label>
-                <input
-                  id="input-health-condition"
-                  type="text"
-                  placeholder="e.g. Good health, or Weak / Fever"
-                  value={healthCondition}
-                  onChange={e => setHealthCondition(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Condition / Clinical Observation
+                  </label>
+                  <input
+                    id="input-health-condition"
+                    type="text"
+                    placeholder="e.g. Good health, or Weak / Fever"
+                    value={healthCondition}
+                    onChange={e => setHealthCondition(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Health Status *
+                  </label>
+                  <select
+                    id="select-health-status"
+                    value={healthStatus}
+                    onChange={e => setHealthStatus(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  >
+                    <option value="Healthy">Healthy / Normal</option>
+                    <option value="Under Treatment">Under Treatment</option>
+                    <option value="Critical">Critical</option>
+                    <option value="Recovered">Recovered</option>
+                    <option value="Observation">Observation</option>
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -708,6 +798,106 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                   type="date"
                   value={saleDate}
                   onChange={e => setSaleDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </>
+          )}
+
+          {/* TYPE: EXPENSE */}
+          {recordType === 'expense' && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Expense Category *
+                  </label>
+                  <select
+                    id="select-expense-category"
+                    value={expCategory}
+                    onChange={e => setExpCategory(e.target.value as ExpenseCategory)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  >
+                    <option value="Feed">🌾 Feed & Nutrition</option>
+                    <option value="Vet">🩺 Veterinary & Health</option>
+                    <option value="Equipment">🔧 Equipment & Hardware</option>
+                    <option value="Labor">👷 Farm Labor</option>
+                    <option value="Other">🏷️ Other Operating Cost</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Amount (Ksh) *
+                  </label>
+                  <input
+                    id="input-expense-amount"
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 8500"
+                    value={expAmount}
+                    onChange={e => setExpAmount(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Description / Item Title *
+                </label>
+                <input
+                  id="input-expense-title"
+                  type="text"
+                  placeholder="e.g. High-protein dairy meal & mineral blocks"
+                  value={expTitle}
+                  onChange={e => setExpTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Expense Date *
+                  </label>
+                  <input
+                    id="input-expense-date"
+                    type="date"
+                    value={expDate}
+                    onChange={e => setExpDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Receipt / Voucher #
+                  </label>
+                  <input
+                    id="input-expense-receipt"
+                    type="text"
+                    placeholder="e.g. REC-2026-904"
+                    value={expReceipt}
+                    onChange={e => setExpReceipt(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Notes / Supplier Details
+                </label>
+                <input
+                  id="input-expense-notes"
+                  type="text"
+                  placeholder="e.g. Purchased from Rift Valley Agrovet, Nakuru"
+                  value={expNotes}
+                  onChange={e => setExpNotes(e.target.value)}
                   className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>

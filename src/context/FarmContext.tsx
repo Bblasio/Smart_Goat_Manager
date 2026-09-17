@@ -1,0 +1,1235 @@
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import {
+  GoatRecord,
+  BreedingRecord,
+  HealthRecord,
+  SaleRecord,
+  WorkerRecord,
+  MilkRecord,
+  FarmUser
+} from '../types';
+import {
+  initialFarmUser,
+  initialGoats,
+  initialBreeding,
+  initialHealth,
+  initialSales,
+  initialWorkers,
+  initialMilk
+} from '../data/mockData';
+import {
+  auth,
+  rtdb,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+  ref,
+  onValue,
+  set,
+  push,
+  remove,
+  get,
+  User
+} from '../lib/firebase';
+
+export type SyncStatus = 'connected' | 'connecting' | 'local_fallback' | 'error';
+
+interface FarmContextType {
+  user: FarmUser | null;
+  firebaseUser: User | null;
+  isAuthenticated: boolean;
+  authLoading: boolean;
+  isDemoMode: boolean;
+  farmName: string;
+  daysActive: number;
+  syncStatus: SyncStatus;
+  syncError: string | null;
+  isFirebaseActive: boolean;
+  recordsLoaded: boolean;
+  goats: GoatRecord[];
+  breeding: BreedingRecord[];
+  health: HealthRecord[];
+  sales: SaleRecord[];
+  workers: WorkerRecord[];
+  milk: MilkRecord[];
+  login: (email: string, password?: string, farmName?: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, password: string, farmName: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  enterDemoMode: () => void;
+  addGoat: (goat: Omit<GoatRecord, 'id' | 'created_at'>) => Promise<void>;
+  deleteGoat: (id: string) => Promise<void>;
+  addBreeding: (breed: Omit<BreedingRecord, 'id'>) => Promise<void>;
+  updateBreeding: (id: string, breed: Partial<BreedingRecord>) => Promise<void>;
+  deleteBreeding: (id: string) => Promise<void>;
+  addHealth: (item: Omit<HealthRecord, 'id'>) => Promise<void>;
+  deleteHealth: (id: string) => Promise<void>;
+  addSale: (sale: Omit<SaleRecord, 'id'>) => Promise<void>;
+  deleteSale: (id: string) => Promise<void>;
+  addWorker: (worker: Omit<WorkerRecord, 'id'>) => Promise<void>;
+  deleteWorker: (id: string) => Promise<void>;
+  addMilk: (milkItem: Omit<MilkRecord, 'id'>) => Promise<void>;
+  deleteMilk: (id: string) => Promise<void>;
+  importBatchRecords: (records: {
+    goats?: Omit<GoatRecord, 'id' | 'created_at'>[];
+    breeding?: Omit<BreedingRecord, 'id'>[];
+    health?: Omit<HealthRecord, 'id'>[];
+    milk?: Omit<MilkRecord, 'id'>[];
+  }) => Promise<{ totalImported: number }>;
+  pushSeedDataToFirebase: () => Promise<{ success: boolean; message: string }>;
+  resetToSampleData: () => void;
+  refreshFromFirebase: () => Promise<void>;
+}
+
+const FarmContext = createContext<FarmContextType | undefined>(undefined);
+
+export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('connecting');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [isFirebaseActive, setIsFirebaseActive] = useState<boolean>(false);
+  const [recordsLoaded, setRecordsLoaded] = useState<boolean>(false);
+
+  // Demo mode flag
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    return localStorage.getItem('sgm_is_demo') === 'true';
+  });
+
+  // User state
+  const [user, setUser] = useState<FarmUser | null>(() => {
+    const isDemo = localStorage.getItem('sgm_is_demo') === 'true';
+    if (isDemo) {
+      return initialFarmUser;
+    }
+    const saved = localStorage.getItem('sgm_user');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // If it's the old mock user, discard it so user can see auth screen
+        if (parsed.uid === 'usr-default-01' || parsed.uid === 'usr-demo-farm') {
+          return null;
+        }
+        return parsed;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  // Herd and farm records
+  const [goats, setGoats] = useState<GoatRecord[]>(() => {
+    if (localStorage.getItem('sgm_is_demo') === 'true') {
+      return initialGoats;
+    }
+    return [];
+  });
+
+  const [breeding, setBreeding] = useState<BreedingRecord[]>(() => {
+    if (localStorage.getItem('sgm_is_demo') === 'true') {
+      return initialBreeding;
+    }
+    return [];
+  });
+
+  const [health, setHealth] = useState<HealthRecord[]>(() => {
+    if (localStorage.getItem('sgm_is_demo') === 'true') {
+      return initialHealth;
+    }
+    return [];
+  });
+
+  const [sales, setSales] = useState<SaleRecord[]>(() => {
+    if (localStorage.getItem('sgm_is_demo') === 'true') {
+      return initialSales;
+    }
+    return [];
+  });
+
+  const [workers, setWorkers] = useState<WorkerRecord[]>(() => {
+    if (localStorage.getItem('sgm_is_demo') === 'true') {
+      return initialWorkers;
+    }
+    return [];
+  });
+
+  const [milk, setMilk] = useState<MilkRecord[]>(() => {
+    if (localStorage.getItem('sgm_is_demo') === 'true') {
+      return initialMilk;
+    }
+    return [];
+  });
+
+  // Ref to track active UID to avoid stale closures
+  const activeUidRef = useRef<string | null>(null);
+  activeUidRef.current = firebaseUser?.uid || (isDemoMode ? 'usr-demo-farm' : null);
+
+  // Monitor connection to Firebase RTDB server
+  useEffect(() => {
+    const connectedRef = ref(rtdb, '.info/connected');
+    const unsubscribe = onValue(connectedRef, snap => {
+      const isConnected = snap.val() === true;
+      if (isConnected) {
+        setIsFirebaseActive(true);
+        if (firebaseUser) {
+          setSyncStatus('connected');
+        }
+      }
+    }, err => {
+      console.warn('Firebase RTDB .info/connected warning:', err.message);
+    });
+
+    return () => unsubscribe();
+  }, [firebaseUser]);
+
+  // Auth State Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async fbUser => {
+      setFirebaseUser(fbUser);
+      setAuthLoading(false);
+
+      if (fbUser) {
+        setIsDemoMode(false);
+        localStorage.removeItem('sgm_is_demo');
+        setIsFirebaseActive(true);
+        setSyncStatus('connecting');
+
+        // Fetch user profile from RTDB users/{uid}/user_profile
+        try {
+          const profileRef = ref(rtdb, `users/${fbUser.uid}/user_profile`);
+          const profileSnap = await get(profileRef);
+
+          let resolvedFarmName = fbUser.displayName || '';
+
+          if (profileSnap.exists()) {
+            const val = profileSnap.val();
+            resolvedFarmName = val.farm_name || val.farmName || resolvedFarmName;
+          }
+
+          if (!resolvedFarmName) {
+            // Check fallback path users/{uid}/profile
+            const altSnap = await get(ref(rtdb, `users/${fbUser.uid}/profile`));
+            if (altSnap.exists()) {
+              const val = altSnap.val();
+              resolvedFarmName = val.farm_name || val.farmName || resolvedFarmName;
+            }
+          }
+
+          if (!resolvedFarmName) {
+            // Clean fallback from email
+            const prefix = (fbUser.email || 'Farm').split('@')[0];
+            resolvedFarmName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm';
+          }
+
+          const currentProfile: FarmUser = {
+            uid: fbUser.uid,
+            email: fbUser.email || '',
+            farm_name: resolvedFarmName,
+            created_at: profileSnap.exists() && profileSnap.val().created_at
+              ? profileSnap.val().created_at
+              : new Date().toISOString(),
+          };
+
+          setUser(currentProfile);
+          localStorage.setItem('sgm_user', JSON.stringify(currentProfile));
+
+          // Ensure profile is saved to RTDB if not present
+          if (!profileSnap.exists()) {
+            set(profileRef, {
+              farm_name: currentProfile.farm_name,
+              email: currentProfile.email,
+              created_at: currentProfile.created_at,
+            }).catch(e => console.warn('Could not auto-write profile to RTDB:', e));
+          }
+        } catch (err: any) {
+          console.warn('Firebase profile fetch notice:', err.message);
+          // If profile read failed, construct fallback from Firebase Auth User
+          const prefix = (fbUser.email || 'My').split('@')[0];
+          const fallbackName = fbUser.displayName || (prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm');
+          const fallbackUser: FarmUser = {
+            uid: fbUser.uid,
+            email: fbUser.email || '',
+            farm_name: fallbackName,
+            created_at: new Date().toISOString(),
+          };
+          setUser(fallbackUser);
+        }
+      } else {
+        // No Firebase user
+        const demoActive = localStorage.getItem('sgm_is_demo') === 'true';
+        if (demoActive) {
+          setIsDemoMode(true);
+          setUser(initialFarmUser);
+          setGoats(initialGoats);
+          setBreeding(initialBreeding);
+          setHealth(initialHealth);
+          setSales(initialSales);
+          setWorkers(initialWorkers);
+          setMilk(initialMilk);
+          setSyncStatus('local_fallback');
+          setRecordsLoaded(true);
+        } else {
+          setUser(null);
+          setGoats([]);
+          setBreeding([]);
+          setHealth([]);
+          setSales([]);
+          setWorkers([]);
+          setMilk([]);
+          setSyncStatus('local_fallback');
+          setRecordsLoaded(true);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Sync with Firebase Realtime Database for active authenticated user
+  useEffect(() => {
+    if (!firebaseUser) {
+      if (isDemoMode) {
+        setSyncStatus('local_fallback');
+        setRecordsLoaded(true);
+      }
+      return;
+    }
+
+    const uid = firebaseUser.uid;
+    setSyncStatus('connecting');
+    setSyncError(null);
+
+    // Primary listener on users/{uid}
+    const userRootRef = ref(rtdb, `users/${uid}`);
+
+    const unsubscribe = onValue(
+      userRootRef,
+      snapshot => {
+        setSyncStatus('connected');
+        setIsFirebaseActive(true);
+        setSyncError(null);
+        setRecordsLoaded(true);
+
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+
+          // Sync farm name from profile if present
+          const profile = userData.user_profile || userData.profile;
+          if (profile && (profile.farm_name || profile.farmName)) {
+            const cloudFarmName = profile.farm_name || profile.farmName;
+            setUser(prev => {
+              if (prev && prev.farm_name !== cloudFarmName) {
+                const updated = { ...prev, farm_name: cloudFarmName };
+                localStorage.setItem('sgm_user', JSON.stringify(updated));
+                return updated;
+              }
+              return prev;
+            });
+          }
+
+          // Records may be in userData.records or directly in userData
+          const recordsContainer = userData.records || userData;
+
+          // Parse Goats
+          if (recordsContainer.goats) {
+            const rawGoats = recordsContainer.goats;
+            const parsedGoats: GoatRecord[] = Object.entries(rawGoats).map(([key, val]: [string, any]) => ({
+              id: key,
+              tag_number: val.tag_number || val.tagNumber || val.tag || val.tag_no || key,
+              breed: val.breed || 'Boer',
+              gender: val.gender || val.sex || 'Female',
+              dob: val.dob || val.date_of_birth || new Date().toISOString().split('T')[0],
+              created_at: val.created_at || val.createdAt || new Date().toISOString(),
+              weight_kg: val.weight_kg != null ? Number(val.weight_kg) : (val.weight != null ? Number(val.weight) : 45),
+              status: val.status || 'Active',
+            }));
+            setGoats(parsedGoats);
+          } else {
+            // Explicitly set to empty array if no goats under this account
+            setGoats([]);
+          }
+
+          // Parse Breeding
+          if (recordsContainer.breeding) {
+            const rawBreeding = recordsContainer.breeding;
+            const parsedBreeding: BreedingRecord[] = Object.entries(rawBreeding).map(([key, val]: [string, any]) => ({
+              id: key,
+              female_id: val.female_id || val.femaleId || val.dam || '',
+              male_id: val.male_id || val.maleId || val.sire || '',
+              mating_date: val.mating_date || val.matingDate || val.date || '',
+              expected_birth: val.expected_birth || val.expectedBirth || val.kidding_date || '',
+              gestation_days: Number(val.gestation_days || val.gestationDays || 150),
+              status: val.status || 'Active',
+              notes: val.notes || '',
+              actual_birth_date: val.actual_birth_date || val.actualBirthDate || undefined,
+              kids_born: val.kids_born != null ? Number(val.kids_born) : undefined,
+            }));
+            setBreeding(parsedBreeding);
+          } else {
+            setBreeding([]);
+          }
+
+          // Parse Health
+          if (recordsContainer.health) {
+            const rawHealth = recordsContainer.health;
+            const parsedHealth: HealthRecord[] = Object.entries(rawHealth).map(([key, val]: [string, any]) => ({
+              id: key,
+              goat_id: val.goat_id || val.goatId || '',
+              condition: val.condition || val.diagnosis || '',
+              treatment: val.treatment || val.medication || '',
+              checkup_date: val.checkup_date || val.checkupDate || val.date || '',
+              checkup_type: val.checkup_type || val.checkupType || 'Routine',
+              is_pregnant: Boolean(val.is_pregnant || val.pregnant),
+              fetal_age_days: val.fetal_age_days != null ? Number(val.fetal_age_days) : undefined,
+              custom_gestation_days: val.custom_gestation_days != null ? Number(val.custom_gestation_days) : undefined,
+              vet_name: val.vet_name || val.vetName || '',
+            }));
+            setHealth(parsedHealth);
+          } else {
+            setHealth([]);
+          }
+
+          // Parse Sales
+          if (recordsContainer.sales) {
+            const rawSales = recordsContainer.sales;
+            const parsedSales: SaleRecord[] = Object.entries(rawSales).map(([key, val]: [string, any]) => ({
+              id: key,
+              goat_id: val.goat_id || val.goatId || '',
+              buyer_name: val.buyer_name || val.buyer || '',
+              price: Number(val.price) || 0,
+              sale_date: val.sale_date || val.date || '',
+            }));
+            setSales(parsedSales);
+          } else {
+            setSales([]);
+          }
+
+          // Parse Workers
+          if (recordsContainer.workers) {
+            const rawWorkers = recordsContainer.workers;
+            const parsedWorkers: WorkerRecord[] = Object.entries(rawWorkers).map(([key, val]: [string, any]) => ({
+              id: key,
+              full_name: val.full_name || val.name || '',
+              phone: val.phone || val.phoneNumber || '',
+              location: val.location || val.address || '',
+            }));
+            setWorkers(parsedWorkers);
+          } else {
+            setWorkers([]);
+          }
+
+          // Parse Milk
+          if (recordsContainer.milk) {
+            const rawMilk = recordsContainer.milk;
+            const parsedMilk: MilkRecord[] = Object.entries(rawMilk).map(([key, val]: [string, any]) => ({
+              id: key,
+              goat_id: val.goat_id || val.goatId || '',
+              date: val.date || '',
+              morning_liters: Number(val.morning_liters || val.morning) || 0,
+              evening_liters: Number(val.evening_liters || val.evening) || 0,
+              total_liters: Number(val.total_liters) || (Number(val.morning_liters || 0) + Number(val.evening_liters || 0)),
+            }));
+            setMilk(parsedMilk);
+          } else {
+            setMilk([]);
+          }
+        } else {
+          // Snapshot does not exist -> This account has zero records in RTDB
+          setGoats([]);
+          setBreeding([]);
+          setHealth([]);
+          setSales([]);
+          setWorkers([]);
+          setMilk([]);
+        }
+      },
+      error => {
+        console.warn('Realtime Database listener error:', error.message);
+        setSyncStatus('error');
+        setSyncError(error.message);
+        setRecordsLoaded(true);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firebaseUser?.uid]);
+
+  // AUTH ACTIONS
+  const login = async (email: string, password?: string, farmName?: string): Promise<{ success: boolean; error?: string }> => {
+    // Demo Mode Trigger
+    if (!password || password === 'demo' || email.includes('demo') || email === 'ochiengblasio@farm.com') {
+      enterDemoMode();
+      return { success: true };
+    }
+
+    try {
+      setIsDemoMode(false);
+      localStorage.removeItem('sgm_is_demo');
+
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const fbUser = userCredential.user;
+      setFirebaseUser(fbUser);
+      setIsFirebaseActive(true);
+
+      // Attempt to load profile immediately from RTDB
+      let resolvedFarmName = fbUser.displayName || '';
+      try {
+        const snap = await get(ref(rtdb, `users/${fbUser.uid}/user_profile`));
+        if (snap.exists()) {
+          const val = snap.val();
+          resolvedFarmName = val.farm_name || val.farmName || resolvedFarmName;
+        }
+      } catch (e) {
+        console.warn('Could not read user_profile on login:', e);
+      }
+
+      if (!resolvedFarmName) {
+        const prefix = email.split('@')[0];
+        resolvedFarmName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm';
+      }
+
+      const currentProfile: FarmUser = {
+        uid: fbUser.uid,
+        email: fbUser.email || email,
+        farm_name: resolvedFarmName,
+        created_at: new Date().toISOString(),
+      };
+
+      setUser(currentProfile);
+      localStorage.setItem('sgm_user', JSON.stringify(currentProfile));
+
+      return { success: true };
+    } catch (err: any) {
+      // Don't flood console.error for normal credential validation mismatches
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        console.warn('Auth credential mismatch:', err.code);
+
+        // If the user entered an email and password of at least 6 characters that does not exist yet,
+        // seamlessly attempt to create their farm account so they are not blocked by manual tab switching
+        if (password && password.length >= 6) {
+          try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+            const fbUser = userCredential.user;
+            const prefix = email.split('@')[0];
+            const resolvedFarmName = farmName?.trim() || (prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm');
+
+            try {
+              await updateProfile(fbUser, { displayName: resolvedFarmName });
+            } catch {
+              // ignore display name error
+            }
+
+            const newProfile: FarmUser = {
+              uid: fbUser.uid,
+              email: fbUser.email || email,
+              farm_name: resolvedFarmName,
+              created_at: new Date().toISOString(),
+            };
+
+            setFirebaseUser(fbUser);
+            setUser(newProfile);
+            setIsFirebaseActive(true);
+            localStorage.setItem('sgm_user', JSON.stringify(newProfile));
+
+            // Initialize clean state for the new user
+            setGoats([]);
+            setBreeding([]);
+            setHealth([]);
+            setSales([]);
+            setWorkers([]);
+            setMilk([]);
+            setRecordsLoaded(true);
+
+            await set(ref(rtdb, `users/${fbUser.uid}/user_profile`), {
+              farm_name: newProfile.farm_name,
+              email: newProfile.email,
+              created_at: newProfile.created_at,
+              updated_at: new Date().toISOString(),
+            });
+
+            return { success: true };
+          } catch (createErr: any) {
+            if (createErr.code === 'auth/email-already-in-use') {
+              // The account actually exists, so the password was simply incorrect
+              return {
+                success: false,
+                error: 'Incorrect password for this registered farm account. Please verify your password or use "Forgot Password".',
+              };
+            }
+            console.warn('Seamless registration fallback notice:', createErr.code);
+          }
+        }
+
+        return {
+          success: false,
+          error: 'Invalid email or password. If you are creating a new account, ensure your password is at least 6 characters, or click "Create Account".',
+        };
+      }
+
+      console.warn('Login error:', err.message || err);
+      const userFriendlyMessage = err.message || 'Failed to sign in. Please verify your connection and try again.';
+      return { success: false, error: userFriendlyMessage };
+    }
+  };
+
+  const signup = async (email: string, password: string, farmName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      setIsDemoMode(false);
+      localStorage.removeItem('sgm_is_demo');
+
+      const cleanedFarmName = farmName.trim() || 'Smart Goat Farm';
+
+      // 1. Create account in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const fbUser = userCredential.user;
+
+      // 2. Set Firebase Auth displayName to the user's farm name
+      try {
+        await updateProfile(fbUser, { displayName: cleanedFarmName });
+      } catch (err) {
+        console.warn('Could not update Firebase displayName:', err);
+      }
+
+      const newProfile: FarmUser = {
+        uid: fbUser.uid,
+        email: fbUser.email || email,
+        farm_name: cleanedFarmName,
+        created_at: new Date().toISOString(),
+      };
+
+      // 3. Immediately set in-memory state with the REAL registered farm name
+      setFirebaseUser(fbUser);
+      setUser(newProfile);
+      localStorage.setItem('sgm_user', JSON.stringify(newProfile));
+
+      // 4. Reset records to empty for new account (NOT demo data!)
+      setGoats([]);
+      setBreeding([]);
+      setHealth([]);
+      setSales([]);
+      setWorkers([]);
+      setMilk([]);
+      setRecordsLoaded(true);
+
+      // 5. Store user_profile in Firebase Realtime Database
+      await set(ref(rtdb, `users/${fbUser.uid}/user_profile`), {
+        farm_name: newProfile.farm_name,
+        email: newProfile.email,
+        created_at: newProfile.created_at,
+        updated_at: new Date().toISOString(),
+      });
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      let userFriendlyMessage = err.message || 'Failed to create account';
+      if (err.code === 'auth/email-already-in-use') {
+        userFriendlyMessage = 'This email is already registered. Please sign in or use a different email.';
+      } else if (err.code === 'auth/weak-password') {
+        userFriendlyMessage = 'Password should be at least 6 characters.';
+      }
+      return { success: false, error: userFriendlyMessage };
+    }
+  };
+
+  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      return { success: true };
+    } catch (err: any) {
+      console.error('Firebase password reset error:', err);
+      return { success: false, error: err.message || 'Could not send reset email' };
+    }
+  };
+
+  const enterDemoMode = () => {
+    setIsDemoMode(true);
+    localStorage.setItem('sgm_is_demo', 'true');
+    setUser(initialFarmUser);
+    setGoats(initialGoats);
+    setBreeding(initialBreeding);
+    setHealth(initialHealth);
+    setSales(initialSales);
+    setWorkers(initialWorkers);
+    setMilk(initialMilk);
+    setSyncStatus('local_fallback');
+    setRecordsLoaded(true);
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch {
+      // ignore
+    }
+    setFirebaseUser(null);
+    setUser(null);
+    setIsDemoMode(false);
+    localStorage.removeItem('sgm_user');
+    localStorage.removeItem('sgm_is_demo');
+    setGoats([]);
+    setBreeding([]);
+    setHealth([]);
+    setSales([]);
+    setWorkers([]);
+    setMilk([]);
+    setSyncStatus('local_fallback');
+    setRecordsLoaded(true);
+  };
+
+  const refreshFromFirebase = async () => {
+    if (!firebaseUser) return;
+    try {
+      setSyncStatus('connecting');
+      const snap = await get(ref(rtdb, `users/${firebaseUser.uid}`));
+      if (snap.exists()) {
+        setSyncStatus('connected');
+        setIsFirebaseActive(true);
+      }
+    } catch (e: any) {
+      setSyncStatus('error');
+      setSyncError(e.message);
+    }
+  };
+
+  // MUTATION ACTIONS (Directly synced to Firebase Realtime Database)
+  const addGoat = async (data: Omit<GoatRecord, 'id' | 'created_at'>) => {
+    const activeUid = firebaseUser?.uid;
+    const createdAt = new Date().toISOString();
+
+    if (activeUid) {
+      try {
+        const goatsRef = ref(rtdb, `users/${activeUid}/records/goats`);
+        const newRef = push(goatsRef);
+        await set(newRef, {
+          tag_number: data.tag_number,
+          breed: data.breed,
+          gender: data.gender,
+          dob: data.dob,
+          created_at: createdAt,
+          weight_kg: data.weight_kg || 45,
+          status: data.status || 'Active',
+        });
+        return;
+      } catch (err) {
+        console.warn('Firebase addGoat write error, falling back locally:', err);
+      }
+    }
+
+    const newGoat: GoatRecord = {
+      ...data,
+      id: 'gt-' + Date.now().toString(36),
+      created_at: createdAt,
+    };
+    setGoats(prev => [newGoat, ...prev]);
+  };
+
+  const deleteGoat = async (id: string) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/goats/${id}`));
+        return;
+      } catch (err) {
+        console.warn('Firebase deleteGoat error:', err);
+      }
+    }
+    setGoats(prev => prev.filter(g => g.id !== id));
+  };
+
+  const addBreeding = async (data: Omit<BreedingRecord, 'id'>) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        const breedRef = ref(rtdb, `users/${activeUid}/records/breeding`);
+        const newRef = push(breedRef);
+        await set(newRef, {
+          ...data,
+          gestation_days: data.gestation_days || 150,
+          status: data.status || 'Active',
+        });
+        return;
+      } catch (err) {
+        console.warn('Firebase addBreeding error:', err);
+      }
+    }
+
+    const newRecord: BreedingRecord = {
+      ...data,
+      id: 'brd-' + Date.now().toString(36),
+      gestation_days: data.gestation_days || 150,
+      status: data.status || 'Active',
+    };
+    setBreeding(prev => [newRecord, ...prev]);
+  };
+
+  const updateBreeding = async (id: string, updates: Partial<BreedingRecord>) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        const itemRef = ref(rtdb, `users/${activeUid}/records/breeding/${id}`);
+        const snap = await get(itemRef);
+        if (snap.exists()) {
+          await set(itemRef, { ...snap.val(), ...updates });
+        }
+        return;
+      } catch (err) {
+        console.warn('Firebase updateBreeding error:', err);
+      }
+    }
+    setBreeding(prev => prev.map(b => (b.id === id ? { ...b, ...updates } : b)));
+  };
+
+  const deleteBreeding = async (id: string) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/breeding/${id}`));
+        return;
+      } catch (err) {
+        console.warn('Firebase deleteBreeding error:', err);
+      }
+    }
+    setBreeding(prev => prev.filter(b => b.id !== id));
+  };
+
+  const addHealth = async (data: Omit<HealthRecord, 'id'>) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        const healthRef = ref(rtdb, `users/${activeUid}/records/health`);
+        const newRef = push(healthRef);
+        await set(newRef, data);
+        return;
+      } catch (err) {
+        console.warn('Firebase addHealth error:', err);
+      }
+    }
+
+    const newRecord: HealthRecord = {
+      ...data,
+      id: 'hlt-' + Date.now().toString(36),
+    };
+    setHealth(prev => [newRecord, ...prev]);
+  };
+
+  const deleteHealth = async (id: string) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/health/${id}`));
+        return;
+      } catch (err) {
+        console.warn('Firebase deleteHealth error:', err);
+      }
+    }
+    setHealth(prev => prev.filter(h => h.id !== id));
+  };
+
+  const addSale = async (data: Omit<SaleRecord, 'id'>) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        const salesRef = ref(rtdb, `users/${activeUid}/records/sales`);
+        const newRef = push(salesRef);
+        await set(newRef, data);
+        return;
+      } catch (err) {
+        console.warn('Firebase addSale error:', err);
+      }
+    }
+
+    const newRecord: SaleRecord = {
+      ...data,
+      id: 'sale-' + Date.now().toString(36),
+    };
+    setSales(prev => [newRecord, ...prev]);
+  };
+
+  const deleteSale = async (id: string) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/sales/${id}`));
+        return;
+      } catch (err) {
+        console.warn('Firebase deleteSale error:', err);
+      }
+    }
+    setSales(prev => prev.filter(s => s.id !== id));
+  };
+
+  const addWorker = async (data: Omit<WorkerRecord, 'id'>) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        const workersRef = ref(rtdb, `users/${activeUid}/records/workers`);
+        const newRef = push(workersRef);
+        await set(newRef, data);
+        return;
+      } catch (err) {
+        console.warn('Firebase addWorker error:', err);
+      }
+    }
+
+    const newRecord: WorkerRecord = {
+      ...data,
+      id: 'wrk-' + Date.now().toString(36),
+    };
+    setWorkers(prev => [newRecord, ...prev]);
+  };
+
+  const deleteWorker = async (id: string) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/workers/${id}`));
+        return;
+      } catch (err) {
+        console.warn('Firebase deleteWorker error:', err);
+      }
+    }
+    setWorkers(prev => prev.filter(w => w.id !== id));
+  };
+
+  const addMilk = async (data: Omit<MilkRecord, 'id'>) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        const milkRef = ref(rtdb, `users/${activeUid}/records/milk`);
+        const newRef = push(milkRef);
+        await set(newRef, data);
+        return;
+      } catch (err) {
+        console.warn('Firebase addMilk error:', err);
+      }
+    }
+
+    const newRecord: MilkRecord = {
+      ...data,
+      id: 'mlk-' + Date.now().toString(36),
+    };
+    setMilk(prev => [newRecord, ...prev]);
+  };
+
+  const deleteMilk = async (id: string) => {
+    const activeUid = firebaseUser?.uid;
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/milk/${id}`));
+        return;
+      } catch (err) {
+        console.warn('Delete milk error:', err);
+      }
+    }
+    setMilk(prev => prev.filter(m => m.id !== id));
+  };
+
+  const importBatchRecords = async (records: {
+    goats?: Omit<GoatRecord, 'id' | 'created_at'>[];
+    breeding?: Omit<BreedingRecord, 'id'>[];
+    health?: Omit<HealthRecord, 'id'>[];
+    milk?: Omit<MilkRecord, 'id'>[];
+  }): Promise<{ totalImported: number }> => {
+    let count = 0;
+    const activeUid = firebaseUser?.uid;
+    const timestamp = new Date().toISOString();
+
+    // 1. Goats
+    if (records.goats && records.goats.length > 0) {
+      const newGoatsList: GoatRecord[] = [];
+      for (const g of records.goats) {
+        count++;
+        if (activeUid) {
+          try {
+            const goatsRef = ref(rtdb, `users/${activeUid}/records/goats`);
+            const newRef = push(goatsRef);
+            await set(newRef, {
+              tag_number: g.tag_number,
+              breed: g.breed,
+              gender: g.gender,
+              dob: g.dob,
+              created_at: timestamp,
+              weight_kg: g.weight_kg || 45,
+              status: g.status || 'Active',
+            });
+          } catch (err) {
+            console.warn('Batch goat cloud write fallback:', err);
+          }
+        }
+        newGoatsList.push({
+          ...g,
+          id: 'gt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+          created_at: timestamp,
+        });
+      }
+      if (!activeUid || syncStatus !== 'connected') {
+        setGoats(prev => [...newGoatsList, ...prev]);
+      }
+    }
+
+    // 2. Breeding
+    if (records.breeding && records.breeding.length > 0) {
+      const newBreedingList: BreedingRecord[] = [];
+      for (const b of records.breeding) {
+        count++;
+        if (activeUid) {
+          try {
+            const breedRef = ref(rtdb, `users/${activeUid}/records/breeding`);
+            const newRef = push(breedRef);
+            await set(newRef, {
+              ...b,
+              gestation_days: b.gestation_days || 150,
+              status: b.status || 'Active',
+            });
+          } catch (err) {
+            console.warn('Batch breeding cloud write fallback:', err);
+          }
+        }
+        newBreedingList.push({
+          ...b,
+          id: 'brd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+          gestation_days: b.gestation_days || 150,
+          status: b.status || 'Active',
+        });
+      }
+      if (!activeUid || syncStatus !== 'connected') {
+        setBreeding(prev => [...newBreedingList, ...prev]);
+      }
+    }
+
+    // 3. Health
+    if (records.health && records.health.length > 0) {
+      const newHealthList: HealthRecord[] = [];
+      for (const h of records.health) {
+        count++;
+        if (activeUid) {
+          try {
+            const healthRef = ref(rtdb, `users/${activeUid}/records/health`);
+            const newRef = push(healthRef);
+            await set(newRef, {
+              ...h,
+              checkup_type: h.checkup_type || 'Routine',
+              is_pregnant: Boolean(h.is_pregnant),
+            });
+          } catch (err) {
+            console.warn('Batch health cloud write fallback:', err);
+          }
+        }
+        newHealthList.push({
+          ...h,
+          id: 'hlth-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+        });
+      }
+      if (!activeUid || syncStatus !== 'connected') {
+        setHealth(prev => [...newHealthList, ...prev]);
+      }
+    }
+
+    // 4. Milk
+    if (records.milk && records.milk.length > 0) {
+      const newMilkList: MilkRecord[] = [];
+      for (const m of records.milk) {
+        count++;
+        if (activeUid) {
+          try {
+            const milkRef = ref(rtdb, `users/${activeUid}/records/milk`);
+            const newRef = push(milkRef);
+            await set(newRef, { ...m });
+          } catch (err) {
+            console.warn('Batch milk cloud write fallback:', err);
+          }
+        }
+        newMilkList.push({
+          ...m,
+          id: 'mlk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+        });
+      }
+      if (!activeUid || syncStatus !== 'connected') {
+        setMilk(prev => [...newMilkList, ...prev]);
+      }
+    }
+
+    return { totalImported: count };
+  };
+
+  // Seed initial sample data to Firebase for the current logged-in account
+  const pushSeedDataToFirebase = async (): Promise<{ success: boolean; message: string }> => {
+    const activeUid = firebaseUser?.uid;
+    if (!activeUid) {
+      return { success: false, message: 'Please log in with your farm account first to sync data.' };
+    }
+
+    try {
+      const recordsRef = ref(rtdb, `users/${activeUid}/records`);
+      const goatsObj: Record<string, any> = {};
+      initialGoats.forEach(g => {
+        goatsObj[g.id] = {
+          tag_number: g.tag_number,
+          breed: g.breed,
+          gender: g.gender,
+          dob: g.dob,
+          created_at: g.created_at,
+          weight_kg: g.weight_kg || 45,
+          status: g.status || 'Active',
+        };
+      });
+
+      const breedingObj: Record<string, any> = {};
+      initialBreeding.forEach(b => {
+        breedingObj[b.id] = {
+          female_id: b.female_id,
+          male_id: b.male_id,
+          mating_date: b.mating_date,
+          expected_birth: b.expected_birth,
+          gestation_days: b.gestation_days || 150,
+          status: b.status || 'Active',
+          notes: b.notes || '',
+        };
+      });
+
+      const healthObj: Record<string, any> = {};
+      initialHealth.forEach(h => {
+        healthObj[h.id] = {
+          goat_id: h.goat_id,
+          condition: h.condition,
+          treatment: h.treatment,
+          checkup_date: h.checkup_date,
+          checkup_type: h.checkup_type || 'Routine',
+          is_pregnant: h.is_pregnant || false,
+          fetal_age_days: h.fetal_age_days || null,
+          custom_gestation_days: h.custom_gestation_days || null,
+          vet_name: h.vet_name || '',
+        };
+      });
+
+      const salesObj: Record<string, any> = {};
+      initialSales.forEach(s => {
+        salesObj[s.id] = {
+          goat_id: s.goat_id,
+          buyer_name: s.buyer_name,
+          price: s.price,
+          sale_date: s.sale_date,
+        };
+      });
+
+      const workersObj: Record<string, any> = {};
+      initialWorkers.forEach(w => {
+        workersObj[w.id] = {
+          full_name: w.full_name,
+          phone: w.phone,
+          location: w.location,
+        };
+      });
+
+      const milkObj: Record<string, any> = {};
+      initialMilk.forEach(m => {
+        milkObj[m.id] = {
+          goat_id: m.goat_id,
+          date: m.date,
+          morning_liters: m.morning_liters,
+          evening_liters: m.evening_liters,
+          total_liters: m.total_liters,
+        };
+      });
+
+      await set(recordsRef, {
+        goats: goatsObj,
+        breeding: breedingObj,
+        health: healthObj,
+        sales: salesObj,
+        workers: workersObj,
+        milk: milkObj,
+      });
+
+      await set(ref(rtdb, `users/${activeUid}/user_profile`), {
+        farm_name: user?.farm_name || 'My Goat Farm',
+        email: user?.email || firebaseUser.email || '',
+        created_at: user?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      return { success: true, message: 'Sample farm records successfully uploaded to your cloud database!' };
+    } catch (err: any) {
+      console.error('pushSeedDataToFirebase error:', err);
+      return { success: false, message: err.message || 'Failed to write to cloud database' };
+    }
+  };
+
+  const resetToSampleData = () => {
+    if (isDemoMode) {
+      setUser(initialFarmUser);
+      setGoats(initialGoats);
+      setBreeding(initialBreeding);
+      setHealth(initialHealth);
+      setSales(initialSales);
+      setWorkers(initialWorkers);
+      setMilk(initialMilk);
+    }
+  };
+
+  const createdDate = user?.created_at ? new Date(user.created_at) : new Date();
+  const daysActive = Math.max(1, Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+  const isAuthenticated = !authLoading && ((!!firebaseUser && !!user) || isDemoMode);
+
+  return (
+    <FarmContext.Provider
+      value={{
+        user,
+        firebaseUser,
+        isAuthenticated,
+        authLoading,
+        isDemoMode,
+        farmName: user?.farm_name || (isDemoMode ? 'Sunny Ridge Goat Farm' : 'Smart Goat Farm'),
+        daysActive,
+        syncStatus,
+        syncError,
+        isFirebaseActive,
+        recordsLoaded,
+        goats,
+        breeding,
+        health,
+        sales,
+        workers,
+        milk,
+        login,
+        signup,
+        resetPassword,
+        logout,
+        enterDemoMode,
+        addGoat,
+        deleteGoat,
+        addBreeding,
+        updateBreeding,
+        deleteBreeding,
+        addHealth,
+        deleteHealth,
+        addSale,
+        deleteSale,
+        addWorker,
+        deleteWorker,
+        addMilk,
+        deleteMilk,
+        importBatchRecords,
+        pushSeedDataToFirebase,
+        resetToSampleData,
+        refreshFromFirebase,
+      }}
+    >
+      {children}
+    </FarmContext.Provider>
+  );
+};
+
+export const useFarm = () => {
+  const context = useContext(FarmContext);
+  if (!context) {
+    throw new Error('useFarm must be used within a FarmProvider');
+  }
+  return context;
+};

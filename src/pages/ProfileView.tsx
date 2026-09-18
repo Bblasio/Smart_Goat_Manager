@@ -300,7 +300,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
                 <div className="text-xs text-stone-500 font-medium">Farm Owner / Lead Operator</div>
                 <div className="text-base font-bold text-stone-900 mt-0.5">
-                  {user?.owner_name || 'Blasio Ochieng'}
+                  {user?.owner_name || 'Farm Manager'}
                 </div>
                 <div className="text-xs text-emerald-700 font-medium mt-1">Farm Manager & Herd Director</div>
               </div>

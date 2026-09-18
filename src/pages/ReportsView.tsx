@@ -16,7 +16,9 @@ import {
   AlertCircle,
   Download,
   FileText,
-  DollarSign
+  DollarSign,
+  Stethoscope,
+  Printer
 } from 'lucide-react';
 import {
   LineChart,
@@ -38,7 +40,7 @@ export const ReportsView: React.FC = () => {
   const [expandPredictedBirths, setExpandPredictedBirths] = useState(true);
   const [expandAnomalyDetection, setExpandAnomalyDetection] = useState(true);
   const [expandRevenueForecast, setExpandRevenueForecast] = useState(true);
-  const [expandAIRecommendations, setExpandAIRecommendations] = useState(true);
+  const [expandFarmRecommendations, setExpandFarmRecommendations] = useState(true);
   const [expandFarmSummary, setExpandFarmSummary] = useState(true);
 
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export const ReportsView: React.FC = () => {
     return `"${str}"`;
   };
 
-  const handleDownloadReport = (format: 'all' | 'sales' | 'gestation' | 'inventory' | 'financial' = 'all') => {
+  const handleDownloadReport = (format: 'all' | 'sales' | 'gestation' | 'inventory' | 'financial' | 'herd_health' | 'herd' | 'health' = 'herd_health') => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const dateReadable = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
@@ -64,18 +66,99 @@ export const ReportsView: React.FC = () => {
     const totalExp = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const netProfit = totalRev - totalExp;
 
-    if (format === 'all') {
+    if (format === 'all' || format === 'herd_health') {
       csv += `# SMART GOAT MANAGEMENT - ${farmName.toUpperCase()} EXPORT\n`;
       csv += `# Generated Date: ${dateReadable} at ${new Date().toLocaleTimeString()}\n`;
       csv += `# Farm Owner: ${user?.owner_name || 'Registered Farm Manager'}\n`;
       csv += `# Location: ${user?.location || 'Main Farm'}\n`;
       csv += `# Total Registered Goats: ${goats.length}\n`;
-      csv += `# Total Revenue: Ksh ${totalRev.toLocaleString()}\n`;
-      csv += `# Total Operating Expenses: Ksh ${totalExp.toLocaleString()}\n`;
-      csv += `# Net Farm Profit: Ksh ${netProfit.toLocaleString()}\n\n`;
+      csv += `# Total Health Records: ${health.length}\n`;
+      if (format === 'all') {
+        csv += `# Total Revenue: Ksh ${totalRev.toLocaleString()}\n`;
+        csv += `# Total Operating Expenses: Ksh ${totalExp.toLocaleString()}\n`;
+        csv += `# Net Farm Profit: Ksh ${netProfit.toLocaleString()}\n`;
+      }
+      csv += `\n`;
     }
 
+    // 1. HERD INVENTORY SECTION
+    if (format === 'all' || format === 'herd_health' || format === 'herd' || format === 'inventory') {
+      if (format === 'herd') {
+        csv += `# ${farmName.toUpperCase()} - HERD LIVESTOCK INVENTORY\n`;
+        csv += `# Export Date: ${dateReadable}\n`;
+        csv += `# Total Registered Goats: ${goats.length}\n\n`;
+      }
+      csv += `--- HERD LIVESTOCK INVENTORY ---\n`;
+      csv += ['Goat Tag ID', 'Name / Alias', 'Breed', 'Gender', 'Date of Birth', 'Weight (kg)', 'Current Status', 'Registration Date'].map(escapeCsv).join(',') + '\n';
+      if (goats.length === 0) {
+        csv += ['No goats registered in herd', '', '', '', '', '', '', ''].map(escapeCsv).join(',') + '\n';
+      } else {
+        goats.forEach(g => {
+          csv += [
+            g.tag_number,
+            g.name || '—',
+            g.breed,
+            g.gender,
+            g.dob,
+            g.weight_kg != null ? g.weight_kg : '—',
+            g.status || 'Active',
+            g.created_at || '—',
+          ].map(escapeCsv).join(',') + '\n';
+        });
+      }
+      csv += '\n';
+    }
+
+    // 2. HEALTH & MEDICAL SECTION
+    if (format === 'all' || format === 'herd_health' || format === 'health' || format === 'inventory') {
+      if (format === 'health') {
+        csv += `# ${farmName.toUpperCase()} - VETERINARY & HEALTH RECORDS\n`;
+        csv += `# Export Date: ${dateReadable}\n`;
+        csv += `# Total Health Interventions: ${health.length}\n\n`;
+      }
+      csv += `--- VETERINARY & HEALTH RECORDS ---\n`;
+      csv += [
+        'Health ID',
+        'Goat Tag ID',
+        'Checkup Date',
+        'Diagnosis / Condition',
+        'Treatment Administered',
+        'Health Status',
+        'Checkup Type',
+        'Attending Vet',
+        'Pregnant',
+        'Fetal Age (Days)',
+      ].map(escapeCsv).join(',') + '\n';
+      if (health.length === 0) {
+        csv += ['No health records registered', '', '', '', '', '', '', '', '', ''].map(escapeCsv).join(',') + '\n';
+      } else {
+        health.forEach(h => {
+          csv += [
+            h.id,
+            h.goat_id,
+            h.checkup_date,
+            h.condition,
+            h.treatment,
+            h.status || 'Healthy',
+            h.checkup_type || 'Routine',
+            h.vet_name || '—',
+            h.is_pregnant ? 'Yes' : 'No',
+            h.fetal_age_days != null ? h.fetal_age_days : '—',
+          ].map(escapeCsv).join(',') + '\n';
+        });
+      }
+      csv += '\n';
+    }
+
+    // 3. FINANCIAL EXPENSES
     if (format === 'all' || format === 'financial') {
+      if (format === 'financial') {
+        csv += `# ${farmName.toUpperCase()} - FINANCIAL LEDGER & OPERATING EXPENSES\n`;
+        csv += `# Export Date: ${dateReadable}\n`;
+        csv += `# Total Revenue: Ksh ${totalRev.toLocaleString()}\n`;
+        csv += `# Total Expenses: Ksh ${totalExp.toLocaleString()}\n`;
+        csv += `# Net Profit: Ksh ${netProfit.toLocaleString()}\n\n`;
+      }
       csv += `--- OPERATING EXPENSES (FEED, VET, EQUIPMENT, LABOR) ---\n`;
       csv += ['Expense ID', 'Category', 'Description / Item', 'Amount (Ksh)', 'Date', 'Receipt Number', 'Notes'].map(escapeCsv).join(',') + '\n';
       if (expenses.length === 0) {
@@ -88,7 +171,13 @@ export const ReportsView: React.FC = () => {
       csv += '\n';
     }
 
+    // 4. SALES & REVENUE
     if (format === 'all' || format === 'sales') {
+      if (format === 'sales') {
+        csv += `# ${farmName.toUpperCase()} - SALES TRANSACTIONS\n`;
+        csv += `# Export Date: ${dateReadable}\n`;
+        csv += `# Total Sales Revenue: Ksh ${totalRev.toLocaleString()}\n\n`;
+      }
       csv += `--- SALES & REVENUE TRANSACTIONS ---\n`;
       csv += ['Sale ID', 'Goat Tag ID', 'Price (Ksh)', 'Buyer Name', 'Sale Date'].map(escapeCsv).join(',') + '\n';
       if (sales.length === 0) {
@@ -101,6 +190,7 @@ export const ReportsView: React.FC = () => {
       csv += '\n';
     }
 
+    // 5. BREEDING & GESTATION
     if (format === 'all' || format === 'gestation') {
       csv += `--- BREEDING & PREDICTED GESTATION RECORDS ---\n`;
       csv += ['Breeding ID', 'Female Tag', 'Male Buck Tag', 'Mating Date', 'Expected Kidding Date', 'Gestation Days', 'Status', 'Kids Born', 'Clinical Notes'].map(escapeCsv).join(',') + '\n';
@@ -124,45 +214,7 @@ export const ReportsView: React.FC = () => {
       csv += '\n';
     }
 
-    if (format === 'all' || format === 'inventory') {
-      csv += `--- HERD LIVESTOCK INVENTORY ---\n`;
-      csv += ['Goat Tag ID', 'Breed', 'Gender', 'Date of Birth', 'Weight (kg)', 'Current Status', 'Registration Date'].map(escapeCsv).join(',') + '\n';
-      if (goats.length === 0) {
-        csv += ['No goats registered in herd', '', '', '', '', '', ''].map(escapeCsv).join(',') + '\n';
-      } else {
-        goats.forEach(g => {
-          csv += [
-            g.tag_number,
-            g.breed,
-            g.gender,
-            g.dob,
-            g.weight_kg != null ? g.weight_kg : '—',
-            g.status || 'Active',
-            g.created_at,
-          ].map(escapeCsv).join(',') + '\n';
-        });
-      }
-      csv += '\n';
-
-      csv += `--- VETERINARY & HEALTH INTERVENTIONS ---\n`;
-      csv += ['Health ID', 'Goat Tag ID', 'Checkup Date', 'Diagnosis/Condition', 'Treatment Administered', 'Checkup Type', 'Attending Vet'].map(escapeCsv).join(',') + '\n';
-      if (health.length === 0) {
-        csv += ['No health records registered', '', '', '', '', '', ''].map(escapeCsv).join(',') + '\n';
-      } else {
-        health.forEach(h => {
-          csv += [
-            h.id,
-            h.goat_id,
-            h.checkup_date,
-            h.condition,
-            h.treatment,
-            h.checkup_type || 'Routine',
-            h.vet_name || '—',
-          ].map(escapeCsv).join(',') + '\n';
-        });
-      }
-      csv += '\n';
-
+    if (format === 'all') {
       if (milk.length > 0) {
         csv += `--- MILK YIELD PRODUCTION ---\n`;
         csv += ['Log ID', 'Goat Tag ID', 'Date', 'Morning Liters', 'Evening Liters', 'Total Liters'].map(escapeCsv).join(',') + '\n';
@@ -188,14 +240,38 @@ export const ReportsView: React.FC = () => {
     const link = document.createElement('a');
     link.href = url;
     const sanitizedFarm = farmName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    link.setAttribute('download', `${sanitizedFarm}_farm_report_${format}_${timestamp.slice(0, 10)}.csv`);
+
+    let downloadFilename = `${sanitizedFarm}_farm_report_${timestamp.slice(0, 10)}.csv`;
+    let successText = 'Farm report exported to CSV successfully!';
+
+    if (format === 'herd_health') {
+      downloadFilename = `${sanitizedFarm}_herd_and_health_records_${timestamp.slice(0, 10)}.csv`;
+      successText = `Herd and health records exported to CSV (${goats.length} goats, ${health.length} health logs)!`;
+    } else if (format === 'herd') {
+      downloadFilename = `${sanitizedFarm}_herd_inventory_${timestamp.slice(0, 10)}.csv`;
+      successText = `Herd records exported to CSV (${goats.length} goats)!`;
+    } else if (format === 'health') {
+      downloadFilename = `${sanitizedFarm}_health_records_${timestamp.slice(0, 10)}.csv`;
+      successText = `Health records exported to CSV (${health.length} logs)!`;
+    } else if (format === 'financial') {
+      downloadFilename = `${sanitizedFarm}_financial_ledger_${timestamp.slice(0, 10)}.csv`;
+      successText = 'Financial ledger exported to CSV successfully!';
+    } else if (format === 'sales') {
+      downloadFilename = `${sanitizedFarm}_sales_transactions_${timestamp.slice(0, 10)}.csv`;
+      successText = 'Sales transactions exported to CSV successfully!';
+    } else if (format === 'gestation') {
+      downloadFilename = `${sanitizedFarm}_gestation_calendar_${timestamp.slice(0, 10)}.csv`;
+      successText = 'Breeding & gestation calendar exported to CSV successfully!';
+    }
+
+    link.setAttribute('download', downloadFilename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
     setShowExportMenu(false);
-    setDownloadSuccess(`Farm report exported to CSV successfully!`);
+    setDownloadSuccess(successText);
     setTimeout(() => setDownloadSuccess(null), 4000);
   };
 
@@ -235,7 +311,7 @@ export const ReportsView: React.FC = () => {
 
   const dueSoonBirths = predictedBirthsList.filter(b => b!.daysLeft <= 7);
 
-  // 3. AI Anomaly Detection (Statistical Outlier Model on sales)
+  // 3. Statistical Anomaly Detection (Statistical Outlier Model on sales)
   let anomalies: typeof sales = [];
   if (sales.length >= 3) {
     const prices = sales.map(s => s.price);
@@ -243,11 +319,11 @@ export const ReportsView: React.FC = () => {
     const stdDev = Math.sqrt(
       prices.reduce((acc, p) => acc + Math.pow(p - mean, 2), 0) / prices.length
     );
-    // Flag items > 1.3 std deviations away from mean (mimicking Isolation Forest 0.2 contamination)
+    // Flag items > 1.3 std deviations away from mean (mimicking outlier detection)
     anomalies = sales.filter(s => Math.abs(s.price - mean) > 1.3 * (stdDev || 1));
   }
 
-  // 4. ML: Predict Future Revenue (Linear Regression)
+  // 4. Trend Projection: Predict Future Revenue (Linear Regression)
   // Aggregate sales by month
   const monthlyRevenueMap: Record<string, number> = {};
   sales.forEach(s => {
@@ -311,7 +387,7 @@ export const ReportsView: React.FC = () => {
     ];
   }
 
-  // 5. AI Recommendations
+  // 5. Smart Recommendations
   const recs: { id: string; text: string; type: 'warning' | 'info' | 'success' }[] = [];
   const totalGoats = goats.length;
   const totalSalesAmount = sales.reduce((sum, s) => sum + s.price, 0);
@@ -370,61 +446,132 @@ export const ReportsView: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Title & Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-2">
-            <BrainCircuit className="w-3.5 h-3.5" />
-            Predictive Analytics Engine
+      {/* Printable Report Header for Standard A4 Paper (hidden on screen, visible only when printing) */}
+      <div className="hidden print:block mb-6 pb-4 border-b-2 border-stone-800 text-stone-950">
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="text-[10px] uppercase font-bold text-stone-600 tracking-wider">Smart Goat Management System</div>
+            <h1 className="text-2xl font-black uppercase tracking-tight text-stone-950 mt-0.5">{farmName}</h1>
+            <p className="text-xs text-stone-700 mt-0.5">Livestock Herd, Gestation & Production Audit Report</p>
+            <p className="text-[11px] text-stone-600 mt-1">
+              Location: {user?.location || 'Main Farm'} • Manager: {user?.owner_name || 'Farm Administrator'}
+            </p>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
-            {farmName} — AI Reports Dashboard
+          <div className="text-right text-xs text-stone-700">
+            <span className="inline-block px-2 py-0.5 border border-stone-400 font-mono font-bold text-[10px] uppercase rounded">Standard A4 Format</span>
+            <p className="mt-1 font-mono text-[11px]">Report Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p className="text-[11px] text-stone-600">Total Goats: {goats.length} | Health Logs: {health.length} | Breeding Records: {breeding.length}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Title & Action Bar (screen only) */}
+      <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 mb-2">
+            <BrainCircuit className="w-3.5 h-3.5" />
+            Farm Analytics Engine
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-white tracking-tight">
+            {farmName} — Farm Reports & Analytics
           </h2>
-          <p className="text-stone-500 text-sm mt-1">
-            Machine learning models, anomaly detection, gestation calendars, and linear regression revenue forecasts.
+          <p className="text-stone-500 dark:text-stone-400 text-sm mt-1">
+            Production analytics, anomaly detection, gestation calendars, and revenue projections.
           </p>
         </div>
 
-        {/* Download Report Actions */}
-        <div className="relative shrink-0 flex items-center gap-2">
+        {/* Download & Print Report Actions */}
+        <div className="relative shrink-0 flex items-center gap-2 flex-wrap">
+          {/* Print Button for standard A4 paper */}
+          <button
+            id="btn-print-report"
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+            title="Print report specifically formatted for standard A4 paper"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Print Report</span>
+          </button>
+
+          <button
+            id="btn-export-herd-health-csv"
+            type="button"
+            onClick={() => handleDownloadReport('herd_health')}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors"
+            title="Download herd livestock and health records in CSV format"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export Herd & Health (CSV)</span>
+          </button>
+
           <div className="relative inline-block text-left">
-            <button
-              id="btn-download-report-main"
-              type="button"
-              onClick={() => handleDownloadReport('all')}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download Report (CSV)</span>
-            </button>
             <button
               id="btn-toggle-export-menu"
               type="button"
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="ml-1 px-2.5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors border-l border-emerald-600/40"
-              aria-label="Export options"
+              className="px-3 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-sm font-semibold rounded-xl border border-stone-200 dark:border-stone-700 shadow-xs transition-colors flex items-center gap-1.5"
+              aria-label="More CSV export options"
             >
-              <ChevronDown className="w-4 h-4" />
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>More Exports</span>
+              <ChevronDown className="w-3.5 h-3.5" />
             </button>
 
             {showExportMenu && (
               <div
                 id="export-options-menu"
-                className="absolute right-0 mt-2 w-64 bg-white border border-stone-200 rounded-2xl shadow-xl z-20 py-2 text-xs font-medium"
+                className="absolute right-0 mt-2 w-72 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-2xl shadow-xl z-20 py-2 text-xs font-medium animate-fade-in"
               >
-                <div className="px-3 py-1.5 text-[11px] font-bold text-stone-400 uppercase tracking-wider">
+                <div className="px-3 py-1.5 text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider">
                   CSV Export Options
                 </div>
                 <button
                   type="button"
+                  id="btn-export-herd-health-menu"
+                  onClick={() => handleDownloadReport('herd_health')}
+                  className="w-full px-4 py-2.5 text-left text-emerald-900 dark:text-emerald-300 bg-emerald-50/70 hover:bg-emerald-50 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 flex items-center gap-2.5"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <div>
+                    <div className="font-bold text-emerald-950 dark:text-emerald-200">Herd & Health Records (Combined)</div>
+                    <div className="text-[11px] text-emerald-700 dark:text-emerald-400">All livestock tags, weights, and health checkups</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  id="btn-export-herd-only-csv"
+                  onClick={() => handleDownloadReport('herd')}
+                  className="w-full px-4 py-2 text-left text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 flex items-center gap-2.5 border-t border-stone-100 dark:border-stone-800"
+                >
+                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <div>
+                    <div className="font-semibold text-stone-900 dark:text-stone-100">Herd Inventory Only</div>
+                    <div className="text-[11px] text-stone-500 dark:text-stone-400">Goat tag numbers, breeds, weights & statuses</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  id="btn-export-health-only-csv"
+                  onClick={() => handleDownloadReport('health')}
+                  className="w-full px-4 py-2 text-left text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 flex items-center gap-2.5 border-t border-stone-100 dark:border-stone-800"
+                >
+                  <Stethoscope className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <div>
+                    <div className="font-semibold text-stone-900 dark:text-stone-100">Health & Veterinary Records Only</div>
+                    <div className="text-[11px] text-stone-500 dark:text-stone-400">Diagnoses, treatments, clinical status & vet logs</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
                   id="btn-export-all-csv"
                   onClick={() => handleDownloadReport('all')}
-                  className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5"
+                  className="w-full px-4 py-2.5 text-left text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 flex items-center gap-2.5 border-t border-stone-100 dark:border-stone-800"
                 >
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <FileSpreadsheet className="w-4 h-4 text-stone-500" />
                   <div>
                     <div className="font-semibold text-stone-900">Complete Farm Dossier</div>
-                    <div className="text-[11px] text-stone-500">All herd, sales, breeding & health data</div>
+                    <div className="text-[11px] text-stone-500">All herd, sales, breeding, expenses & health data</div>
                   </div>
                 </button>
                 <button
@@ -433,7 +580,7 @@ export const ReportsView: React.FC = () => {
                   onClick={() => handleDownloadReport('financial')}
                   className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 border-t border-stone-100"
                 >
-                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                  <DollarSign className="w-4 h-4 text-stone-500" />
                   <div>
                     <div className="font-semibold text-stone-900">Financial Ledger & Expenses (P&L)</div>
                     <div className="text-[11px] text-stone-500">Feed, vet, equipment costs vs sales revenue</div>
@@ -445,7 +592,7 @@ export const ReportsView: React.FC = () => {
                   onClick={() => handleDownloadReport('sales')}
                   className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 border-t border-stone-100"
                 >
-                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <TrendingUp className="w-4 h-4 text-stone-500" />
                   <div>
                     <div className="font-semibold text-stone-900">Sales & Valuation Only</div>
                     <div className="text-[11px] text-stone-500">Financial transactions and buyer log</div>
@@ -457,27 +604,75 @@ export const ReportsView: React.FC = () => {
                   onClick={() => handleDownloadReport('gestation')}
                   className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 border-t border-stone-100"
                 >
-                  <Calendar className="w-4 h-4 text-emerald-600" />
+                  <Calendar className="w-4 h-4 text-stone-500" />
                   <div>
                     <div className="font-semibold text-stone-900">Breeding & Gestation Calendar</div>
                     <div className="text-[11px] text-stone-500">Sire, dam, mating & expected delivery</div>
                   </div>
                 </button>
-                <button
-                  type="button"
-                  id="btn-export-inventory-csv"
-                  onClick={() => handleDownloadReport('inventory')}
-                  className="w-full px-4 py-2.5 text-left text-stone-700 hover:bg-stone-50 flex items-center gap-2.5 border-t border-stone-100"
-                >
-                  <FileText className="w-4 h-4 text-emerald-600" />
-                  <div>
-                    <div className="font-semibold text-stone-900">Herd Inventory & Health</div>
-                    <div className="text-[11px] text-stone-500">Goat tags, breeds, weights & checkups</div>
-                  </div>
-                </button>
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* HERD & HEALTH CSV EXPORT CARD */}
+      <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+            <FileSpreadsheet className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-stone-900">
+                Herd & Health Records Export
+              </h3>
+              <span className="px-2 py-0.5 text-[11px] font-bold bg-emerald-100 text-emerald-800 rounded-full">
+                CSV Export
+              </span>
+            </div>
+            <p className="text-xs text-stone-500 mt-1 max-w-2xl">
+              Export comprehensive reports of your {goats.length} registered herd livestock (ear tag IDs, breeds, weights, statuses) and {health.length} veterinary checkups (diagnoses, treatments, clinical statuses) to standard spreadsheet CSV files.
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center gap-1 font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-lg">
+                🐐 {goats.length} Herd Goats
+              </span>
+              <span className="inline-flex items-center gap-1 font-semibold text-sky-900 bg-sky-50 border border-sky-200/80 px-2.5 py-1 rounded-lg">
+                🩺 {health.length} Health Records
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            id="btn-quick-export-herd-health"
+            onClick={() => handleDownloadReport('herd_health')}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Herd & Health CSV</span>
+          </button>
+          <button
+            type="button"
+            id="btn-quick-export-herd"
+            onClick={() => handleDownloadReport('herd')}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl border border-stone-200 transition-colors"
+            title="Export Herd Inventory Only"
+          >
+            <span>Herd Only</span>
+          </button>
+          <button
+            type="button"
+            id="btn-quick-export-health"
+            onClick={() => handleDownloadReport('health')}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl border border-stone-200 transition-colors"
+            title="Export Health Logs Only"
+          >
+            <span>Health Only</span>
+          </button>
         </div>
       </div>
 
@@ -592,7 +787,7 @@ export const ReportsView: React.FC = () => {
           <div className="flex items-center gap-3">
             <span className="text-xl">🤰</span>
             <div>
-              <h3 className="text-base font-bold text-stone-900">Predicted Birth Dates (AI Gestation Model)</h3>
+              <h3 className="text-base font-bold text-stone-900">Predicted Birth Dates (Gestation Schedule)</h3>
               <p className="text-xs text-stone-500">150-day biological gestation countdown per breeding record</p>
             </div>
           </div>
@@ -654,17 +849,17 @@ export const ReportsView: React.FC = () => {
         )}
       </div>
 
-      {/* 3. AI ANOMALY DETECTION */}
+      {/* 3. TRANSACTION ANOMALY DETECTION */}
       <div className="bg-white border border-stone-200 rounded-2xl shadow-xs overflow-hidden">
         <button
           onClick={() => setExpandAnomalyDetection(!expandAnomalyDetection)}
           className="w-full px-6 py-4 flex items-center justify-between hover:bg-stone-50 transition-colors text-left"
         >
           <div className="flex items-center gap-3">
-            <span className="text-xl">🧠</span>
+            <span className="text-xl">📊</span>
             <div>
-              <h3 className="text-base font-bold text-stone-900">AI Anomaly Detection</h3>
-              <p className="text-xs text-stone-500">Unsupervised statistical outlier detection for transaction pricing</p>
+              <h3 className="text-base font-bold text-stone-900">Transaction Anomaly Detection</h3>
+              <p className="text-xs text-stone-500">Statistical outlier detection for transaction pricing</p>
             </div>
           </div>
           {expandAnomalyDetection ? <ChevronUp className="w-5 h-5 text-stone-400" /> : <ChevronDown className="w-5 h-5 text-stone-400" />}
@@ -726,7 +921,7 @@ export const ReportsView: React.FC = () => {
         )}
       </div>
 
-      {/* 4. AI REVENUE FORECAST (LINEAR REGRESSION) */}
+      {/* 4. REVENUE FORECAST (LINEAR REGRESSION) */}
       <div className="bg-white border border-stone-200 rounded-2xl shadow-xs overflow-hidden">
         <button
           onClick={() => setExpandRevenueForecast(!expandRevenueForecast)}
@@ -735,7 +930,7 @@ export const ReportsView: React.FC = () => {
           <div className="flex items-center gap-3">
             <span className="text-xl">📈</span>
             <div>
-              <h3 className="text-base font-bold text-stone-900">AI Revenue Forecast (Linear Regression)</h3>
+              <h3 className="text-base font-bold text-stone-900">Revenue Forecast & Projections</h3>
               <p className="text-xs text-stone-500">Ordinary Least Squares regression projecting future quarterly sales</p>
             </div>
           </div>
@@ -793,7 +988,7 @@ export const ReportsView: React.FC = () => {
                       <Line
                         type="monotone"
                         dataKey="ForecastRevenue"
-                        name="AI Forecast (Ksh)"
+                        name="Projected Forecast (Ksh)"
                         stroke="#f59e0b"
                         strokeWidth={2.5}
                         strokeDasharray="5 5"
@@ -812,23 +1007,23 @@ export const ReportsView: React.FC = () => {
         )}
       </div>
 
-      {/* 5. AI RECOMMENDATIONS */}
+      {/* 5. FARM RECOMMENDATIONS */}
       <div className="bg-white border border-stone-200 rounded-2xl shadow-xs overflow-hidden">
         <button
-          onClick={() => setExpandAIRecommendations(!expandAIRecommendations)}
+          onClick={() => setExpandFarmRecommendations(!expandFarmRecommendations)}
           className="w-full px-6 py-4 flex items-center justify-between hover:bg-stone-50 transition-colors text-left"
         >
           <div className="flex items-center gap-3">
             <span className="text-xl">💡</span>
             <div>
-              <h3 className="text-base font-bold text-stone-900">AI Recommendations & Farm Advisory</h3>
+              <h3 className="text-base font-bold text-stone-900">Farm Recommendations & Advisory</h3>
               <p className="text-xs text-stone-500">Heuristic rules for reproductive balance, biosecurity, and commercial scale</p>
             </div>
           </div>
-          {expandAIRecommendations ? <ChevronUp className="w-5 h-5 text-stone-400" /> : <ChevronDown className="w-5 h-5 text-stone-400" />}
+          {expandFarmRecommendations ? <ChevronUp className="w-5 h-5 text-stone-400" /> : <ChevronDown className="w-5 h-5 text-stone-400" />}
         </button>
 
-        {expandAIRecommendations && (
+        {expandFarmRecommendations && (
           <div className="p-6 pt-2 border-t border-stone-100 space-y-3">
             {recs.length > 0 ? (
               recs.map(rec => (

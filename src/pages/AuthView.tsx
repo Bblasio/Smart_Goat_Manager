@@ -142,6 +142,11 @@ export const AuthView: React.FC = () => {
     return () => clearInterval(timer);
   }, [isActivationSent, activationCooldown]);
 
+  const clearMessages = () => {
+    setErrorMsg('');
+    setInfoMsg('');
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -327,7 +332,7 @@ export const AuthView: React.FC = () => {
     <div className="min-h-screen bg-stone-950 flex items-center justify-center p-4 sm:p-6 lg:p-8">
       {/* Two-Column Farm Layout */}
       <div className="w-full max-w-5xl bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-        
+
         {/* LEFT COLUMN: Clean Brand Identity */}
         <div className="lg:col-span-5 bg-gradient-to-br from-emerald-950 via-emerald-900 to-stone-950 p-8 sm:p-10 text-white flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-emerald-800/40 relative overflow-hidden">
           <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -378,8 +383,7 @@ export const AuthView: React.FC = () => {
                   id="tab-auth-login"
                   onClick={() => {
                     setMode('login');
-                    setErrorMsg('');
-                    setInfoMsg('');
+                    clearMessages();
                   }}
                   className={`flex-1 py-2.5 rounded-xl text-center transition-all ${
                     mode === 'login'
@@ -394,8 +398,7 @@ export const AuthView: React.FC = () => {
                   id="tab-auth-signup"
                   onClick={() => {
                     setMode('signup');
-                    setErrorMsg('');
-                    setInfoMsg('');
+                    clearMessages();
                   }}
                   className={`flex-1 py-2.5 rounded-xl text-center transition-all ${
                     mode === 'signup'
@@ -522,7 +525,7 @@ export const AuthView: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <span>signin</span>
+                      <span>Sign In</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -543,7 +546,7 @@ export const AuthView: React.FC = () => {
             )}
 
             {/* ========================================================= */}
-            {/* VIEW B: SIGNUP FORM WITH LIVE PASSWORD POLICIES */}
+            {/* VIEW B: SIGNUP FORM WITH LIVE PASSWORD POLICIES (PURE LIST) */}
             {/* ========================================================= */}
             {mode === 'signup' && !isActivationSent && (
               <form onSubmit={handleCreateAccount} className="space-y-3.5">
@@ -596,14 +599,9 @@ export const AuthView: React.FC = () => {
 
                 {/* Password Field */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-stone-300">
-                      Password *
-                    </label>
-                    <span className={`text-[11px] font-medium ${passwordPolicy.isValid ? 'text-emerald-400 font-bold' : 'text-stone-400'}`}>
-                      {passwordPolicy.metCount}/5 Requirements Met
-                    </span>
-                  </div>
+                  <label className="block text-xs font-semibold text-stone-300 mb-1">
+                    Password *
+                  </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
                     <input
@@ -629,93 +627,50 @@ export const AuthView: React.FC = () => {
                       {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
-                </div>
 
-                {/* Helpful Note about empty details */}
-                <div className="p-2.5 rounded-xl bg-stone-800/60 border border-stone-700/60 text-xs text-stone-400 leading-relaxed flex items-start gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>
-                    Additional details (phone number, manager, founding year, production focus, and grazing system) are not requested now and will remain empty for you to fill later in your Farm Profile.
-                  </span>
-                </div>
-
-                {/* LIVE PASSWORD POLICY CHECKLIST */}
-                <div className="p-3 bg-stone-800/90 rounded-2xl border border-stone-700/80 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-stone-300 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Password Security Policy:</span>
-                    </span>
-                    <span className={`text-[11px] font-bold ${passwordPolicy.isValid ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      {passwordPolicy.isValid ? '✓ All 5 Policies Met' : `${5 - passwordPolicy.metCount} Remaining`}
-                    </span>
-                  </div>
-
-                  {/* Visual Strength Meter */}
-                  <div className="w-full bg-stone-700/80 h-1.5 rounded-full overflow-hidden flex gap-1 p-0.5">
-                    {[1, 2, 3, 4, 5].map(step => (
-                      <div
-                        key={step}
-                        className={`h-full flex-1 rounded-full transition-all duration-300 ${
-                          step <= passwordPolicy.metCount
-                            ? passwordPolicy.isValid
-                              ? 'bg-emerald-500'
-                              : passwordPolicy.metCount >= 3
-                              ? 'bg-amber-500'
-                              : 'bg-rose-500'
-                            : 'bg-stone-600/50'
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* 5 Policy Checks */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5 text-[11px]">
-                    <div className={`flex items-center gap-2 ${passwordPolicy.minLength ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
+                  {/* PURE LIST: just the 5 requirement rows, no header, no meter, no counter */}
+                  <ul className="mt-2 space-y-1 text-[11px]">
+                    <li className={`flex items-center gap-2 ${passwordPolicy.minLength ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
                       {passwordPolicy.minLength ? (
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       ) : (
                         <span className="w-3.5 h-3.5 rounded-full border border-stone-600 inline-block shrink-0" />
                       )}
                       <span>6 minimum characters</span>
-                    </div>
-
-                    <div className={`flex items-center gap-2 ${passwordPolicy.hasCapital ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
+                    </li>
+                    <li className={`flex items-center gap-2 ${passwordPolicy.hasCapital ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
                       {passwordPolicy.hasCapital ? (
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       ) : (
                         <span className="w-3.5 h-3.5 rounded-full border border-stone-600 inline-block shrink-0" />
                       )}
                       <span>Capital letter (A-Z)</span>
-                    </div>
-
-                    <div className={`flex items-center gap-2 ${passwordPolicy.hasSmall ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
+                    </li>
+                    <li className={`flex items-center gap-2 ${passwordPolicy.hasSmall ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
                       {passwordPolicy.hasSmall ? (
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       ) : (
                         <span className="w-3.5 h-3.5 rounded-full border border-stone-600 inline-block shrink-0" />
                       )}
                       <span>Small letter (a-z)</span>
-                    </div>
-
-                    <div className={`flex items-center gap-2 ${passwordPolicy.hasNumber ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
+                    </li>
+                    <li className={`flex items-center gap-2 ${passwordPolicy.hasNumber ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
                       {passwordPolicy.hasNumber ? (
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       ) : (
                         <span className="w-3.5 h-3.5 rounded-full border border-stone-600 inline-block shrink-0" />
                       )}
                       <span>Number (0-9)</span>
-                    </div>
-
-                    <div className={`flex items-center gap-2 sm:col-span-2 ${passwordPolicy.hasSpecial ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
+                    </li>
+                    <li className={`flex items-center gap-2 ${passwordPolicy.hasSpecial ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
                       {passwordPolicy.hasSpecial ? (
                         <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       ) : (
                         <span className="w-3.5 h-3.5 rounded-full border border-stone-600 inline-block shrink-0" />
                       )}
                       <span>Special character (!@#$%^&*...)</span>
-                    </div>
-                  </div>
+                    </li>
+                  </ul>
                 </div>
 
                 <button

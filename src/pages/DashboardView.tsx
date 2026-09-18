@@ -30,7 +30,9 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
-import { DailyTasksWidget } from '../components/DailyTasksWidget';
+import { PendingTasksSection } from '../components/PendingTasksSection';
+import { WeightTrendsChart } from '../components/WeightTrendsChart';
+import { RecentActivities } from '../components/RecentActivities';
 
 interface DashboardViewProps {
   onNavigateToRecords: () => void;
@@ -59,7 +61,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     sales,
     milk,
     firebaseUser,
-    pushSeedDataToFirebase,
   } = useFarm();
 
   const totalGoats = goats.length;
@@ -68,7 +69,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const pregnantCount = breeding.filter(b => b.status === 'Active' || !b.status).length;
   const totalWorkers = workers.length;
 
-  // AI Alerts & Dates
+  // Farm Alerts & Dates
   const today = new Date();
   const birthsDueSoon = breeding.filter(b => {
     if (!b.expected_birth) return false;
@@ -88,15 +89,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const sickGoats = health.filter(
     h =>
-      h.condition.toLowerCase().includes('sick') ||
-      h.condition.toLowerCase().includes('weak') ||
-      h.condition.toLowerCase().includes('fever')
+      h.condition &&
+      (h.condition.toLowerCase().includes('sick') ||
+        h.condition.toLowerCase().includes('mastitis') ||
+        h.condition.toLowerCase().includes('fever') ||
+        h.condition.toLowerCase().includes('isolated') ||
+        h.condition.toLowerCase().includes('foot rot'))
   );
 
-  // Today's total milk
+  // Today's milk production
   const todayStr = today.toISOString().split('T')[0];
   const todayMilk = milk
-    .filter(m => m.date === todayStr || m.date === '2026-09-16')
+    .filter(m => m.date === todayStr)
     .reduce((sum, m) => sum + (m.total_liters || 0), 0);
 
   // Gender Chart Data
@@ -108,9 +112,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Breeding Activity Trend by Month
   const monthCounts: Record<string, number> = {};
   breeding.forEach(b => {
-    if (!b.mating_date) return;
+    const dStr = b.mating_date;
+    if (!dStr) return;
     try {
-      const date = new Date(b.mating_date);
+      const date = new Date(dStr);
       const monthStr = date.toLocaleString('default', { month: 'short' });
       monthCounts[monthStr] = (monthCounts[monthStr] || 0) + 1;
     } catch {
@@ -123,38 +128,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     Matings: count,
   }));
 
-  const totalSalesRevenue = sales.reduce((sum, s) => sum + (s.price || 0), 0);
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Top Banner / Welcome */}
-      <div className="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 shadow-xs">
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 sm:p-8 shadow-xs transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 mb-2">
               <Calendar className="w-3.5 h-3.5" />
               Active for {daysActive} days
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-white tracking-tight">
               {farmName} Dashboard
             </h2>
-            <p className="text-stone-500 text-sm mt-1">
-              Real-time herd monitoring, gestation tracking, milk production, and reproductive intelligence.
+            <p className="text-stone-500 dark:text-stone-400 text-sm mt-1">
+              Real-time herd monitoring, gestation tracking, milk production, and livestock records.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               id="btn-quick-breeding-tool"
               onClick={onNavigateToBreedingEstimator}
-              className="px-4 py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-xl text-sm font-semibold transition-colors shadow-xs flex items-center gap-1.5"
+              className="px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 rounded-xl text-sm font-semibold transition-colors shadow-xs flex items-center gap-1.5"
             >
-              <Baby className="w-4 h-4 text-emerald-600" />
+              <Baby className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Breeding Estimator</span>
             </button>
             <button
+              type="button"
               id="btn-quick-add-goat"
               onClick={onOpenAddModal}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-xs"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-xs"
             >
               + Add Record
             </button>
@@ -163,18 +168,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Empty Herd State for New Accounts */}
         {totalGoats === 0 && (
-          <div className="mt-6 p-6 rounded-2xl bg-emerald-50/70 border border-emerald-200/80">
+          <div className="mt-6 p-6 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-1.5">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 mb-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Cloud Database Active
+                  Farm Records Ready
                 </div>
-                <h3 className="text-lg font-bold text-stone-900">
-                  Welcome to your Cloud Farm Database!
+                <h3 className="text-lg font-bold text-stone-900 dark:text-white">
+                  Welcome to Your Farm Management System!
                 </h3>
-                <p className="text-stone-600 text-xs mt-1 max-w-xl leading-relaxed">
-                  Your farm records are ready to be stored securely in the cloud. You can register your first goat record, import your existing spreadsheet records (Excel/CSV), or load starter records to test the tools.
+                <p className="text-stone-600 dark:text-stone-300 text-xs mt-1 max-w-xl leading-relaxed">
+                  Your farm records are ready. You can register your first goat record or import your existing spreadsheet records (Excel/CSV) into your real-time database.
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -182,7 +187,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   type="button"
                   id="btn-empty-register-goat"
                   onClick={onOpenAddModal}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
                 >
                   + Register First Goat
                 </button>
@@ -190,65 +195,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   type="button"
                   id="btn-empty-import-excel"
                   onClick={onNavigateToRecords}
-                  className="px-4 py-2 bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Upload Excel / Records</span>
                 </button>
-                {firebaseUser && (
-                  <button
-                    type="button"
-                    id="btn-empty-seed-cloud"
-                    onClick={async () => {
-                      await pushSeedDataToFirebase();
-                    }}
-                    className="px-4 py-2 bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 rounded-xl text-xs font-semibold transition-colors"
-                  >
-                    Upload Starter Herd
-                  </button>
-                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Urgent AI alerts if any */}
+        {/* Urgent herd alerts if any */}
         {(birthsDueSoon.length > 0 || sickGoats.length > 0) && (
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
             {birthsDueSoon.length > 0 && (
               <div
                 id="alert-births-due"
-                className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm cursor-pointer hover:bg-amber-100/80 transition-colors"
+                className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-sm cursor-pointer hover:bg-amber-100/80 dark:hover:bg-amber-900/50 transition-colors"
                 onClick={onNavigateToBreedingEstimator}
               >
-                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                  <Baby className="w-4 h-4 text-amber-700" />
+                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/70 flex items-center justify-center shrink-0">
+                  <Baby className="w-4 h-4 text-amber-700 dark:text-amber-300" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="font-bold">
                     ⚠️ {birthsDueSoon.length} kidding(s) expected within 7 days!
                   </span>
-                  <p className="text-xs text-amber-700">
+                  <p className="text-xs text-amber-700 dark:text-amber-300/80">
                     Prepare maternity stalls for {birthsDueSoon.map(b => b.female_id).join(', ')}. Click to estimate delivery times.
                   </p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-amber-700 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
               </div>
             )}
 
             {sickGoats.length > 0 && (
               <div
                 id="alert-sick-goats"
-                className="flex items-center gap-3 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-sm"
+                className="flex items-center gap-3 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 text-sm"
               >
-                <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center shrink-0">
-                  <HeartPulse className="w-4 h-4 text-rose-700" />
+                <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/70 flex items-center justify-center shrink-0">
+                  <HeartPulse className="w-4 h-4 text-rose-700 dark:text-rose-300" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <span className="font-bold">
-                    🩺 {sickGoats.length} goat(s) require medical attention!
+                    ⚠️ {sickGoats.length} goat(s) flagged with active medical conditions
                   </span>
-                  <p className="text-xs text-rose-700">
+                  <p className="text-xs text-rose-700 dark:text-rose-300/80">
                     {sickGoats.map(g => `${g.goat_id} (${g.condition})`).join('; ')}. Check isolation protocol.
                   </p>
                 </div>
@@ -263,7 +256,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="space-y-2 max-w-xl">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30">
             <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
-            <span>Caprine Gestation Intelligence</span>
+            <span>Caprine Gestation Tracker</span>
           </div>
           <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
             Breeding & Kidding Date Predictor
@@ -300,8 +293,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Daily Tasks Widget: Health Checks, Feeding Schedules & Vaccination Reminders */}
-      <DailyTasksWidget
+      {/* Pending Tasks & Health Schedules Section */}
+      <PendingTasksSection
         onNavigateToHealth={onNavigateToHealth}
         onNavigateToRecords={onNavigateToRecords}
         onNavigateToBreedingEstimator={onNavigateToBreedingEstimator}
@@ -310,7 +303,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Farm Overview Metrics */}
       <div>
-        <h3 className="text-base font-bold text-stone-900 mb-4 flex items-center gap-2">
+        <h3 className="text-base font-bold text-stone-900 dark:text-white mb-4 flex items-center gap-2">
           <span>🧮 Farm Overview</span>
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -318,13 +311,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div
             id="metric-total-goats"
             onClick={onNavigateToRecords}
-            className="cursor-pointer bg-white p-5 rounded-2xl border border-stone-200 hover:border-emerald-300 transition-all shadow-xs"
+            className="cursor-pointer bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all shadow-xs"
           >
-            <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">
+            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
               Total Goats
             </div>
-            <div className="text-3xl font-extrabold text-stone-900">{totalGoats}</div>
-            <div className="text-xs text-stone-400 mt-2 flex items-center gap-1">
+            <div className="text-3xl font-extrabold text-stone-900 dark:text-white">{totalGoats}</div>
+            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2 flex items-center gap-1">
               <span>🐐 In herd</span>
             </div>
           </div>
@@ -332,13 +325,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Male Goats */}
           <div
             id="metric-male-goats"
-            className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs"
+            className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs"
           >
-            <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">
+            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
               Male Goats
             </div>
-            <div className="text-3xl font-extrabold text-blue-600">{males}</div>
-            <div className="text-xs text-stone-400 mt-2">
+            <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400">{males}</div>
+            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2">
               {totalGoats > 0 ? `${Math.round((males / totalGoats) * 100)}% of herd` : '0%'}
             </div>
           </div>
@@ -346,13 +339,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Female Goats */}
           <div
             id="metric-female-goats"
-            className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs"
+            className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs"
           >
-            <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">
+            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
               Female Goats
             </div>
-            <div className="text-3xl font-extrabold text-emerald-600">{females}</div>
-            <div className="text-xs text-stone-400 mt-2">
+            <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{females}</div>
+            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2">
               {totalGoats > 0 ? `${Math.round((females / totalGoats) * 100)}% of herd` : '0%'}
             </div>
           </div>
@@ -361,27 +354,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div
             id="metric-pregnant-goats"
             onClick={onNavigateToBreedingEstimator}
-            className="cursor-pointer bg-white p-5 rounded-2xl border border-stone-200 hover:border-emerald-300 transition-all shadow-xs"
+            className="cursor-pointer bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all shadow-xs"
           >
-            <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">
+            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
               Expectant Does
             </div>
-            <div className="text-3xl font-extrabold text-purple-600">{pregnantCount}</div>
-            <div className="text-xs text-stone-400 mt-2 flex items-center gap-1">
+            <div className="text-3xl font-extrabold text-purple-600 dark:text-purple-400">{pregnantCount}</div>
+            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2 flex items-center gap-1">
               <Baby className="w-3 h-3 text-purple-500" />
               <span>Gestation active</span>
             </div>
           </div>
 
           {/* Daily Milk */}
-          <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs">
-            <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">
+          <div className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs">
+            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
               Milk Yield
             </div>
-            <div className="text-3xl font-extrabold text-teal-600 font-mono">
-              {todayMilk > 0 ? `${todayMilk.toFixed(1)}L` : '7.0L'}
+            <div className="text-3xl font-extrabold text-teal-600 dark:text-teal-400 font-mono">
+              {todayMilk > 0 ? `${todayMilk.toFixed(1)}L` : '0.0L'}
             </div>
-            <div className="text-xs text-stone-400 mt-2 flex items-center gap-1">
+            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2 flex items-center gap-1">
               <Milk className="w-3 h-3 text-teal-500" />
               <span>Daily production</span>
             </div>
@@ -390,13 +383,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Farm Staff */}
           <div
             id="metric-farm-workers"
-            className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs"
+            className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs"
           >
-            <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">
+            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
               Farm Staff
             </div>
-            <div className="text-3xl font-extrabold text-amber-600">{totalWorkers}</div>
-            <div className="text-xs text-stone-400 mt-2 flex items-center gap-1">
+            <div className="text-3xl font-extrabold text-amber-600 dark:text-amber-400">{totalWorkers}</div>
+            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2 flex items-center gap-1">
               <Users className="w-3 h-3 text-amber-500" />
               <span>Personnel</span>
             </div>
@@ -404,59 +397,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Visual Analytics / Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Breeding Activity Bar Chart (7 Cols) */}
-        <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-stone-200 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h4 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-emerald-600" />
-                <span>Monthly Breeding Activity</span>
-              </h4>
-              <p className="text-xs text-stone-500">Number of logged services / matings</p>
-            </div>
-          </div>
+      {/* Primary Analytical Row: 6-Month Weight Trends Chart */}
+      <WeightTrendsChart goats={goats} healthRecords={health} />
 
-          <div className="h-64 w-full">
-            {breedingTrendData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={breedingTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1c1917',
-                      color: '#fff',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Bar dataKey="Matings" fill="#10b981" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-xs text-stone-400">
-                No monthly breeding history available.
-              </div>
-            )}
-          </div>
+      {/* Secondary Dashboard Grid: Recent Activities & Breeding Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Recent Activities Component (7 Cols) */}
+        <div className="lg:col-span-7">
+          <RecentActivities
+            onNavigateToRecords={onNavigateToRecords}
+            onNavigateToHealth={onNavigateToHealth}
+            onNavigateToBreeding={onNavigateToBreedingEstimator}
+          />
         </div>
 
-        {/* Gender Demographics Pie Chart (5 Cols) */}
-        <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-stone-200 shadow-xs">
+        {/* Herd Demographics & Composition (5 Cols) */}
+        <div className="lg:col-span-5 bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs transition-colors flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h4 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                <PieIcon className="w-4 h-4 text-emerald-600" />
-                <span>Herd Composition</span>
+              <h4 className="text-base font-bold text-stone-900 dark:text-white flex items-center gap-2">
+                <PieIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Herd Demographics</span>
               </h4>
-              <p className="text-xs text-stone-500">Gender ratio for reproduction management</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Gender ratio for reproduction management</p>
             </div>
           </div>
 
-          <div className="h-64 w-full flex items-center justify-center">
+          <div className="h-60 w-full flex items-center justify-center">
             {genderData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -485,9 +452,52 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-xs text-stone-400">No goats recorded yet.</div>
+              <div className="text-xs text-stone-400 dark:text-stone-500">No goats recorded yet.</div>
             )}
           </div>
+
+          <div className="pt-3 border-t border-stone-100 dark:border-stone-800 text-xs text-stone-500 dark:text-stone-400 flex justify-between">
+            <span>Females: {females} ({totalGoats > 0 ? Math.round((females / totalGoats) * 100) : 0}%)</span>
+            <span>Males: {males} ({totalGoats > 0 ? Math.round((males / totalGoats) * 100) : 0}%)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Monthly Breeding Activity Bar Chart */}
+      <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs transition-colors">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h4 className="text-base font-bold text-stone-900 dark:text-white flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Monthly Breeding Activity</span>
+            </h4>
+            <p className="text-xs text-stone-500 dark:text-stone-400">Number of logged services / matings</p>
+          </div>
+        </div>
+
+        <div className="h-60 w-full">
+          {breedingTrendData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={breedingTrendData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-stone-100 dark:text-stone-800" />
+                <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1c1917',
+                    color: '#fff',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                />
+                <Bar dataKey="Matings" fill="#10b981" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full text-xs text-stone-400 dark:text-stone-500">
+              No monthly breeding history available.
+            </div>
+          )}
         </div>
       </div>
     </div>

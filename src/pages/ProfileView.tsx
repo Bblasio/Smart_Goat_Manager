@@ -56,21 +56,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   // Edit Form Fields
   const [editFarmName, setEditFarmName] = useState(user?.farm_name || farmName);
   const [editOwnerName, setEditOwnerName] = useState(user?.owner_name || '');
-  const [editLocation, setEditLocation] = useState(user?.location || 'Rift Valley, Kenya');
-  const [editFarmSize, setEditFarmSize] = useState(user?.farm_size || '25 Acres');
-  const [editPrimaryBreed, setEditPrimaryBreed] = useState(user?.primary_breed || 'Boer, Galla, Dairy (Saanen)');
-  const [editProductionFocus, setEditProductionFocus] = useState(
-    user?.production_focus || 'Dual-Purpose (Dairy Milk & Stud Breeding Stock)'
-  );
-  const [editGrazingSystem, setEditGrazingSystem] = useState(
-    user?.grazing_system || 'Semi-Intensive Pasture & Paddock Rotation'
-  );
-  const [editPhone, setEditPhone] = useState(user?.phone || '+254 712 345 678');
-  const [editBio, setEditBio] = useState(
-    user?.bio ||
-      'Dedicated commercial goat farm focused on pedigree genetics, sustainable pasture grazing, high milk yield, and livestock health excellence.'
-  );
-  const [editFoundedYear, setEditFoundedYear] = useState(user?.founded_year || '2021');
+  const [editLocation, setEditLocation] = useState(user?.location || '');
+  const [editFarmSize, setEditFarmSize] = useState(user?.farm_size || '');
+  const [editPrimaryBreed, setEditPrimaryBreed] = useState(user?.primary_breed || '');
+  const [editProductionFocus, setEditProductionFocus] = useState(user?.production_focus || '');
+  const [editGrazingSystem, setEditGrazingSystem] = useState(user?.grazing_system || '');
+  const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [editBio, setEditBio] = useState(user?.bio || '');
+  const [editFoundedYear, setEditFoundedYear] = useState(user?.founded_year || '');
 
   // Computed Farm Metrics
   const totalGoats = goats.length;
@@ -84,21 +77,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const handleOpenEdit = () => {
     setEditFarmName(user?.farm_name || farmName);
     setEditOwnerName(user?.owner_name || '');
-    setEditLocation(user?.location || 'Rift Valley, Kenya');
-    setEditFarmSize(user?.farm_size || '25 Acres');
-    setEditPrimaryBreed(user?.primary_breed || 'Boer, Galla, Dairy (Saanen)');
-    setEditProductionFocus(
-      user?.production_focus || 'Dual-Purpose (Dairy Milk & Stud Breeding Stock)'
-    );
-    setEditGrazingSystem(
-      user?.grazing_system || 'Semi-Intensive Pasture & Paddock Rotation'
-    );
-    setEditPhone(user?.phone || '+254 712 345 678');
-    setEditBio(
-      user?.bio ||
-        'Dedicated commercial goat farm focused on pedigree genetics, sustainable pasture grazing, high milk yield, and livestock health excellence.'
-    );
-    setEditFoundedYear(user?.founded_year || '2021');
+    setEditLocation(user?.location || '');
+    setEditFarmSize(user?.farm_size || '');
+    setEditPrimaryBreed(user?.primary_breed || '');
+    setEditProductionFocus(user?.production_focus || '');
+    setEditGrazingSystem(user?.grazing_system || '');
+    setEditPhone(user?.phone || '');
+    setEditBio(user?.bio || '');
+    setEditFoundedYear(user?.founded_year || '');
     setErrorStatus(null);
     setSaveStatus(null);
     setIsEditing(true);
@@ -156,29 +142,49 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                  {user?.production_focus || 'Dual-Purpose Commercial Goat Farming'}
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-stone-200 border border-white/15">
-                  Est. {user?.founded_year || '2021'}
-                </span>
+                {user?.production_focus && (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                    {user.production_focus}
+                  </span>
+                )}
+                {user?.founded_year && (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-stone-200 border border-white/15">
+                    Est. {user.founded_year}
+                  </span>
+                )}
+                {!user?.production_focus && !user?.founded_year && (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-stone-200 border border-white/15">
+                    Farm Profile
+                  </span>
+                )}
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
                 {user?.farm_name || farmName}
               </h1>
               <p className="text-emerald-100/80 text-sm mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  {user?.location || 'Rift Valley, Kenya'}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Maximize2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  {user?.farm_size || '25 Acres'}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  {user?.grazing_system || 'Semi-Intensive Grazing'}
-                </span>
+                {user?.location && (
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    {user.location}
+                  </span>
+                )}
+                {user?.farm_size && (
+                  <span className="inline-flex items-center gap-1">
+                    <Maximize2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    {user.farm_size}
+                  </span>
+                )}
+                {user?.grazing_system && (
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    {user.grazing_system}
+                  </span>
+                )}
+                {!user?.location && !user?.farm_size && !user?.grazing_system && (
+                  <span className="text-emerald-200/70 text-xs italic">
+                    Location and operational details not set — click Edit Farm Details to configure
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -225,10 +231,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <Building2 className="w-4 h-4 text-emerald-700" />
               Farm Overview & Operations
             </h2>
-            <p className="text-stone-600 text-sm leading-relaxed whitespace-pre-line">
-              {user?.bio ||
-                'Dedicated commercial goat farm focused on pedigree genetics, sustainable pasture grazing, high milk yield, and livestock health excellence.'}
-            </p>
+            {user?.bio ? (
+              <p className="text-stone-600 text-sm leading-relaxed whitespace-pre-line">
+                {user.bio}
+              </p>
+            ) : (
+              <p className="text-stone-400 text-sm italic leading-relaxed">
+                No farm overview provided yet. Click "Edit Farm Details" to describe your farm.
+              </p>
+            )}
 
             <div className="mt-6 pt-5 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-3">
@@ -240,7 +251,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     Geographic Location
                   </div>
                   <div className="font-semibold text-stone-900">
-                    {user?.location || 'Rift Valley, Kenya'}
+                    {user?.location || '—'}
                   </div>
                 </div>
               </div>
@@ -254,7 +265,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     Farm Acreage / Land Size
                   </div>
                   <div className="font-semibold text-stone-900">
-                    {user?.farm_size || '25 Acres'}
+                    {user?.farm_size || '—'}
                   </div>
                 </div>
               </div>
@@ -268,7 +279,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     Primary Herd Breeds
                   </div>
                   <div className="font-semibold text-stone-900">
-                    {user?.primary_breed || 'Boer, Galla, Dairy (Saanen)'}
+                    {user?.primary_breed || '—'}
                   </div>
                 </div>
               </div>
@@ -282,7 +293,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     Established Year
                   </div>
                   <div className="font-semibold text-stone-900">
-                    Year {user?.founded_year || '2021'}
+                    {user?.founded_year ? `Year ${user.founded_year}` : '—'}
                   </div>
                 </div>
               </div>
@@ -300,33 +311,49 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
                 <div className="text-xs text-stone-500 font-medium">Farm Owner / Lead Operator</div>
                 <div className="text-base font-bold text-stone-900 mt-0.5">
-                  {user?.owner_name || 'Blasio Ochieng'}
+                  {user?.owner_name || '—'}
                 </div>
-                <div className="text-xs text-emerald-700 font-medium mt-1">Farm Manager & Herd Director</div>
+                {user?.owner_name ? (
+                  <div className="text-xs text-emerald-700 font-medium mt-1">Farm Owner / Manager</div>
+                ) : (
+                  <div className="text-xs text-stone-400 italic mt-1">Not specified</div>
+                )}
               </div>
 
               <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
                 <div className="text-xs text-stone-500 font-medium">Production Focus</div>
                 <div className="text-sm font-semibold text-stone-900 mt-0.5">
-                  {user?.production_focus || 'Dual-Purpose Dairy & Stud Breeding Stock'}
+                  {user?.production_focus || '—'}
                 </div>
-                <div className="text-xs text-stone-500 mt-1">Primary farm revenue stream</div>
+                {user?.production_focus ? (
+                  <div className="text-xs text-stone-500 mt-1">Primary farm revenue stream</div>
+                ) : (
+                  <div className="text-xs text-stone-400 italic mt-1">Not specified</div>
+                )}
               </div>
 
               <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
                 <div className="text-xs text-stone-500 font-medium">Direct Telephone</div>
                 <div className="text-sm font-semibold text-stone-900 mt-0.5">
-                  {user?.phone || '+254 712 345 678'}
+                  {user?.phone || '—'}
                 </div>
-                <div className="text-xs text-stone-500 mt-1">Direct operations line</div>
+                {user?.phone ? (
+                  <div className="text-xs text-stone-500 mt-1">Direct operations line</div>
+                ) : (
+                  <div className="text-xs text-stone-400 italic mt-1">Not specified</div>
+                )}
               </div>
 
               <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
                 <div className="text-xs text-stone-500 font-medium">Grazing & Feeding System</div>
                 <div className="text-sm font-semibold text-stone-900 mt-0.5">
-                  {user?.grazing_system || 'Semi-Intensive Pasture & Paddock Rotation'}
+                  {user?.grazing_system || '—'}
                 </div>
-                <div className="text-xs text-stone-500 mt-1">Fodder & pasture management</div>
+                {user?.grazing_system ? (
+                  <div className="text-xs text-stone-500 mt-1">Fodder & pasture management</div>
+                ) : (
+                  <div className="text-xs text-stone-400 italic mt-1">Not specified</div>
+                )}
               </div>
             </div>
           </div>
@@ -509,7 +536,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Farm Location (County / Region) *
+                    Farm Location (County / Region)
                   </label>
                   <input
                     id="input-edit-location"
@@ -518,7 +545,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     value={editLocation}
                     onChange={e => setEditLocation(e.target.value)}
                     className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
                   />
                 </div>
               </div>
@@ -526,7 +552,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Farm Size / Acreage *
+                    Farm Size / Acreage
                   </label>
                   <input
                     id="input-edit-size"
@@ -535,7 +561,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     value={editFarmSize}
                     onChange={e => setEditFarmSize(e.target.value)}
                     className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
                   />
                 </div>
                 <div>

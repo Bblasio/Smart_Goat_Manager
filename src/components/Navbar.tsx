@@ -3,7 +3,7 @@ import { useFarm } from '../context/FarmContext';
 import {
   LayoutDashboard,
   ClipboardList,
-  Sparkles,
+  TrendingUp,
   PlusCircle,
   LogOut,
   RotateCcw,
@@ -36,7 +36,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     syncError,
     logout,
     resetToSampleData,
-    pushSeedDataToFirebase
+    syncAllCurrentRecordsToFirebase,
   } = useFarm();
 
   const [isPushing, setIsPushing] = useState(false);
@@ -46,7 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     setIsPushing(true);
     setSyncFeedback(null);
     try {
-      const res = await pushSeedDataToFirebase();
+      const res = await syncAllCurrentRecordsToFirebase();
       setSyncFeedback(res.message);
       setTimeout(() => setSyncFeedback(null), 3500);
     } finally {
@@ -74,17 +74,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                {/* Cloud Connection Status Badge */}
+                {/* Sync Connection Status Badge */}
                 {syncStatus === 'connected' && (
                   <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    Cloud Synced
+                    Live Synced
                   </span>
                 )}
                 {syncStatus === 'connecting' && (
                   <span className="inline-flex items-center gap-1 text-amber-700 font-medium">
                     <RefreshCw className="w-3 h-3 animate-spin text-amber-500" />
-                    Connecting to Cloud...
+                    Connecting...
                   </span>
                 )}
                 {syncStatus === 'local_fallback' && (
@@ -96,10 +96,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {syncStatus === 'error' && (
                   <span
                     className="inline-flex items-center gap-1 text-rose-600 font-medium cursor-help"
-                    title={syncError || 'Cloud connection notice'}
+                    title={syncError || 'Sync connection notice'}
                   >
                     <AlertCircle className="w-3 h-3" />
-                    Cloud Notice
+                    Sync Notice
                   </span>
                 )}
               </div>
@@ -143,8 +143,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
               }`}
             >
-              <Sparkles className="w-4 h-4 text-emerald-600" />
-              <span>AI Reports</span>
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
+              <span>Farm Reports</span>
             </button>
           </nav>
 
@@ -156,11 +156,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 id="btn-sync-to-cloud"
                 onClick={handlePushData}
                 disabled={isPushing}
-                title="Push all farm data to secure cloud storage"
+                title="Save and synchronize all farm records"
                 className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
               >
                 <UploadCloud className={`w-3.5 h-3.5 ${isPushing ? 'animate-bounce text-emerald-600' : 'text-stone-500'}`} />
-                <span>Push to Cloud</span>
+                <span>Sync Records</span>
               </button>
             )}
 

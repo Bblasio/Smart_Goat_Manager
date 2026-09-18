@@ -22,6 +22,7 @@ import {
   ExternalLink,
   Check,
   Radio,
+  LogIn,
 } from 'lucide-react';
 import { sendActivationEmail } from '../utils/sendActivationEmail';
 import { evaluatePasswordPolicy } from '../utils/passwordPolicy';
@@ -42,8 +43,20 @@ export const AuthView: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   // Activation Email States
-  const [isActivationSent, setIsActivationSent] = useState(false);
-  const [activationEmailAddress, setActivationEmailAddress] = useState('');
+  const [isActivationSent, setIsActivationSent] = useState(() => {
+    try {
+      return sessionStorage.getItem('sgm_pending_activation') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [activationEmailAddress, setActivationEmailAddress] = useState(() => {
+    try {
+      return sessionStorage.getItem('sgm_pending_activation_email') || '';
+    } catch {
+      return '';
+    }
+  });
   const [isSendingActivation, setIsSendingActivation] = useState(false);
   const [isCheckingActivation, setIsCheckingActivation] = useState(false);
   const [activationCooldown, setActivationCooldown] = useState(60);
@@ -68,9 +81,16 @@ export const AuthView: React.FC = () => {
         localStorage.setItem('sgm_activated_' + paramEmail.toLowerCase(), 'true');
         confirmActivation(paramEmail.toLowerCase());
       }
-      setInfoMsg('Email address confirmed and activated! Loading your farm ledger...');
+      setInfoMsg('Email address confirmed and activated! You may now sign in.');
       setMode('login');
       setIsActivationSent(false);
+      try {
+        sessionStorage.removeItem('sgm_pending_activation');
+        sessionStorage.removeItem('sgm_pending_activation_email');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch {
+        // Ignore
+      }
     }
   }, [confirmActivation]);
 
@@ -159,14 +179,6 @@ export const AuthView: React.FC = () => {
       setErrorMsg('Please enter your farm name.');
       return;
     }
-    if (!location.trim()) {
-      setErrorMsg('Please enter your farm location (e.g. Nakuru, Kenya).');
-      return;
-    }
-    if (!farmSize.trim()) {
-      setErrorMsg('Please specify your farm size (e.g. 20 Acres).');
-      return;
-    }
     if (!email.trim() || !email.includes('@')) {
       setErrorMsg('Please provide a valid official email address.');
       return;
@@ -186,13 +198,17 @@ export const AuthView: React.FC = () => {
     setIsSendingActivation(true);
 
     try {
+      // Profile details are left empty by default to be filled later by the user
       const profileDetails = {
-        owner_name: ownerName.trim() || undefined,
-        location: location.trim(),
-        farm_size: farmSize.trim(),
-        primary_breed: primaryBreed.trim() || undefined,
-        phone: phone.trim() || undefined,
-        founded_year: new Date().getFullYear().toString(),
+        owner_name: '',
+        location: '',
+        farm_size: '',
+        primary_breed: '',
+        phone: '',
+        bio: '',
+        production_focus: '',
+        grazing_system: '',
+        founded_year: '',
       };
 
       const res = await signup(email.trim(), password, farmName.trim(), profileDetails);
@@ -204,6 +220,8 @@ export const AuthView: React.FC = () => {
       }
 
       // Transition to Waiting for Activation screen
+      sessionStorage.setItem('sgm_pending_activation', 'true');
+      sessionStorage.setItem('sgm_pending_activation_email', email.trim());
       setActivationEmailAddress(email.trim());
       setIsActivationSent(true);
       setActivationCooldown(60);
@@ -211,7 +229,7 @@ export const AuthView: React.FC = () => {
       // Send the activation email
       const emailRes = await sendActivationEmail(email.trim(), farmName.trim());
       setActivationDeliveryNote(emailRes.message);
-      setInfoMsg('Account registered! Waiting for activation link to be clicked by the user...');
+      setInfoMsg('Account created successfully! Please check your email to activate your account.');
     } catch (err: any) {
       setErrorMsg(err.message || 'An unexpected error occurred during account creation.');
     } finally {
@@ -534,7 +552,7 @@ export const AuthView: React.FC = () => {
                     Register Your Farm Account
                   </h3>
                   <p className="text-xs text-stone-400 mt-0.5">
-                    Enter your farm details. Registration requires confirming the activation link before sign in.
+                    Enter your farm name and credentials. Registration requires confirming your email activation link before sign in.
                   </p>
                 </div>
 
@@ -554,82 +572,6 @@ export const AuthView: React.FC = () => {
                       className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
                       required
                     />
-                  </div>
-                </div>
-
-                {/* Location & Farm Size */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-300 mb-1">
-                      Farm Location *
-                    </label>
-                    <div className="relative">
-                      <MapPin className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
-                      <input
-                        id="input-signup-location"
-                        type="text"
-                        placeholder="e.g. Nakuru, Kenya"
-                        value={location}
-                        onChange={e => setLocation(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-300 mb-1">
-                      Farm Size *
-                    </label>
-                    <div className="relative">
-                      <Maximize2 className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
-                      <input
-                        id="input-signup-size"
-                        type="text"
-                        placeholder="e.g. 25 Acres"
-                        value={farmSize}
-                        onChange={e => setFarmSize(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Owner Name & Primary Breed */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-300 mb-1">
-                      Owner / Manager Name
-                    </label>
-                    <div className="relative">
-                      <User className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
-                      <input
-                        id="input-signup-owner"
-                        type="text"
-                        placeholder="e.g. John Doe"
-                        value={ownerName}
-                        onChange={e => setOwnerName(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-300 mb-1">
-                      Primary Goat Breeds
-                    </label>
-                    <div className="relative">
-                      <Award className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
-                      <input
-                        id="input-signup-breed"
-                        type="text"
-                        placeholder="e.g. Boer, Saanen, Nubian"
-                        value={primaryBreed}
-                        onChange={e => setPrimaryBreed(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -687,6 +629,14 @@ export const AuthView: React.FC = () => {
                       {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
+                </div>
+
+                {/* Helpful Note about empty details */}
+                <div className="p-2.5 rounded-xl bg-stone-800/60 border border-stone-700/60 text-xs text-stone-400 leading-relaxed flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>
+                    Additional details (phone number, manager, founding year, production focus, and grazing system) are not requested now and will remain empty for you to fill later in your Farm Profile.
+                  </span>
                 </div>
 
                 {/* LIVE PASSWORD POLICY CHECKLIST */}
@@ -891,6 +841,27 @@ export const AuthView: React.FC = () => {
                     </button>
                   </div>
 
+                  {/* Go to Sign In after activating */}
+                  <button
+                    type="button"
+                    id="btn-goto-signin-screen"
+                    onClick={() => {
+                      try {
+                        sessionStorage.removeItem('sgm_pending_activation');
+                        sessionStorage.removeItem('sgm_pending_activation_email');
+                      } catch {
+                        // ignore
+                      }
+                      setIsActivationSent(false);
+                      setMode('login');
+                      setInfoMsg('Please sign in with your email and password once your account is activated.');
+                    }}
+                    className="w-full py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-xs rounded-xl border border-stone-700 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Already clicked link? Go to Sign In</span>
+                  </button>
+
                   <div className="flex items-center justify-between text-xs text-stone-400 px-1 pt-1">
                     <button
                       type="button"
@@ -911,6 +882,12 @@ export const AuthView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
+                        try {
+                          sessionStorage.removeItem('sgm_pending_activation');
+                          sessionStorage.removeItem('sgm_pending_activation_email');
+                        } catch {
+                          // ignore
+                        }
                         setIsActivationSent(false);
                         setMode('signup');
                       }}

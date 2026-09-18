@@ -71,6 +71,8 @@ interface FarmContextType {
       primary_breed?: string;
       phone?: string;
       bio?: string;
+      production_focus?: string;
+      grazing_system?: string;
       founded_year?: string;
     }
   ) => Promise<{ success: boolean; error?: string }>;
@@ -278,8 +280,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           let resolvedFarmName = fbUser.displayName || '';
 
+          const val = profileSnap.exists() ? profileSnap.val() : {};
           if (profileSnap.exists()) {
-            const val = profileSnap.val();
             resolvedFarmName = val.farm_name || val.farmName || resolvedFarmName;
           }
 
@@ -287,8 +289,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Check fallback path users/{uid}/profile
             const altSnap = await get(ref(rtdb, `users/${fbUser.uid}/profile`));
             if (altSnap.exists()) {
-              const val = altSnap.val();
-              resolvedFarmName = val.farm_name || val.farmName || resolvedFarmName;
+              const altVal = altSnap.val();
+              resolvedFarmName = altVal.farm_name || altVal.farmName || resolvedFarmName;
             }
           }
 
@@ -302,9 +304,18 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
             uid: fbUser.uid,
             email: fbUser.email || '',
             farm_name: resolvedFarmName,
-            created_at: profileSnap.exists() && profileSnap.val().created_at
+            owner_name: val?.owner_name || '',
+            location: val?.location || '',
+            farm_size: val?.farm_size || '',
+            primary_breed: val?.primary_breed || '',
+            phone: val?.phone || '',
+            bio: val?.bio || '',
+            production_focus: val?.production_focus || '',
+            grazing_system: val?.grazing_system || '',
+            founded_year: val?.founded_year || '',
+            created_at: val?.created_at || (profileSnap.exists() && profileSnap.val().created_at
               ? profileSnap.val().created_at
-              : new Date().toISOString(),
+              : new Date().toISOString()),
           };
 
           setUser(currentProfile);
@@ -405,6 +416,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 primary_breed: profile.primary_breed || profile.primaryBreed || prev?.primary_breed || '',
                 phone: profile.phone || prev?.phone || '',
                 bio: profile.bio || prev?.bio || '',
+                production_focus: profile.production_focus || profile.productionFocus || prev?.production_focus || '',
+                grazing_system: profile.grazing_system || profile.grazingSystem || prev?.grazing_system || '',
                 founded_year: profile.founded_year || profile.foundedYear || prev?.founded_year || '',
                 created_at: profile.created_at || prev?.created_at || new Date().toISOString(),
               };
@@ -661,6 +674,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       primary_breed?: string;
       phone?: string;
       bio?: string;
+      production_focus?: string;
+      grazing_system?: string;
       founded_year?: string;
     }
   ): Promise<{ success: boolean; error?: string }> => {
@@ -698,7 +713,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         primary_breed: profileDetails?.primary_breed?.trim() || '',
         phone: profileDetails?.phone?.trim() || '',
         bio: profileDetails?.bio?.trim() || '',
-        founded_year: profileDetails?.founded_year?.trim() || new Date().getFullYear().toString(),
+        production_focus: profileDetails?.production_focus?.trim() || '',
+        grazing_system: profileDetails?.grazing_system?.trim() || '',
+        founded_year: profileDetails?.founded_year?.trim() || '',
         created_at: new Date().toISOString(),
       };
 
@@ -721,8 +738,13 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       // 6. Sign up must WAIT until activation link is clicked by the user!
-      // Keep user in memory as null so isAuthenticated remains FALSE until activation link is confirmed
-      setFirebaseUser(fbUser);
+      // Sign out from Firebase auth so the unactivated session does not auto-sign-in or conflict
+      try {
+        await signOut(auth);
+      } catch {
+        // ignore
+      }
+      setFirebaseUser(null);
       setUser(null);
       localStorage.removeItem('sgm_user');
 
@@ -871,6 +893,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           primary_breed: merged.primary_breed || '',
           phone: merged.phone || '',
           bio: merged.bio || '',
+          production_focus: merged.production_focus || '',
+          grazing_system: merged.grazing_system || '',
           founded_year: merged.founded_year || '',
           updated_at: new Date().toISOString(),
           created_at: merged.created_at || new Date().toISOString(),

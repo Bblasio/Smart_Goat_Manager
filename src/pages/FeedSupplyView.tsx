@@ -559,7 +559,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                     {feed.cost_per_unit && (
                       <div className="flex items-center gap-1.5">
                         <span className="font-semibold text-stone-700 dark:text-stone-300">
-                          ${feed.cost_per_unit.toFixed(2)}
+                          Ksh {Number(feed.cost_per_unit).toLocaleString()}
                         </span>
                         <span>per {feed.unit}</span>
                       </div>
@@ -1106,14 +1106,14 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Cost per Unit ($)
+                    Cost per Unit (Ksh)
                   </label>
                   <input
                     type="number"
                     name="cost_per_unit"
-                    step="0.01"
+                    step="any"
                     defaultValue={editingFeed?.cost_per_unit || ''}
-                    placeholder="e.g. 8.50"
+                    placeholder="e.g. 850"
                     className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
                   />
                 </div>
@@ -1502,19 +1502,19 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
               {restockItem.type === 'feed' && (
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Cost per Unit ($) - Auto-records Farm Expense
+                    Cost per Unit (Ksh) - Auto-records Farm Expense
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="any"
                     value={restockCost}
                     onChange={e => setRestockCost(e.target.value)}
-                    placeholder="e.g. 8.50"
+                    placeholder="e.g. 850"
                     className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
                   />
                   {restockCost && Number(restockCost) > 0 && (
                     <p className="mt-1 text-xs text-emerald-600 font-medium">
-                      Will add ${Math.round(restockAmount * Number(restockCost))} to farm financial expenses.
+                      Will add Ksh {Math.round(restockAmount * Number(restockCost)).toLocaleString()} to farm financial expenses.
                     </p>
                   )}
                 </div>

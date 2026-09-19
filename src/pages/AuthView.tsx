@@ -446,16 +446,13 @@ export const AuthView: React.FC = () => {
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <h3 className="text-xl font-bold text-white tracking-tight">
-                    Welcome Back, Farmer
+                    Sign In
                   </h3>
-                  <p className="text-xs text-stone-400 mt-1">
-                    Access your herd ledger, gestation calendar, milk yields, and records.
-                  </p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-stone-300 mb-1.5">
-                    Account Email Address
+                    Email
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-3.5" />
@@ -522,7 +519,7 @@ export const AuthView: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <span>signin</span>
+                      <span>Sign In</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -543,17 +540,14 @@ export const AuthView: React.FC = () => {
             )}
 
             {/* ========================================================= */}
-            {/* VIEW B: SIGNUP FORM WITH LIVE PASSWORD POLICIES */}
+            {/* VIEW B: SIGNUP FORM WITH PASSWORD POLICIES */}
             {/* ========================================================= */}
             {mode === 'signup' && !isActivationSent && (
               <form onSubmit={handleCreateAccount} className="space-y-3.5">
                 <div>
                   <h3 className="text-xl font-bold text-white tracking-tight">
-                    Register Your Farm Account
+                    Create Farm Account
                   </h3>
-                  <p className="text-xs text-stone-400 mt-0.5">
-                    Enter your farm name and credentials. Registration requires confirming your email activation link before sign in.
-                  </p>
                 </div>
 
                 {/* Farm Name */}
@@ -578,7 +572,7 @@ export const AuthView: React.FC = () => {
                 {/* Email */}
                 <div>
                   <label className="block text-xs font-semibold text-stone-300 mb-1">
-                    Official Email *
+                    Email *
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
@@ -596,14 +590,9 @@ export const AuthView: React.FC = () => {
 
                 {/* Password Field */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-stone-300">
-                      Password *
-                    </label>
-                    <span className={`text-[11px] font-medium ${passwordPolicy.isValid ? 'text-emerald-400 font-bold' : 'text-stone-400'}`}>
-                      {passwordPolicy.metCount}/5 Requirements Met
-                    </span>
-                  </div>
+                  <label className="block text-xs font-semibold text-stone-300 mb-1">
+                    Password *
+                  </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
                     <input
@@ -631,91 +620,25 @@ export const AuthView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Helpful Note about empty details */}
-                <div className="p-2.5 rounded-xl bg-stone-800/60 border border-stone-700/60 text-xs text-stone-400 leading-relaxed flex items-start gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>
-                    Additional details (phone number, manager, founding year, production focus, and grazing system) are not requested now and will remain empty for you to fill later in your Farm Profile.
-                  </span>
-                </div>
-
-                {/* LIVE PASSWORD POLICY CHECKLIST */}
-                <div className="p-3 bg-stone-800/90 rounded-2xl border border-stone-700/80 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-stone-300 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Password Security Policy:</span>
-                    </span>
-                    <span className={`text-[11px] font-bold ${passwordPolicy.isValid ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      {passwordPolicy.isValid ? '✓ All 5 Policies Met' : `${5 - passwordPolicy.metCount} Remaining`}
-                    </span>
-                  </div>
-
-                  {/* Visual Strength Meter */}
-                  <div className="w-full bg-stone-700/80 h-1.5 rounded-full overflow-hidden flex gap-1 p-0.5">
-                    {[1, 2, 3, 4, 5].map(step => (
-                      <div
-                        key={step}
-                        className={`h-full flex-1 rounded-full transition-all duration-300 ${
-                          step <= passwordPolicy.metCount
-                            ? passwordPolicy.isValid
-                              ? 'bg-emerald-500'
-                              : passwordPolicy.metCount >= 3
-                              ? 'bg-amber-500'
-                              : 'bg-rose-500'
-                            : 'bg-stone-600/50'
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* 5 Policy Checks */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5 text-[11px]">
-                    <div className={`flex items-center gap-2 ${passwordPolicy.minLength ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
-                      {passwordPolicy.minLength ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      ) : (
-                        <span className="w-3.5 h-3.5 rounded-full border border-stone-600 inline-block shrink-0" />
-                      )}
-                      <span>6 minimum characters</span>
-                    </div>
-
-                    <div className={`flex items-center gap-2 ${passwordPolicy.hasCapital ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
-                      {passwordPolicy.hasCapital ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      ) : (
-                        <span className="w-3.5 h-3.5 rounded-full border border-stone-600 inline-block shrink-0" />
-                      )}
-                      <span>Capital letter (A-Z)</span>
-                    </div>
-
-                    <div className={`flex items-center gap-2 ${passwordPolicy.hasSmall ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
-                      {passwordPolicy.hasSmall ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      ) : (
-                        <span className="w-3.5 h-3.5 rounded-full border border-stone-600 inline-block shrink-0" />
-                      )}
-                      <span>Small letter (a-z)</span>
-                    </div>
-
-                    <div className={`flex items-center gap-2 ${passwordPolicy.hasNumber ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
-                      {passwordPolicy.hasNumber ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      ) : (
-                        <span className="w-3.5 h-3.5 rounded-full border border-stone-600 inline-block shrink-0" />
-                      )}
-                      <span>Number (0-9)</span>
-                    </div>
-
-                    <div className={`flex items-center gap-2 sm:col-span-2 ${passwordPolicy.hasSpecial ? 'text-emerald-300 font-medium' : 'text-stone-400'}`}>
-                      {passwordPolicy.hasSpecial ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      ) : (
-                        <span className="w-3.5 h-3.5 rounded-full border border-stone-600 inline-block shrink-0" />
-                      )}
-                      <span>Special character (!@#$%^&*...)</span>
-                    </div>
-                  </div>
+                {/* Password Policy as Just a Clean List */}
+                <div className="text-xs text-stone-400 px-1">
+                  <ul className="list-disc list-inside space-y-1 text-xs text-stone-400">
+                    <li className={passwordPolicy.minLength ? 'text-emerald-400' : ''}>
+                      Minimum 6 characters
+                    </li>
+                    <li className={passwordPolicy.hasCapital ? 'text-emerald-400' : ''}>
+                      At least one uppercase letter (A-Z)
+                    </li>
+                    <li className={passwordPolicy.hasSmall ? 'text-emerald-400' : ''}>
+                      At least one lowercase letter (a-z)
+                    </li>
+                    <li className={passwordPolicy.hasNumber ? 'text-emerald-400' : ''}>
+                      At least one number (0-9)
+                    </li>
+                    <li className={passwordPolicy.hasSpecial ? 'text-emerald-400' : ''}>
+                      At least one special character (!@#$%^&*...)
+                    </li>
+                  </ul>
                 </div>
 
                 <button
@@ -727,11 +650,11 @@ export const AuthView: React.FC = () => {
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Creating account & sending activation...</span>
+                      <span>Creating account...</span>
                     </>
                   ) : (
                     <>
-                      <span>Create account</span>
+                      <span>Create Account</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}

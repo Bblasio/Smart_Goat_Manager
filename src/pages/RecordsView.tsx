@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
-import { RecordType, AppView } from '../types';
+import { RecordType, AppView, GoatRecord, SaleRecord } from '../types';
 import {
   Trash2,
   Plus,
@@ -20,9 +20,15 @@ import {
   Upload,
   X,
   Filter,
-  Tag
+  Tag,
+  AlertTriangle,
+  Activity,
+  FileText,
+  Calendar,
+  Printer
 } from 'lucide-react';
 import { ExcelImportModal } from '../components/ExcelImportModal';
+import { FarmReportModal } from '../components/FarmReportModal';
 
 interface RecordsViewProps {
   onOpenAddModal: (type?: RecordType) => void;
@@ -32,6 +38,7 @@ interface RecordsViewProps {
 export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavigate }) => {
   const {
     goats,
+    updateGoat,
     deleteGoat,
     breeding,
     deleteBreeding,
@@ -49,9 +56,113 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     'goats' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor'
   >('goats');
   const [searchQuery, setSearchQuery] = useState('');
-  const [goatStatusFilter, setGoatStatusFilter] = useState<'all' | 'Active' | 'Pregnant' | 'Quarantine' | 'Sold'>('all');
+  const [goatStatusFilter, setGoatStatusFilter] = useState<'all' | 'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead'>('all');
   const [healthStatusFilter, setHealthStatusFilter] = useState<'all' | 'Healthy' | 'Under Treatment' | 'Critical' | 'Pregnancy Check'>('all');
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+  const [excelCategory, setExcelCategory] = useState<'goats' | 'breeding' | 'health' | 'milk'>('goats');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  const handleOpenTabExcelUpload = (category: 'goats' | 'breeding' | 'health' | 'milk') => {
+    setExcelCategory(category);
+    setIsExcelModalOpen(true);
+  };
+
+  // Helper to determine effective goat status, fetching from sales if sold
+  const getGoatEffectiveStatus = (goat: GoatRecord): 'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead' => {
+    if (goat.status === 'Dead' || (goat.status as any) === 'Deceased') return 'Dead';
+    if (goat.status === 'Sold') return 'Sold';
+    // Check if recorded in sales transactions by tag_number, id, or name
+    const cleanTag = goat.tag_number.toUpperCase();
+    const cleanName = goat.name ? goat.name.trim().toUpperCase() : '';
+    const hasSaleRecord = sales.some(s => {
+      const saleTarget = (s.goat_id || '').trim().toUpperCase();
+      return saleTarget === cleanTag || s.goat_id === goat.id || (cleanName && saleTarget === cleanName);
+    });
+    if (hasSaleRecord) return 'Sold';
+    return goat.status || 'Active';
+  };
+
+  const getGoatSaleRecord = (goat: GoatRecord) => {
+    const cleanTag = goat.tag_number.toUpperCase();
+    const cleanName = goat.name ? goat.name.trim().toUpperCase() : '';
+    return sales.find(s => {
+      const saleTarget = (s.goat_id || '').trim().toUpperCase();
+      return saleTarget === cleanTag || s.goat_id === goat.id || (cleanName && saleTarget === cleanName);
+    });
+  };
+
+  const renderGoatStatusBadge = (status?: string, saleInfo?: SaleRecord) => {
+    const s = status || 'Active';
+    switch (s) {
+      case 'Active':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span>Active</span>
+          </span>
+        );
+      case 'Pregnant':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700 shadow-2xs">
+            <Baby className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+            <span>Pregnant</span>
+          </span>
+        );
+      case 'Quarantine':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>Quarantine</span>
+          </span>
+        );
+      case 'Sold':
+        return (
+          <div className="inline-flex flex-col">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-stone-600 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-stone-500 shrink-0" />
+              <span>Sold</span>
+            </span>
+            {saleInfo && (
+              <span className="text-[10px] text-stone-500 dark:text-stone-400 font-mono mt-0.5">
+                Ksh {Number(saleInfo.price).toLocaleString()}
+              </span>
+            )}
+          </div>
+        );
+      case 'Dead':
+      case 'Deceased':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-rose-600 shrink-0" />
+            <span>Dead / Deceased</span>
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            <span>{s}</span>
+          </span>
+        );
+    }
+  };
+
+  const getGoatStatusDotClass = (status?: string) => {
+    switch (status) {
+      case 'Pregnant':
+        return 'bg-purple-500 ring-2 ring-purple-200 dark:ring-purple-900';
+      case 'Quarantine':
+        return 'bg-amber-500 ring-2 ring-amber-200 dark:ring-amber-900';
+      case 'Sold':
+        return 'bg-stone-400 ring-2 ring-stone-200 dark:ring-stone-700';
+      case 'Dead':
+      case 'Deceased':
+        return 'bg-rose-500 ring-2 ring-rose-200 dark:ring-rose-900';
+      case 'Active':
+      default:
+        return 'bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900';
+    }
+  };
 
   const today = new Date();
   const dueSoon = breeding.filter(b => {
@@ -78,17 +189,18 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   // Search & Status filters
   const filteredGoats = goats.filter(g => {
     const q = searchQuery.trim().toLowerCase();
+    const effectiveStatus = getGoatEffectiveStatus(g);
     const matchesSearch =
       !q ||
       g.tag_number.toLowerCase().includes(q) ||
       (g.name && g.name.toLowerCase().includes(q)) ||
-      (g.status && g.status.toLowerCase().includes(q)) ||
+      effectiveStatus.toLowerCase().includes(q) ||
       g.breed.toLowerCase().includes(q) ||
       g.gender.toLowerCase().includes(q);
 
     const matchesStatus =
       goatStatusFilter === 'all' ||
-      (g.status && g.status.toLowerCase() === goatStatusFilter.toLowerCase());
+      effectiveStatus.toLowerCase() === goatStatusFilter.toLowerCase();
 
     return matchesSearch && matchesStatus;
   });
@@ -189,7 +301,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {activeTab === 'breeding' && onNavigate && (
             <button
               type="button"
@@ -203,13 +315,13 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
 
           <button
             type="button"
-            id="btn-open-excel-import"
-            onClick={() => setIsExcelModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition-colors shadow-xs"
-            title="Import Excel spreadsheet document (.xlsx, .xls, .csv)"
+            id="btn-open-farm-report"
+            onClick={() => setIsReportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+            title="Generate custom duration report (Yesterday, Today, 2 Days, 7 Days, 1 Month, or Custom Date Range)"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Upload Excel</span>
+            <FileText className="w-4 h-4" />
+            <span>Generate Report</span>
           </button>
 
           <button
@@ -231,37 +343,26 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
           <button
             id="btn-records-add-entry"
             onClick={() => onOpenAddModal(activeTab === 'advisor' ? 'goat' : (activeTab as RecordType))}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-xs"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-stone-900 hover:bg-black dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl text-xs font-semibold transition-colors shadow-xs"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Record</span>
+            <span>
+              {activeTab === 'goats'
+                ? 'Add Goat'
+                : activeTab === 'breeding'
+                ? 'Add Breeding'
+                : activeTab === 'health'
+                ? 'Add Health Record'
+                : activeTab === 'milk'
+                ? 'Record Milk'
+                : activeTab === 'sales'
+                ? 'Record Sale'
+                : activeTab === 'workers'
+                ? 'Add Worker'
+                : 'Add Record'}
+            </span>
           </button>
         </div>
-      </div>
-
-      {/* Traditional Farm Digital Transition Notice */}
-      <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 flex items-center justify-center text-amber-800 dark:text-amber-300 shrink-0 mt-0.5">
-            <FileSpreadsheet className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100">
-              Transitioning from Traditional Paper or Spreadsheet Books?
-            </h4>
-            <p className="text-[11px] text-stone-600 dark:text-stone-400 mt-0.5 leading-relaxed">
-              If your farm currently tracks goats, mating dates, treatments, or milk in notebooks or Excel, you can upload your document directly (.xlsx, .xls, .csv) to auto-populate your herd ledger.
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsExcelModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs shrink-0"
-        >
-          <Upload className="w-3.5 h-3.5" />
-          <span>Upload Spreadsheet</span>
-        </button>
       </div>
 
       {/* Navigation Tabs */}
@@ -312,10 +413,10 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
           ))}
         </div>
 
-        {/* Dedicated Search & Filter Bar */}
+        {/* Dedicated Search & Filter Bar with Per-Record Action Controls */}
         {activeTab !== 'advisor' && (
           <div className="flex flex-col gap-2.5 bg-stone-50/80 dark:bg-stone-900/80 p-3 rounded-2xl border border-stone-200 dark:border-stone-800">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -344,8 +445,56 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                 )}
               </div>
 
-              {/* Action buttons */}
-              <div className="flex items-center gap-2 shrink-0">
+              {/* Per-Record Upload & Manual Add Actions */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  id="btn-tab-add-manually"
+                  onClick={() => onOpenAddModal(activeTab as RecordType)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>
+                    {activeTab === 'goats'
+                      ? 'Add Goat'
+                      : activeTab === 'breeding'
+                      ? 'Add Breeding'
+                      : activeTab === 'health'
+                      ? 'Add Health'
+                      : activeTab === 'milk'
+                      ? 'Record Milk'
+                      : activeTab === 'sales'
+                      ? 'Add Sale'
+                      : activeTab === 'workers'
+                      ? 'Add Worker'
+                      : 'Add Record'}
+                  </span>
+                </button>
+
+                {(activeTab === 'goats' || activeTab === 'breeding' || activeTab === 'health' || activeTab === 'milk') && (
+                  <button
+                    type="button"
+                    id={`btn-upload-${activeTab}-tab`}
+                    onClick={() => handleOpenTabExcelUpload(activeTab)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
+                    title={`Upload ${activeTab} spreadsheet document (.xlsx, .xls, .csv)`}
+                  >
+                    <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Upload {activeTab === 'goats' ? 'Goats' : activeTab === 'breeding' ? 'Breeding' : activeTab === 'health' ? 'Health' : 'Milk'} (Excel/CSV)</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  id="btn-tab-open-report"
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-900 hover:bg-black dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
+                  title="Generate Duration Report"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Report</span>
+                </button>
+
                 <button
                   id="btn-export-csv"
                   onClick={() => {
@@ -374,10 +523,11 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   </span>
                   {[
                     { id: 'all', label: 'All Goats', count: goats.length },
-                    { id: 'Active', label: 'Active', count: goats.filter(g => (g.status || 'Active') === 'Active').length },
-                    { id: 'Pregnant', label: 'Pregnant', count: goats.filter(g => g.status === 'Pregnant').length },
-                    { id: 'Quarantine', label: 'Quarantine', count: goats.filter(g => g.status === 'Quarantine').length },
-                    { id: 'Sold', label: 'Sold', count: goats.filter(g => g.status === 'Sold').length },
+                    { id: 'Active', label: 'Active', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Active').length },
+                    { id: 'Pregnant', label: 'Pregnant', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Pregnant').length },
+                    { id: 'Quarantine', label: 'Quarantine', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Quarantine').length },
+                    { id: 'Sold', label: 'Sold', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Sold').length },
+                    { id: 'Dead', label: 'Dead / Deceased', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Dead').length },
                   ].map(pill => (
                     <button
                       key={pill.id}
@@ -519,11 +669,14 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
               </thead>
               <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                 {filteredGoats.length > 0 ? (
-                  filteredGoats.map(goat => (
+                  filteredGoats.map(goat => {
+                    const effectiveStatus = getGoatEffectiveStatus(goat);
+                    const saleRecord = effectiveStatus === 'Sold' ? getGoatSaleRecord(goat) : undefined;
+                    return (
                     <tr key={goat.id} className="hover:bg-stone-50/75 dark:hover:bg-stone-800/50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${getGoatStatusDotClass(effectiveStatus)}`} />
                           <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{goat.tag_number}</span>
                           {goat.name && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
@@ -534,19 +687,22 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
-                            goat.status === 'Pregnant'
-                              ? 'bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
-                              : goat.status === 'Quarantine'
-                              ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                              : goat.status === 'Sold'
-                              ? 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'
-                              : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                          }`}
-                        >
-                          {goat.status || 'Active'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {renderGoatStatusBadge(effectiveStatus, saleRecord)}
+                          <select
+                            id={`select-status-${goat.id}`}
+                            value={effectiveStatus}
+                            onChange={(e) => updateGoat(goat.id, { status: e.target.value as any })}
+                            className="text-[11px] font-semibold bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700 rounded-lg px-2 py-0.5 cursor-pointer hover:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            title="Quick Change Status (e.g. Mark Dead if deceased, Active, Quarantine)"
+                          >
+                            <option value="Active">Active</option>
+                            <option value="Pregnant">Pregnant</option>
+                            <option value="Quarantine">Quarantine</option>
+                            <option value="Sold">Sold</option>
+                            <option value="Dead">Dead (Deceased)</option>
+                          </select>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-stone-700 dark:text-stone-300">{goat.breed}</td>
                       <td className="px-6 py-4">
@@ -577,21 +733,40 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                         </button>
                       </td>
                     </tr>
-                  ))
+                  );
+                })
                 ) : (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center">
-                      <div className="max-w-xs mx-auto text-center space-y-2">
-                        <p className="text-stone-500 dark:text-stone-400 font-medium">No goats match your filter</p>
-                        <p className="text-xs text-stone-400 dark:text-stone-500">
-                          Try searching with a different tag (e.g. GT-101), name (Apollo), or change the status filter.
+                      <div className="max-w-md mx-auto text-center space-y-3">
+                        <p className="text-stone-700 dark:text-stone-300 font-semibold">No goats found</p>
+                        <p className="text-xs text-stone-500 dark:text-stone-400">
+                          Add a goat manually or upload your goats spreadsheet file (.xlsx, .csv) to build your herd inventory.
                         </p>
+                        <div className="flex items-center justify-center gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => onOpenAddModal('goat')}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-2xs transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Goat Manually</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenTabExcelUpload('goats')}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs font-semibold transition-colors shadow-2xs"
+                          >
+                            <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Upload Goats (Excel/CSV)</span>
+                          </button>
+                        </div>
                         <button
                           onClick={() => {
                             setSearchQuery('');
                             setGoatStatusFilter('all');
                           }}
-                          className="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
+                          className="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline inline-block"
                         >
                           Clear Search & Filters
                         </button>
@@ -678,8 +853,31 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-stone-400 dark:text-stone-500">
-                      No breeding records found.
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="max-w-md mx-auto text-center space-y-3">
+                        <p className="text-stone-700 dark:text-stone-300 font-semibold">No breeding records found</p>
+                        <p className="text-xs text-stone-500 dark:text-stone-400">
+                          Track mating events, gestation timelines, and kidding forecasts.
+                        </p>
+                        <div className="flex items-center justify-center gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => onOpenAddModal('breeding')}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-2xs transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Breeding Manually</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenTabExcelUpload('breeding')}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs font-semibold transition-colors shadow-2xs"
+                          >
+                            <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Upload Breeding (Excel/CSV)</span>
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -793,17 +991,35 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                 ) : (
                   <tr>
                     <td colSpan={8} className="px-6 py-12 text-center">
-                      <div className="max-w-xs mx-auto text-center space-y-2">
-                        <p className="text-stone-500 dark:text-stone-400 font-medium">No health records match your filter</p>
-                        <p className="text-xs text-stone-400 dark:text-stone-500">
-                          Try searching by tag (e.g. GT-103), goat name, or status (Healthy, Under Treatment).
+                      <div className="max-w-md mx-auto text-center space-y-3">
+                        <p className="text-stone-700 dark:text-stone-300 font-semibold">No health records found</p>
+                        <p className="text-xs text-stone-500 dark:text-stone-400">
+                          Log treatments, vaccinations, and veterinary checkups manually or upload health spreadsheets.
                         </p>
+                        <div className="flex items-center justify-center gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => onOpenAddModal('health')}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-2xs transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Health Manually</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenTabExcelUpload('health')}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs font-semibold transition-colors shadow-2xs"
+                          >
+                            <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Upload Health (Excel/CSV)</span>
+                          </button>
+                        </div>
                         <button
                           onClick={() => {
                             setSearchQuery('');
                             setHealthStatusFilter('all');
                           }}
-                          className="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
+                          className="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline inline-block"
                         >
                           Clear Search & Filters
                         </button>
@@ -858,8 +1074,31 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-stone-400 dark:text-stone-500">
-                      No milk records found.
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="max-w-md mx-auto text-center space-y-3">
+                        <p className="text-stone-700 dark:text-stone-300 font-semibold">No milk yield logs found</p>
+                        <p className="text-xs text-stone-500 dark:text-stone-400">
+                          Record morning and evening milk production per doe manually or upload milk spreadsheets.
+                        </p>
+                        <div className="flex items-center justify-center gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => onOpenAddModal('milk')}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-2xs transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Record Milk Manually</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenTabExcelUpload('milk')}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs font-semibold transition-colors shadow-2xs"
+                          >
+                            <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Upload Milk (Excel/CSV)</span>
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -1017,15 +1256,13 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       <ExcelImportModal
         isOpen={isExcelModalOpen}
         onClose={() => setIsExcelModalOpen(false)}
-        defaultCategory={
-          activeTab === 'breeding'
-            ? 'breeding'
-            : activeTab === 'health'
-            ? 'health'
-            : activeTab === 'milk'
-            ? 'milk'
-            : 'goats'
-        }
+        defaultCategory={excelCategory}
+      />
+
+      {/* Farm Duration Performance & Operational Report Modal */}
+      <FarmReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
       />
     </div>
   );

@@ -51,6 +51,7 @@ export const FinancialTrackingModule: React.FC = () => {
   const [revBuyer, setRevBuyer] = useState('');
   const [revPrice, setRevPrice] = useState('');
   const [revDate, setRevDate] = useState(todayStr);
+  const [revError, setRevError] = useState<string | null>(null);
 
   // Financial aggregates
   const totalRevenue = useMemo(() => {
@@ -191,12 +192,43 @@ export const FinancialTrackingModule: React.FC = () => {
 
   const handleCreateRevenue = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!revPrice || Number(revPrice) <= 0) return;
+    setRevError(null);
+    if (!revGoatId.trim()) {
+      setRevError('Please select a goat from the herd.');
+      return;
+    }
+
+    const trimmedInput = revGoatId.trim();
+    const existingGoat = goats.find(
+      g => g.tag_number.toUpperCase() === trimmedInput.toUpperCase() ||
+           g.id === trimmedInput ||
+           (g.name && g.name.trim().toLowerCase() === trimmedInput.toLowerCase())
+    );
+
+    if (!existingGoat) {
+      setRevError(`Cannot sell goat: "${trimmedInput}" is not in your herd list by Tag ID or Name.`);
+      return;
+    }
+
+    if (existingGoat.status === 'Sold') {
+      setRevError(`Cannot sell goat: Goat ${existingGoat.tag_number}${existingGoat.name ? ` (${existingGoat.name})` : ''} is already marked as Sold.`);
+      return;
+    }
+
+    if (existingGoat.status === 'Dead') {
+      setRevError(`Cannot sell goat: Goat ${existingGoat.tag_number}${existingGoat.name ? ` (${existingGoat.name})` : ''} is recorded as Deceased / Dead in farm records.`);
+      return;
+    }
+
+    if (!revPrice || Number(revPrice) <= 0) {
+      setRevError('Please enter a valid sale price.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       await addSale({
-        goat_id: revGoatId.trim() || (goats[0]?.tag_number || 'GT-STOCK'),
+        goat_id: existingGoat.tag_number,
         buyer_name: revBuyer.trim() || 'Verified Buyer',
         price: Number(revPrice),
         sale_date: revDate || todayStr,
@@ -205,10 +237,12 @@ export const FinancialTrackingModule: React.FC = () => {
       setRevGoatId('');
       setRevBuyer('');
       setRevPrice('');
+      setRevError(null);
       setShowAddRevenueModal(false);
-      setSuccessToast('Commercial sale revenue logged successfully!');
+      setSuccessToast(`Goat ${existingGoat.tag_number} sale of Ksh ${Number(revPrice).toLocaleString()} recorded! Status updated to Sold.`);
       setTimeout(() => setSuccessToast(null), 3500);
-    } catch (err) {
+    } catch (err: any) {
+      setRevError(err?.message || 'Failed to record goat sale');
       console.error(err);
     } finally {
       setIsSubmitting(false);
@@ -860,19 +894,82 @@ export const FinancialTrackingModule: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateRevenue} className="space-y-3.5">
+              {revError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span>{revError}</span>
+                </div>
+              )}
+
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Goat Tag ID or Product *
-                </label>
-                <input
-                  id="input-revenue-goat-id"
-                  type="text"
-                  required
-                  value={revGoatId}
-                  onChange={e => setRevGoatId(e.target.value)}
-                  placeholder="e.g. GT-102, Boer Breeding Buck, or Milk Batch"
-                  className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-stone-700">
+                    Select Goat from Herd to Sell *
+                  </label>
+                  <span className="text-[11px] text-stone-500 font-medium">
+                    {goats.filter(g => g.status !== 'Sold' && g.status !== 'Dead').length} available to sell
+                  </span>
+                </div>
+
+                {goats.length === 0 ? (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                    ⚠️ No goats currently registered in your herd. Please add goats first before recording sales.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <select
+                      id="input-revenue-goat-id"
+                      value={revGoatId}
+                      onChange={e => {
+                        setRevGoatId(e.target.value);
+                        setRevError(null);
+                      }}
+                      className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono"
+                    >
+                      <option value="">-- Choose Goat from Herd --</option>
+                      {goats.map(g => (
+                        <option
+                          key={g.id}
+                          value={g.tag_number}
+                          disabled={g.status === 'Sold' || g.status === 'Dead'}
+                        >
+                          {g.tag_number} {g.name ? `(${g.name})` : ''} - {g.breed} [{g.status || 'Active'}]{g.status === 'Sold' ? ' — Sold' : g.status === 'Dead' ? ' — Deceased (Dead)' : ''}
+                        </option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      placeholder="Or enter Goat ID or Name..."
+                      value={revGoatId}
+                      onChange={e => {
+                        setRevGoatId(e.target.value);
+                        setRevError(null);
+                      }}
+                      className="w-full px-3 py-2 text-xs bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600 font-mono"
+                    />
+
+                    {revGoatId && (() => {
+                      const trimmed = revGoatId.trim().toUpperCase();
+                      const sel = goats.find(
+                        g => g.tag_number.toUpperCase() === trimmed ||
+                             (g.name && g.name.trim().toUpperCase() === trimmed) ||
+                             g.id === revGoatId.trim()
+                      );
+                      if (!sel) return null;
+                      return (
+                        <div className="mt-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between">
+                          <span className="font-semibold">
+                            {sel.tag_number} {sel.name ? `• ${sel.name}` : ''} • {sel.breed}
+                          </span>
+                          <span className="text-[11px] font-mono bg-emerald-100 px-2 py-0.5 rounded-md text-emerald-800">
+                            Status: {sel.status || 'Active'}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
               <div>

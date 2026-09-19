@@ -1,4 +1,15 @@
-import { GoatRecord, BreedingRecord, HealthRecord, SaleRecord, WorkerRecord, MilkRecord, FarmUser, ExpenseRecord } from '../types';
+import {
+  GoatRecord,
+  BreedingRecord,
+  HealthRecord,
+  SaleRecord,
+  WorkerRecord,
+  MilkRecord,
+  FarmUser,
+  ExpenseRecord,
+  FeedRecord,
+  MedicationRecord
+} from '../types';
 
 export const initialFarmUser: FarmUser = {
   uid: 'usr-default-01',
@@ -13,6 +24,7 @@ export const initialFarmUser: FarmUser = {
   production_focus: 'Dual-Purpose (Dairy Milk & Stud Breeding Stock)',
   grazing_system: 'Semi-Intensive Pasture & Paddock Rotation',
   founded_year: '2021',
+  logo_url: '',
   created_at: '2026-01-15T08:00:00Z',
 };
 
@@ -377,6 +389,91 @@ export const initialExpenses: ExpenseRecord[] = [
     date: '2026-06-20',
     notes: 'Predator-proof paddock fencing upgrade',
     receipt_number: 'EQP-491'
+  }
+];
+
+export const initialFeeds: FeedRecord[] = [];
+
+export const initialMedications: MedicationRecord[] = [
+  {
+    id: 'med-1',
+    name: 'Albendazole 10% Broad Spectrum Oral Drench',
+    category: 'Dewormer',
+    quantity: 3,
+    unit: 'bottles',
+    min_threshold: 2,
+    batch_number: 'ALB-2025-90B',
+    expiry_date: '2027-05-15',
+    target_diseases: 'Barber pole worm (Haemonchus), liver flukes, tapeworms',
+    withdrawal_period_days: 14,
+    storage_requirements: 'Store in cool, dry cabinet below 25°C',
+    supplier: 'Norbrook Veterinary Pharmaceuticals',
+    last_restocked: '2026-01-10',
+    notes: 'Dose at 1.5x sheep rate for goats due to faster rumen metabolism'
+  },
+  {
+    id: 'med-2',
+    name: 'Oxytetracycline 20% L.A. Injectable (200mg/ml)',
+    category: 'Antibiotic',
+    quantity: 1,
+    unit: 'vials',
+    min_threshold: 3,
+    batch_number: 'OXY-4481-LA',
+    expiry_date: '2026-11-20',
+    target_diseases: 'Caprine pneumonia, foot rot, severe mastitis, wound trauma',
+    withdrawal_period_days: 28,
+    storage_requirements: 'Store protected from direct sunlight, 15-25°C',
+    supplier: 'Bayer Animal Health',
+    last_restocked: '2025-12-05',
+    notes: 'Deep intramuscular injection. Only 1 vial remaining!'
+  },
+  {
+    id: 'med-3',
+    name: 'Bar-Vac CD/T Clostridial & Tetanus Toxoid Vaccine',
+    category: 'Vaccine',
+    quantity: 5,
+    unit: 'vials',
+    min_threshold: 4,
+    batch_number: 'CDT-8820-K',
+    expiry_date: '2026-10-30',
+    target_diseases: 'Enterotoxemia (pulpy kidney / overeating) & Tetanus',
+    withdrawal_period_days: 21,
+    storage_requirements: 'Refrigerate strictly at 2°C - 8°C (Do NOT freeze)',
+    supplier: 'Boehringer Ingelheim Vet',
+    last_restocked: '2026-02-12',
+    notes: 'Vital booster given to expectant does 4 weeks before kidding'
+  },
+  {
+    id: 'med-4',
+    name: 'Topical Iodine 10% Antiseptic & Teat Dip Spray',
+    category: 'Antiseptic',
+    quantity: 2,
+    unit: 'bottles',
+    min_threshold: 4,
+    batch_number: 'IOD-112-SPRAY',
+    expiry_date: '2028-01-01',
+    target_diseases: 'Navel cord dipping for newborns, post-milking teat seal',
+    withdrawal_period_days: 0,
+    storage_requirements: 'Keep upright in Milking Parlor Medicine Caddy',
+    supplier: 'AgriCare Vet',
+    last_restocked: '2025-11-18',
+    notes: 'Prevents joint-ill in newborn kids and subclinical mastitis in does'
+  },
+  {
+    id: 'med-5',
+    name: 'Injectable Vitamin B-Complex with High Iron',
+    category: 'Vitamin & Mineral',
+    quantity: 6,
+    unit: 'vials',
+    min_threshold: 2,
+    batch_number: 'VIT-993-B',
+    expiry_date: '2027-08-10',
+    target_diseases: 'Rumen acidosis recovery, anemia from worm burden, kid vigor',
+    withdrawal_period_days: 0,
+    storage_requirements: 'Cool dark room',
+    supplier: 'Norbrook Vet',
+    last_restocked: '2026-01-25',
+    notes: 'Immediate supportive care during antibiotic or dewormer therapy'
   }
 ];
 

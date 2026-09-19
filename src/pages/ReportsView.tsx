@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { FinancialTrackingModule } from '../components/FinancialTrackingModule';
+import { FarmReportModal } from '../components/FarmReportModal';
 import {
   Sparkles,
   ChevronDown,
@@ -45,6 +46,7 @@ export const ReportsView: React.FC = () => {
 
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const escapeCsv = (val: any): string => {
     if (val === null || val === undefined) return '""';
@@ -482,13 +484,24 @@ export const ReportsView: React.FC = () => {
 
         {/* Download & Print Report Actions */}
         <div className="relative shrink-0 flex items-center gap-2 flex-wrap">
-          {/* Print Button for standard A4 paper */}
+          <button
+            id="btn-generate-duration-report"
+            type="button"
+            onClick={() => setIsReportModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+            title="Generate custom duration report (Yesterday, Today, Specific Day, 2 Days, 1 Month) for Sales, Expenses, Milk, or Summary"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Generate Duration Report</span>
+          </button>
+
+          {/* Print Button */}
           <button
             id="btn-print-report"
             type="button"
-            onClick={() => window.print()}
+            onClick={() => setIsReportModalOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
-            title="Print report specifically formatted for standard A4 paper"
+            title="Open printable report document with farm branding"
           >
             <Printer className="w-4 h-4" />
             <span>Print Report</span>
@@ -1093,6 +1106,17 @@ export const ReportsView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Printable Report Template Footer for Standard A4 Paper */}
+      <div className="hidden print:block mt-8 pt-4 border-t border-stone-300 text-center text-xs text-stone-600">
+        All rights reserved {new Date().getFullYear()}
+      </div>
+
+      {/* Farm Performance, Sales, Expenditure & Operations Report Modal */}
+      <FarmReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+      />
     </div>
   );
 };

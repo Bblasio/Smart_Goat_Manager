@@ -7,7 +7,7 @@ export interface GoatRecord {
   dob: string;
   created_at: string;
   weight_kg?: number;
-  status?: 'Active' | 'Sold' | 'Quarantine' | 'Pregnant';
+  status?: 'Active' | 'Sold' | 'Quarantine' | 'Pregnant' | 'Dead';
 }
 
 export interface BreedingRecord {
@@ -90,8 +90,47 @@ export interface FarmUser {
   farm_type?: string;
   production_focus?: string;
   grazing_system?: string;
+  logo_url?: string;
   created_at: string;
 }
 
-export type RecordType = 'goat' | 'breeding' | 'health' | 'sale' | 'expense' | 'worker' | 'milk';
-export type AppView = 'dashboard' | 'breeding_estimator' | 'records' | 'health_vet' | 'reports' | 'profile';
+export type RecordType = 'goat' | 'breeding' | 'health' | 'sale' | 'expense' | 'worker' | 'milk' | 'feed' | 'medication';
+export type AppView = 'dashboard' | 'tasks' | 'breeding_estimator' | 'records' | 'health_vet' | 'feed_supply' | 'reports' | 'profile';
+
+export type FeedCategory = 'Fodder & Hay' | 'Concentrate' | 'Mineral & Salt' | 'Silage' | 'Supplement';
+export type FeedUnit = 'kg' | 'bags' | 'bales' | 'tons' | 'blocks';
+
+export interface FeedRecord {
+  id: string;
+  name: string;
+  category: FeedCategory;
+  quantity: number;
+  unit: FeedUnit;
+  min_threshold: number;
+  cost_per_unit?: number;
+  supplier?: string;
+  storage_location?: string;
+  last_restocked?: string;
+  expiry_date?: string;
+  notes?: string;
+}
+
+export type MedicationCategory = 'Dewormer' | 'Antibiotic' | 'Vaccine' | 'Vitamin & Mineral' | 'Antiseptic' | 'Pain Relief';
+export type MedicationUnit = 'vials' | 'bottles' | 'ml' | 'doses' | 'tubes' | 'bolus';
+
+export interface MedicationRecord {
+  id: string;
+  name: string;
+  category: MedicationCategory;
+  quantity: number;
+  unit: MedicationUnit;
+  min_threshold: number;
+  batch_number?: string;
+  expiry_date: string;
+  target_diseases?: string;
+  withdrawal_period_days?: number;
+  storage_requirements?: string;
+  supplier?: string;
+  last_restocked?: string;
+  notes?: string;
+}

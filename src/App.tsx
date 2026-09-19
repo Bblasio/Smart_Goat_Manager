@@ -9,6 +9,8 @@ import { RecordsView } from './pages/RecordsView';
 import { HealthCareView } from './pages/HealthCareView';
 import { ReportsView } from './pages/ReportsView';
 import { ProfileView } from './pages/ProfileView';
+import { TasksView } from './pages/TasksView';
+import { FeedSupplyView } from './pages/FeedSupplyView';
 import { AuthView } from './pages/AuthView';
 import { AddRecordModal } from './components/AddRecordModal';
 import { AppLaunchLoader } from './components/AppLaunchLoader';
@@ -16,8 +18,10 @@ import { RecordType, AppView } from './types';
 import { Menu } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-  const { isAuthenticated, authLoading, isDemoMode, farmName, logout } = useFarm();
+  const { isAuthenticated, authLoading, isDemoMode, farmName, user, logout } = useFarm();
   const [activeTab, setActiveTab] = useState<AppView>('dashboard');
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [navigatingMessage, setNavigatingMessage] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<RecordType>('goat');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -30,8 +34,55 @@ const MainLayout: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  const getTabLabel = (tab: AppView): string => {
+    switch (tab) {
+      case 'dashboard':
+        return 'Dashboard';
+      case 'tasks':
+        return 'Tasks & Schedules';
+      case 'feed_supply':
+        return 'Feed & Supply';
+      case 'breeding_estimator':
+        return 'Breeding Estimator';
+      case 'records':
+        return 'Herd & Farm Records';
+      case 'health_vet':
+        return 'Veterinary & Health';
+      case 'reports':
+        return 'Reports & Forecasts';
+      case 'profile':
+        return 'Farm Profile';
+      default:
+        return 'Farm Section';
+    }
+  };
+
+  // Only trigger the lively loader where necessary (e.g. heavy calculations, forecasts)
+  const heavyTabs: AppView[] = ['breeding_estimator', 'reports'];
+
+  const handleNavigate = (newTab: AppView) => {
+    if (newTab === activeTab) return;
+    if (mobileSidebarOpen) setMobileSidebarOpen(false);
+
+    if (heavyTabs.includes(newTab)) {
+      setIsNavigating(true);
+      setNavigatingMessage(`Loading ${getTabLabel(newTab)}...`);
+      setTimeout(() => {
+        setActiveTab(newTab);
+        setIsNavigating(false);
+      }, 260);
+    } else {
+      setActiveTab(newTab);
+    }
+  };
+
   if (authLoading || !minLaunchTimePassed) {
-    return <AppLaunchLoader />;
+    return (
+      <AppLaunchLoader
+        logoUrl={user?.logo_url}
+        farmName={farmName}
+      />
+    );
   }
 
   if (!isAuthenticated) {
@@ -45,10 +96,20 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex transition-colors duration-200">
+      {/* Navigation Loading Animation Overlay */}
+      {isNavigating && (
+        <AppLaunchLoader
+          isNavigation={true}
+          statusMessage={navigatingMessage}
+          logoUrl={user?.logo_url}
+          farmName={farmName}
+        />
+      )}
+
       {/* Left Navigation Plane */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleNavigate}
         onOpenAddModal={() => handleOpenAddModal('goat')}
         mobileOpen={mobileSidebarOpen}
         setMobileOpen={setMobileSidebarOpen}
@@ -86,10 +147,23 @@ const MainLayout: React.FC = () => {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🐐</span>
+            <button
+              type="button"
+              onClick={() => handleNavigate('profile')}
+              className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity focus:outline-none"
+              title="View & Edit Farm Profile / Logo"
+            >
+              {user?.logo_url ? (
+                <img
+                  src={user.logo_url}
+                  alt={farmName}
+                  className="w-7 h-7 rounded-lg object-cover border border-stone-200 dark:border-stone-700 shrink-0"
+                />
+              ) : (
+                <span className="text-xl">🐐</span>
+              )}
               <span className="font-bold text-stone-900 dark:text-stone-100 text-sm truncate max-w-[140px]">{farmName}</span>
-            </div>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -108,27 +182,38 @@ const MainLayout: React.FC = () => {
         <main className="flex-1 pb-16">
           {activeTab === 'dashboard' && (
             <DashboardView
-              onNavigateToRecords={() => setActiveTab('records')}
-              onNavigateToReports={() => setActiveTab('reports')}
-              onNavigateToBreedingEstimator={() => setActiveTab('breeding_estimator')}
-              onNavigateToHealth={() => setActiveTab('health_vet')}
-              onOpenAddModal={() => handleOpenAddModal('goat')}
+              onNavigateToRecords={() => handleNavigate('records')}
+              onNavigateToReports={() => handleNavigate('reports')}
+              onNavigateToBreedingEstimator={() => handleNavigate('breeding_estimator')}
+              onNavigateToHealth={() => handleNavigate('health_vet')}
+              onNavigateToTasks={() => handleNavigate('tasks')}
+              onNavigateToFeedSupply={() => handleNavigate('feed_supply')}
               onOpenAddHealthModal={() => handleOpenAddModal('health')}
+              onOpenAddSaleModal={() => handleOpenAddModal('sale')}
             />
           )}
+
+          {activeTab === 'tasks' && (
+            <TasksView
+              onNavigate={handleNavigate}
+              onOpenAddModal={handleOpenAddModal}
+            />
+          )}
+
+          {activeTab === 'feed_supply' && <FeedSupplyView />}
 
           {activeTab === 'breeding_estimator' && <BreedingEstimatorView />}
 
           {activeTab === 'records' && (
             <RecordsView
               onOpenAddModal={handleOpenAddModal}
-              onNavigate={setActiveTab}
+              onNavigate={handleNavigate}
             />
           )}
 
           {activeTab === 'health_vet' && (
             <HealthCareView
-              onNavigate={setActiveTab}
+              onNavigate={handleNavigate}
               onOpenAddModal={() => handleOpenAddModal('health')}
             />
           )}
@@ -137,21 +222,15 @@ const MainLayout: React.FC = () => {
 
           {activeTab === 'profile' && (
             <ProfileView
-              onNavigateToRecords={() => setActiveTab('records')}
-              onNavigateToReports={() => setActiveTab('reports')}
-              onOpenAddModal={() => handleOpenAddModal('goat')}
+              onNavigateToRecords={() => handleNavigate('records')}
+              onNavigateToReports={() => handleNavigate('reports')}
             />
           )}
         </main>
 
-        <footer className="no-print border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 py-5 mt-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-stone-500 dark:text-stone-400">
-            <div>
-              Smart Goat Management System • Connected to goat-smart-farm
-            </div>
-            <div className="text-stone-400 dark:text-stone-500">
-              Biometric Breeding & Gestation Estimator Active
-            </div>
+        <footer className="no-print border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 py-4 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-stone-500 dark:text-stone-400">
+            All rights reserved {new Date().getFullYear()}
           </div>
         </footer>
       </div>

@@ -30,17 +30,23 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
-import { PendingTasksSection } from '../components/PendingTasksSection';
+import { DashboardSummaryCard } from '../components/DashboardSummaryCard';
 import { WeightTrendsChart } from '../components/WeightTrendsChart';
 import { RecentActivities } from '../components/RecentActivities';
+import { LocalFarmWeatherWidget } from '../components/LocalFarmWeatherWidget';
+import { RecentSalesFeed } from '../components/RecentSalesFeed';
+import { FeedSupplyAlertWidget } from '../components/FeedSupplyAlertWidget';
 
 interface DashboardViewProps {
   onNavigateToRecords: () => void;
   onNavigateToReports: () => void;
   onNavigateToBreedingEstimator: () => void;
-  onOpenAddModal: () => void;
+  onOpenAddModal?: () => void;
   onNavigateToHealth?: () => void;
+  onNavigateToTasks?: () => void;
+  onNavigateToFeedSupply?: () => void;
   onOpenAddHealthModal?: () => void;
+  onOpenAddSaleModal?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -49,7 +55,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToBreedingEstimator,
   onOpenAddModal,
   onNavigateToHealth,
+  onNavigateToTasks,
+  onNavigateToFeedSupply,
   onOpenAddHealthModal,
+  onOpenAddSaleModal,
 }) => {
   const {
     farmName,
@@ -155,14 +164,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Baby className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Breeding Estimator</span>
             </button>
-            <button
-              type="button"
-              id="btn-quick-add-goat"
-              onClick={onOpenAddModal}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-xs"
-            >
-              + Add Record
-            </button>
+            {onNavigateToTasks && (
+              <button
+                type="button"
+                id="btn-quick-tasks"
+                onClick={onNavigateToTasks}
+                className="px-4 py-2.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-sm font-semibold transition-colors shadow-xs flex items-center gap-1.5"
+              >
+                <span>Tasks</span>
+                <ChevronRight className="w-4 h-4 text-stone-500" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -179,26 +191,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   Welcome to Your Farm Management System!
                 </h3>
                 <p className="text-stone-600 dark:text-stone-300 text-xs mt-1 max-w-xl leading-relaxed">
-                  Your farm records are ready. You can register your first goat record or import your existing spreadsheet records (Excel/CSV) into your real-time database.
+                  Your farm records are ready. You can inspect your herd records or import existing spreadsheet records (Excel/CSV) into your real-time database.
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  id="btn-empty-register-goat"
-                  onClick={onOpenAddModal}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
-                >
-                  + Register First Goat
-                </button>
-                <button
-                  type="button"
                   id="btn-empty-import-excel"
                   onClick={onNavigateToRecords}
-                  className="px-4 py-2 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Upload Excel / Records</span>
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
+                  <span>Go to Herd Records</span>
                 </button>
               </div>
             </div>
@@ -251,6 +255,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </div>
 
+      {/* Summary Card Component: Key Metrics (Total Herd Count, Active Pregnancies, Recent Health Alerts, Daily Milk) */}
+      <DashboardSummaryCard
+        goats={goats}
+        breeding={breeding}
+        health={health}
+        milk={milk}
+        onNavigateToRecords={onNavigateToRecords}
+        onNavigateToBreedingEstimator={onNavigateToBreedingEstimator}
+        onNavigateToTasks={onNavigateToTasks}
+        onNavigateToHealth={onNavigateToHealth}
+      />
+
+      {/* Local Farm Weather & Micro-Climate Advisory Widget (Mocked Geolocation) */}
+      <LocalFarmWeatherWidget
+        customLocation={farmName ? `${farmName} Station` : undefined}
+      />
+
+      {/* Feed & Veterinary Supply Status & Low-Stock Alerts */}
+      <FeedSupplyAlertWidget
+        onNavigateToFeedSupply={onNavigateToFeedSupply || onNavigateToRecords}
+      />
+
       {/* Featured Banner: Breeding & Kidding Predictor Widget */}
       <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-stone-900 rounded-2xl p-6 text-white shadow-xs relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2 max-w-xl">
@@ -293,13 +319,76 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Pending Tasks & Health Schedules Section */}
-      <PendingTasksSection
-        onNavigateToHealth={onNavigateToHealth}
-        onNavigateToRecords={onNavigateToRecords}
-        onNavigateToBreedingEstimator={onNavigateToBreedingEstimator}
-        onOpenAddHealthModal={onOpenAddHealthModal}
-      />
+      {/* Daily Farm Operations & Bio-Security Protocol (Companion module) */}
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 shadow-xs transition-colors">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
+              <Activity className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-stone-900 dark:text-white">
+                Daily Herd Operations & Bio-Security Protocol
+              </h4>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                Morning & evening livestock management standards
+              </p>
+            </div>
+          </div>
+          {onNavigateToTasks && (
+            <button
+              type="button"
+              onClick={onNavigateToTasks}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-semibold transition-colors"
+            >
+              <span>Go to Tasks Hub</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/70 dark:border-stone-700/60">
+            <div className="flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+              <span>🌾 Rumen Nutrition</span>
+              <span className="text-emerald-600 dark:text-emerald-400">Optimal</span>
+            </div>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+              Legume hay + dry roughage for rumen flora. Salt lick blocks accessible.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/70 dark:border-stone-700/60">
+            <div className="flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+              <span>💧 Fresh Water Supply</span>
+              <span className="text-teal-600 dark:text-teal-400">Inspected</span>
+            </div>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+              Troughs scrubbed & refilled. Clean water stimulates higher daily lactation.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/70 dark:border-stone-700/60">
+            <div className="flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+              <span>🛡️ Biosecurity Protocol</span>
+              <span className="text-emerald-600 dark:text-emerald-400">Active</span>
+            </div>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+              Footbaths at barn entryways. Isolation pens ready for new stock quarantine.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/70 dark:border-stone-700/60">
+            <div className="flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+              <span>🍼 Colostrum Bank</span>
+              <span className="text-purple-600 dark:text-purple-400">Prepared</span>
+            </div>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+              Frozen quality colostrum available for newborn kids within first 2-4 hours.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Farm Overview Metrics */}
       <div>
@@ -399,6 +488,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Primary Analytical Row: 6-Month Weight Trends Chart */}
       <WeightTrendsChart goats={goats} healthRecords={health} />
+
+      {/* Recent Sales Activity Feed: Last 5 Transactions & Quick Financial Insights */}
+      <RecentSalesFeed
+        sales={sales}
+        goats={goats}
+        onNavigateToRecords={onNavigateToRecords}
+        onOpenAddSale={onOpenAddSaleModal}
+      />
 
       {/* Secondary Dashboard Grid: Recent Activities & Breeding Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

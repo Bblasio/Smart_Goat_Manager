@@ -20,7 +20,11 @@ import {
   X,
   Plus,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  Camera,
+  Upload,
+  Trash2,
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface ProfileViewProps {
@@ -64,6 +68,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [editPhone, setEditPhone] = useState(user?.phone || '');
   const [editBio, setEditBio] = useState(user?.bio || '');
   const [editFoundedYear, setEditFoundedYear] = useState(user?.founded_year || '');
+  const [editLogoUrl, setEditLogoUrl] = useState(user?.logo_url || '');
 
   // Computed Farm Metrics
   const totalGoats = goats.length;
@@ -85,9 +90,44 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setEditPhone(user?.phone || '');
     setEditBio(user?.bio || '');
     setEditFoundedYear(user?.founded_year || '');
+    setEditLogoUrl(user?.logo_url || '');
     setErrorStatus(null);
     setSaveStatus(null);
     setIsEditing(true);
+  };
+
+  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setErrorStatus('Logo image file must be less than 2MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setEditLogoUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleQuickLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setErrorStatus('Logo image file must be less than 2MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      if (typeof reader.result === 'string') {
+        await updateFarmProfile({ logo_url: reader.result });
+        setSaveStatus('Farm logo updated!');
+        setTimeout(() => setSaveStatus(null), 3000);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -111,6 +151,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       phone: editPhone.trim(),
       bio: editBio.trim(),
       founded_year: editFoundedYear.trim(),
+      logo_url: editLogoUrl.trim(),
     };
 
     const res = await updateFarmProfile(updates);
@@ -137,8 +178,31 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-3xl sm:text-4xl shadow-inner shrink-0">
-              🐐
+            <div className="relative group w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-3xl sm:text-4xl shadow-inner shrink-0 overflow-hidden">
+              {user?.logo_url ? (
+                <img
+                  src={user.logo_url}
+                  alt={user.farm_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>🐐</span>
+              )}
+              <label
+                htmlFor="quick-logo-input"
+                className="absolute inset-0 bg-stone-950/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-[10px] font-bold text-white cursor-pointer"
+                title="Click to update farm logo"
+              >
+                <Camera className="w-4 h-4 mb-0.5 text-emerald-400" />
+                <span>Change</span>
+              </label>
+              <input
+                id="quick-logo-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleQuickLogoChange}
+              />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -199,17 +263,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <Edit3 className="w-4 h-4 text-emerald-700" />
               <span>Edit Farm Details</span>
             </button>
-            {onOpenAddModal && (
-              <button
-                id="btn-profile-add-record"
-                type="button"
-                onClick={onOpenAddModal}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-sm rounded-xl border border-emerald-600 shadow-sm transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Add Record</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -507,6 +560,59 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             )}
 
             <form onSubmit={handleSaveProfile} className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
+              {/* Farm Logo Upload & Preview */}
+              <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
+                <label className="block text-xs font-semibold text-stone-800 mb-1.5">
+                  Farm Logo / Brand Image
+                </label>
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl border border-stone-300 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                    {editLogoUrl ? (
+                      <img src={editLogoUrl} alt="Farm Logo Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-2xl text-stone-400">🐐</span>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label
+                        htmlFor="logo-file-picker"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Upload Logo File</span>
+                      </label>
+                      <input
+                        id="logo-file-picker"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleLogoFileUpload}
+                      />
+                      {editLogoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditLogoUrl('')}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remove</span>
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      id="input-edit-logo-url"
+                      type="text"
+                      placeholder="Or paste direct image URL (https://...)"
+                      value={editLogoUrl.startsWith('data:') ? 'Custom image file uploaded' : editLogoUrl}
+                      onChange={e => setEditLogoUrl(e.target.value)}
+                      disabled={editLogoUrl.startsWith('data:')}
+                      className="w-full px-3 py-1.5 border border-stone-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-stone-100 disabled:text-stone-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1">
                   Farm Name *

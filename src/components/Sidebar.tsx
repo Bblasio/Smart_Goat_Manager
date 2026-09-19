@@ -4,6 +4,7 @@ import { ThemeToggle } from './ThemeToggle';
 import {
   LayoutDashboard,
   ClipboardList,
+  CheckSquare,
   Sparkles,
   PlusCircle,
   LogOut,
@@ -20,7 +21,8 @@ import {
   Menu,
   X,
   Building2,
-  TrendingUp
+  TrendingUp,
+  Package
 } from 'lucide-react';
 import { AppView } from '../types';
 
@@ -49,10 +51,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
     syncError,
     logout,
     resetToSampleData,
+    feeds,
+    medications,
   } = useFarm();
+
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  React.useEffect(() => {
+    setLogoFailed(false);
+  }, [user?.logo_url]);
+
+  const lowStockCount =
+    (feeds?.filter(f => f.quantity <= f.min_threshold).length || 0) +
+    (medications?.filter(m => m.quantity <= m.min_threshold).length || 0);
 
   const navItems: { id: AppView; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'tasks', label: 'Tasks', icon: CheckSquare },
+    { id: 'feed_supply', label: 'Feed & Supply', icon: Package, badge: lowStockCount > 0 ? `${lowStockCount} alert${lowStockCount > 1 ? 's' : ''}` : undefined },
     { id: 'breeding_estimator', label: 'Breeding Estimator', icon: Baby, badge: 'New' },
     { id: 'records', label: 'Herd & Farm Records', icon: ClipboardList },
     { id: 'health_vet', label: 'Veterinary & Health', icon: Stethoscope },
@@ -79,12 +95,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Top Header / Branding */}
         <div className="p-5 border-b border-stone-800">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xl shadow-xs">
-                🐐
-              </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('profile');
+                setMobileOpen(false);
+              }}
+              className="flex items-center gap-3 text-left group transition-opacity hover:opacity-90 focus:outline-none"
+              title="View & Edit Farm Profile / Logo"
+            >
+              {user?.logo_url && !logoFailed ? (
+                <img
+                  src={user.logo_url}
+                  alt={farmName}
+                  onError={() => setLogoFailed(true)}
+                  className="w-10 h-10 rounded-xl object-cover border border-emerald-500/50 shadow-xs shrink-0 group-hover:border-emerald-400 transition-colors"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white flex items-center justify-center text-xl shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                  🐐
+                </div>
+              )}
               <div className="min-w-0">
-                <h1 className="font-bold text-white text-base tracking-tight truncate">
+                <h1 className="font-bold text-white text-base tracking-tight truncate group-hover:text-emerald-300 transition-colors">
                   {farmName}
                 </h1>
                 <div className="flex items-center gap-1.5 text-[11px] text-stone-400">
@@ -92,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span>{daysActive}d active</span>
                 </div>
               </div>
-            </div>
+            </button>
 
             {/* Mobile close button */}
             <button

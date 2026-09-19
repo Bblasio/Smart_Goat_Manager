@@ -17,7 +17,8 @@ import {
   set,
   push,
   remove,
-  get
+  get,
+  update
 } from 'firebase/database';
 
 export const firebaseConfig = {
@@ -49,6 +50,7 @@ export {
   set,
   push,
   remove,
-  get
+  get,
+  update
 };
 export type { User };

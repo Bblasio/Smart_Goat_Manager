@@ -161,21 +161,40 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
         setHealthTreatment('');
       } else if (recordType === 'sale') {
         if (!saleGoatId.trim()) {
-          setErrorMsg('Goat Tag ID is required.');
+          setErrorMsg('Goat Tag ID or Name is required.');
           return;
         }
+        const trimmedInput = saleGoatId.trim();
+        const existingGoat = goats.find(
+          g => g.tag_number.toUpperCase() === trimmedInput.toUpperCase() ||
+               g.id === trimmedInput ||
+               (g.name && g.name.trim().toLowerCase() === trimmedInput.toLowerCase())
+        );
+        if (!existingGoat) {
+          setErrorMsg(`Cannot sell goat: "${trimmedInput}" was not found in your herd list by Tag ID or Name.`);
+          return;
+        }
+        if (existingGoat.status === 'Sold') {
+          setErrorMsg(`Cannot sell goat: Goat ${existingGoat.tag_number}${existingGoat.name ? ` (${existingGoat.name})` : ''} is already marked as Sold.`);
+          return;
+        }
+        if (existingGoat.status === 'Dead') {
+          setErrorMsg(`Cannot sell goat: Goat ${existingGoat.tag_number}${existingGoat.name ? ` (${existingGoat.name})` : ''} is recorded as Deceased / Dead.`);
+          return;
+        }
+
         const numericPrice = parseFloat(salePrice);
         if (isNaN(numericPrice) || numericPrice < 0) {
           setErrorMsg('Please enter a valid sale price.');
           return;
         }
         addSale({
-          goat_id: saleGoatId.trim().toUpperCase(),
+          goat_id: existingGoat.tag_number,
           buyer_name: saleBuyer.trim() || 'Private Buyer',
           price: numericPrice,
           sale_date: saleDate,
         });
-        setSuccessMsg(`Sale of Ksh ${numericPrice.toLocaleString()} recorded!`);
+        setSuccessMsg(`Sale of ${existingGoat.tag_number}${existingGoat.name ? ` (${existingGoat.name})` : ''} for Ksh ${numericPrice.toLocaleString()} recorded! Status updated to Sold.`);
         setSaleGoatId('');
         setSaleBuyer('');
         setSalePrice('');
@@ -409,6 +428,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                     <option value="Pregnant">Pregnant</option>
                     <option value="Quarantine">Quarantine</option>
                     <option value="Sold">Sold</option>
+                    <option value="Dead">Dead (Deceased)</option>
                   </select>
                 </div>
               </div>
@@ -744,18 +764,77 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           {recordType === 'sale' && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Goat Tag ID *
-                </label>
-                <input
-                  id="input-sale-goat-id"
-                  type="text"
-                  placeholder="e.g. GT-089"
-                  value={saleGoatId}
-                  onChange={e => setSaleGoatId(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                  required
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-stone-700">
+                    Select Goat by ID or Name to Sell *
+                  </label>
+                  <span className="text-[11px] text-stone-500 font-medium">
+                    {goats.filter(g => g.status !== 'Sold' && g.status !== 'Dead').length} available to sell
+                  </span>
+                </div>
+
+                {goats.length === 0 ? (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                    ⚠️ No goats currently registered in your herd. You must first register a goat before you can record a sale.
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <select
+                        id="select-sale-goat-id"
+                        value={saleGoatId}
+                        onChange={e => setSaleGoatId(e.target.value)}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono bg-white"
+                      >
+                        <option value="">-- Choose Goat from Herd or Type Below --</option>
+                        {goats.map(g => (
+                          <option
+                            key={g.id}
+                            value={g.tag_number}
+                            disabled={g.status === 'Sold' || g.status === 'Dead'}
+                          >
+                            {g.tag_number} {g.name ? `(${g.name})` : ''} - {g.breed} [{g.status || 'Active'}]{g.status === 'Sold' ? ' — Already Sold' : g.status === 'Dead' ? ' — Deceased (Dead)' : ''}
+                          </option>
+                        ))}
+                      </select>
+
+                      <div className="relative">
+                        <input
+                          id="input-sale-goat-id-or-name"
+                          type="text"
+                          placeholder="Or type Goat ID (e.g. GT-101) or Goat Name (e.g. Bella)..."
+                          value={saleGoatId}
+                          onChange={e => setSaleGoatId(e.target.value)}
+                          className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                        />
+                        <span className="text-[10px] text-stone-400 mt-1 block">
+                          Tip: Entering Goat ID or Name will automatically update that goat's status to <strong>Sold</strong>.
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Quick helper feedback when a goat is selected */}
+                    {saleGoatId && (() => {
+                      const trimmed = saleGoatId.trim().toUpperCase();
+                      const sel = goats.find(
+                        g => g.tag_number.toUpperCase() === trimmed ||
+                             (g.name && g.name.trim().toUpperCase() === trimmed) ||
+                             g.id === saleGoatId.trim()
+                      );
+                      if (!sel) return null;
+                      return (
+                        <div className="mt-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between">
+                          <span className="font-semibold">
+                            {sel.tag_number} {sel.name ? `• ${sel.name}` : ''} • {sel.breed} ({sel.gender})
+                          </span>
+                          <span className="text-[11px] font-mono bg-emerald-100 px-2 py-0.5 rounded-md text-emerald-800">
+                            Status: {sel.status || 'Active'}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

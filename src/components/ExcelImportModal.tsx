@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { useFarm } from '../context/FarmContext';
 import { GoatRecord, BreedingRecord, HealthRecord, MilkRecord } from '../types';
@@ -23,7 +23,8 @@ import {
   Check,
   RefreshCw,
   Info,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Tag
 } from 'lucide-react';
 
 interface ExcelImportModalProps {
@@ -54,6 +55,15 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const { importBatchRecords } = useFarm();
 
   const [category, setCategory] = useState<'goats' | 'breeding' | 'health' | 'milk' | 'all'>(defaultCategory);
+
+  useEffect(() => {
+    if (isOpen && defaultCategory) {
+      setCategory(defaultCategory);
+      if (defaultCategory !== 'all') {
+        setPreviewTab(defaultCategory as any);
+      }
+    }
+  }, [isOpen, defaultCategory]);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
@@ -648,7 +658,41 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const handleDownloadTemplate = () => {
     const wb = XLSX.utils.book_new();
 
-    // Master Herd Sheet (with pregnant doe and health info in one place!)
+    if (category === 'milk') {
+      const milkTemplate = [
+        { 'Doe Tag': 'GT-101', 'Date': '2026-09-15', 'Morning Yield (L)': 2.5, 'Evening Yield (L)': 2.0, 'Total Liters': 4.5 },
+        { 'Doe Tag': 'GT-103', 'Date': '2026-09-15', 'Morning Yield (L)': 3.0, 'Evening Yield (L)': 2.8, 'Total Liters': 5.8 },
+        { 'Doe Tag': 'GT-104', 'Date': '2026-09-15', 'Morning Yield (L)': 1.8, 'Evening Yield (L)': 1.5, 'Total Liters': 3.3 },
+      ];
+      const ws = XLSX.utils.json_to_sheet(milkTemplate);
+      XLSX.utils.book_append_sheet(wb, ws, 'Milk Yield');
+      XLSX.writeFile(wb, 'Smart_Goat_Farm_Milk_Yield_Template.xlsx');
+      return;
+    }
+
+    if (category === 'breeding') {
+      const breedingTemplate = [
+        { 'Doe Tag': 'GT-101', 'Buck Tag': 'BK-102', 'Breeding Date': '2026-01-15', 'Expected Kidding': '2026-06-14', 'Status': 'Confirmed Pregnant', 'Notes': 'Natural pen mating' },
+        { 'Doe Tag': 'GT-103', 'Buck Tag': 'BK-102', 'Breeding Date': '2026-02-01', 'Expected Kidding': '2026-07-01', 'Status': 'Confirmed Pregnant', 'Notes': 'Second parity' },
+      ];
+      const ws = XLSX.utils.json_to_sheet(breedingTemplate);
+      XLSX.utils.book_append_sheet(wb, ws, 'Breeding Schedule');
+      XLSX.writeFile(wb, 'Smart_Goat_Farm_Breeding_Template.xlsx');
+      return;
+    }
+
+    if (category === 'health') {
+      const healthTemplate = [
+        { 'Goat Tag': 'GT-101', 'Checkup Date': '2026-05-15', 'Condition': 'Routine Prophylaxis', 'Treatment': 'CD/T Vaccination', 'Status': 'Healthy', 'Attending Vet': 'Dr. Kimani' },
+        { 'Goat Tag': 'GT-104', 'Checkup Date': '2026-09-10', 'Condition': 'Foot Scald', 'Treatment': 'Oxytetracycline 200 LA & Footbath', 'Status': 'Under Treatment', 'Attending Vet': 'Dr. Kimani' },
+      ];
+      const ws = XLSX.utils.json_to_sheet(healthTemplate);
+      XLSX.utils.book_append_sheet(wb, ws, 'Health Ledger');
+      XLSX.writeFile(wb, 'Smart_Goat_Farm_Health_Template.xlsx');
+      return;
+    }
+
+    // Default or Master Herd Sheet (with pregnant doe and health info in one place!)
     const masterHerdTemplate = [
       {
         'Tag Number': 'GT-101',
@@ -709,8 +753,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
     ];
 
     const wsMaster = XLSX.utils.json_to_sheet(masterHerdTemplate);
-    XLSX.utils.book_append_sheet(wb, wsMaster, 'Herd Master (Auto-Route)');
-    XLSX.writeFile(wb, 'Smart_Goat_Farm_Master_Records_Template.xlsx');
+    XLSX.utils.book_append_sheet(wb, wsMaster, category === 'goats' ? 'Goats Registry' : 'Herd Master');
+    XLSX.writeFile(wb, category === 'goats' ? 'Smart_Goat_Farm_Goats_Template.xlsx' : 'Smart_Goat_Farm_Master_Records_Template.xlsx');
   };
 
   // Perform Complete Synchronized Import
@@ -843,33 +887,92 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             </div>
           )}
 
+          {/* Record Category Selector (Specific vs Master) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
+                Choose Record Type to Upload
+              </label>
+              <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                Select your specific record or upload an all-in-one spreadsheet
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {[
+                { id: 'goats', label: 'Goats Registry', icon: Tag, desc: 'Tags, breeds, DOB, status' },
+                { id: 'breeding', label: 'Breeding', icon: Baby, desc: 'Mating dates, bucks, kids' },
+                { id: 'health', label: 'Health / Medical', icon: Stethoscope, desc: 'Treatments & checkups' },
+                { id: 'milk', label: 'Milk Yield', icon: Milk, desc: 'Morning & evening yields' },
+                { id: 'all', label: 'Master Sheet', icon: Layers, desc: 'Combined multi-ledger' },
+              ].map(cat => {
+                const Icon = cat.icon;
+                const isSelected = category === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      setCategory(cat.id as any);
+                      if (cat.id !== 'all') {
+                        setPreviewTab(cat.id as any);
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl text-left border transition-all flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 ring-1 ring-emerald-500 text-emerald-900 dark:text-emerald-200'
+                        : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-850 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-500'}`} />
+                      <span>{cat.label}</span>
+                    </div>
+                    <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-1 line-clamp-1">
+                      {cat.desc}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Template Download Banner */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700">
             <div className="flex items-center gap-2.5">
               <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <div>
                 <div className="text-xs font-bold text-stone-900 dark:text-white">
-                  Need an all-in-one spreadsheet template?
+                  Need a pre-formatted {category === 'all' ? 'master' : category} spreadsheet template?
                 </div>
                 <div className="text-[11px] text-stone-500 dark:text-stone-400">
-                  Download our official template supporting tags, accurate pregnancy statuses, breeding dates, and health records in a single sheet.
+                  {category === 'milk'
+                    ? 'Download official sample columns for morning & evening liters per doe.'
+                    : category === 'breeding'
+                    ? 'Download official sample columns for mating tags, bucks, and expected kidding dates.'
+                    : category === 'health'
+                    ? 'Download official sample columns for clinical conditions, vaccinations, and veterinary treatments.'
+                    : category === 'goats'
+                    ? 'Download official sample columns for goat tag numbers, breeds, gender, and herd status.'
+                    : 'Download our official master template supporting tags, pregnancy statuses, and health records in one file.'}
                 </div>
               </div>
             </div>
             <button
               type="button"
               onClick={handleDownloadTemplate}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-300 dark:border-stone-600 rounded-lg text-xs font-semibold transition-colors shrink-0 shadow-xs"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-300 dark:border-stone-600 rounded-xl text-xs font-semibold transition-colors shrink-0 shadow-xs"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Download Master Template (.xlsx)</span>
+              <span>
+                Download {category === 'all' ? 'Master' : category.charAt(0).toUpperCase() + category.slice(1)} Template (.xlsx)
+              </span>
             </button>
           </div>
 
           {/* Drag & Drop File Zone */}
           <div>
             <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-2">
-              Select or drag your spreadsheet document (.xlsx, .xls, .csv)
+              Select or drag your {category === 'all' ? 'spreadsheet' : category} document (.xlsx, .xls, .csv)
             </label>
             <div
               onDragEnter={handleDrag}

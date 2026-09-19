@@ -7,7 +7,9 @@ import {
   ExpenseRecord,
   WorkerRecord,
   MilkRecord,
-  FarmUser
+  FarmUser,
+  FeedRecord,
+  MedicationRecord
 } from '../types';
 import {
   initialFarmUser,
@@ -17,7 +19,9 @@ import {
   initialSales,
   initialExpenses,
   initialWorkers,
-  initialMilk
+  initialMilk,
+  initialFeeds,
+  initialMedications
 } from '../data/mockData';
 import {
   auth,
@@ -35,6 +39,7 @@ import {
   push,
   remove,
   get,
+  update,
   User
 } from '../lib/firebase';
 
@@ -59,6 +64,8 @@ interface FarmContextType {
   expenses: ExpenseRecord[];
   workers: WorkerRecord[];
   milk: MilkRecord[];
+  feeds: FeedRecord[];
+  medications: MedicationRecord[];
   login: (email: string, password?: string, farmName?: string) => Promise<{ success: boolean; error?: string }>;
   signup: (
     email: string,
@@ -81,6 +88,7 @@ interface FarmContextType {
   logout: () => Promise<void>;
   enterDemoMode: () => void;
   addGoat: (goat: Omit<GoatRecord, 'id' | 'created_at'>) => Promise<void>;
+  updateGoat: (id: string, updates: Partial<GoatRecord>) => Promise<void>;
   deleteGoat: (id: string) => Promise<void>;
   addBreeding: (breed: Omit<BreedingRecord, 'id'>) => Promise<void>;
   updateBreeding: (id: string, breed: Partial<BreedingRecord>) => Promise<void>;
@@ -95,6 +103,18 @@ interface FarmContextType {
   deleteWorker: (id: string) => Promise<void>;
   addMilk: (milkItem: Omit<MilkRecord, 'id'>) => Promise<void>;
   deleteMilk: (id: string) => Promise<void>;
+  addFeed: (feed: Omit<FeedRecord, 'id'>) => Promise<void>;
+  updateFeed: (id: string, updates: Partial<FeedRecord>) => Promise<void>;
+  deleteFeed: (id: string) => Promise<void>;
+  clearAllFeeds: () => Promise<void>;
+  consumeFeed: (id: string, amount: number, notes?: string) => Promise<void>;
+  restockFeed: (id: string, amount: number, cost?: number) => Promise<void>;
+  addMedication: (med: Omit<MedicationRecord, 'id'>) => Promise<void>;
+  updateMedication: (id: string, updates: Partial<MedicationRecord>) => Promise<void>;
+  deleteMedication: (id: string) => Promise<void>;
+  clearAllMedications: () => Promise<void>;
+  consumeMedication: (id: string, amount: number, goatId?: string, notes?: string) => Promise<void>;
+  restockMedication: (id: string, amount: number) => Promise<void>;
   importBatchRecords: (records: {
     goats?: Omit<GoatRecord, 'id' | 'created_at'>[];
     breeding?: Omit<BreedingRecord, 'id'>[];
@@ -131,21 +151,23 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // User state
   const [user, setUser] = useState<FarmUser | null>(() => {
     const isDemo = localStorage.getItem('sgm_is_demo') === 'true';
-    if (isDemo) {
-      return initialFarmUser;
-    }
     const saved = localStorage.getItem('sgm_user');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // If it's the old mock user, discard it so user can see auth screen
         if (parsed.uid === 'usr-default-01' || parsed.uid === 'usr-demo-farm') {
+          if (isDemo) {
+            return parsed;
+          }
           return null;
         }
         return parsed;
       } catch {
-        return null;
+        return isDemo ? initialFarmUser : null;
       }
+    }
+    if (isDemo) {
+      return initialFarmUser;
     }
     return null;
   });
@@ -206,6 +228,38 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return initialMilk;
     }
     return [];
+  });
+
+  const [feeds, setFeeds] = useState<FeedRecord[]>(() => {
+    const saved = localStorage.getItem('sgm_feeds');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Exclude any legacy mock feeds ('feed-1' through 'feed-5')
+          const customFeeds = parsed.filter(
+            (f: FeedRecord) => !['feed-1', 'feed-2', 'feed-3', 'feed-4', 'feed-5'].includes(f.id)
+          );
+          return customFeeds;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return [];
+  });
+
+  const [medications, setMedications] = useState<MedicationRecord[]>(() => {
+    const saved = localStorage.getItem('sgm_medications');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return initialMedications;
   });
 
   // Ref to track active UID to avoid stale closures
@@ -313,6 +367,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
             production_focus: val?.production_focus || '',
             grazing_system: val?.grazing_system || '',
             founded_year: val?.founded_year || '',
+            logo_url: val?.logo_url || '',
             created_at: val?.created_at || (profileSnap.exists() && profileSnap.val().created_at
               ? profileSnap.val().created_at
               : new Date().toISOString()),
@@ -347,7 +402,15 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const demoActive = localStorage.getItem('sgm_is_demo') === 'true';
         if (demoActive) {
           setIsDemoMode(true);
-          setUser(initialFarmUser);
+          const savedDemoUser = (() => {
+            try {
+              const s = localStorage.getItem('sgm_user');
+              return s ? JSON.parse(s) : null;
+            } catch {
+              return null;
+            }
+          })();
+          setUser(savedDemoUser || initialFarmUser);
           setGoats(initialGoats);
           setBreeding(initialBreeding);
           setHealth(initialHealth);
@@ -419,6 +482,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 production_focus: profile.production_focus || profile.productionFocus || prev?.production_focus || '',
                 grazing_system: profile.grazing_system || profile.grazingSystem || prev?.grazing_system || '',
                 founded_year: profile.founded_year || profile.foundedYear || prev?.founded_year || '',
+                logo_url: profile.logo_url || profile.logoUrl || prev?.logo_url || '',
                 created_at: profile.created_at || prev?.created_at || new Date().toISOString(),
               };
               localStorage.setItem('sgm_user', JSON.stringify(updated));
@@ -549,6 +613,58 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else {
             setMilk([]);
           }
+
+          // Parse Feeds
+          if (recordsContainer.feeds) {
+            const rawFeeds = recordsContainer.feeds;
+            const parsedFeeds: FeedRecord[] = Object.entries(rawFeeds)
+              .filter(([key]) => !['feed-1', 'feed-2', 'feed-3', 'feed-4', 'feed-5'].includes(key))
+              .map(([key, val]: [string, any]) => ({
+                id: key,
+                name: val.name || '',
+                category: val.category || 'Fodder & Hay',
+                quantity: Number(val.quantity) || 0,
+                unit: val.unit || 'kg',
+                min_threshold: Number(val.min_threshold) || 0,
+                cost_per_unit: val.cost_per_unit !== undefined ? Number(val.cost_per_unit) : undefined,
+                supplier: val.supplier || '',
+                storage_location: val.storage_location || '',
+                last_restocked: val.last_restocked || '',
+                expiry_date: val.expiry_date || '',
+                notes: val.notes || '',
+              }));
+            setFeeds(parsedFeeds);
+            localStorage.setItem('sgm_feeds', JSON.stringify(parsedFeeds));
+          } else {
+            setFeeds([]);
+            localStorage.setItem('sgm_feeds', JSON.stringify([]));
+          }
+
+          // Parse Medications
+          if (recordsContainer.medications) {
+            const rawMeds = recordsContainer.medications;
+            const parsedMeds: MedicationRecord[] = Object.entries(rawMeds).map(([key, val]: [string, any]) => ({
+              id: key,
+              name: val.name || '',
+              category: val.category || 'Antibiotic',
+              quantity: Number(val.quantity) || 0,
+              unit: val.unit || 'vials',
+              min_threshold: Number(val.min_threshold) || 0,
+              batch_number: val.batch_number || '',
+              expiry_date: val.expiry_date || '',
+              target_diseases: val.target_diseases || '',
+              withdrawal_period_days: val.withdrawal_period_days !== undefined ? Number(val.withdrawal_period_days) : undefined,
+              storage_requirements: val.storage_requirements || '',
+              supplier: val.supplier || '',
+              last_restocked: val.last_restocked || '',
+              notes: val.notes || '',
+            }));
+            setMedications(parsedMeds);
+            localStorage.setItem('sgm_medications', JSON.stringify(parsedMeds));
+          } else {
+            setMedications([]);
+            localStorage.setItem('sgm_medications', JSON.stringify([]));
+          }
         } else {
           // Snapshot does not exist -> This account has zero records in RTDB
           setGoats([]);
@@ -557,6 +673,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSales([]);
           setWorkers([]);
           setMilk([]);
+          setFeeds([]);
+          setMedications([]);
         }
       },
       error => {
@@ -896,6 +1014,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           production_focus: merged.production_focus || '',
           grazing_system: merged.grazing_system || '',
           founded_year: merged.founded_year || '',
+          logo_url: merged.logo_url || '',
           updated_at: new Date().toISOString(),
           created_at: merged.created_at || new Date().toISOString(),
         });
@@ -989,6 +1108,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       expenses?: ExpenseRecord[];
       workers?: WorkerRecord[];
       milk?: MilkRecord[];
+      feeds?: FeedRecord[];
+      medications?: MedicationRecord[];
     }
   ) => {
     try {
@@ -1001,9 +1122,17 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         expenses: overrides?.expenses !== undefined ? overrides.expenses : expenses,
         workers: overrides?.workers !== undefined ? overrides.workers : workers,
         milk: overrides?.milk !== undefined ? overrides.milk : milk,
+        feeds: overrides?.feeds !== undefined ? overrides.feeds : feeds,
+        medications: overrides?.medications !== undefined ? overrides.medications : medications,
         saved_at: new Date().toISOString(),
       };
       localStorage.setItem(key, JSON.stringify(payload));
+      if (overrides?.feeds !== undefined) {
+        localStorage.setItem('sgm_feeds', JSON.stringify(overrides.feeds));
+      }
+      if (overrides?.medications !== undefined) {
+        localStorage.setItem('sgm_medications', JSON.stringify(overrides.medications));
+      }
     } catch (e) {
       console.warn('LocalStorage backup error:', e);
     }
@@ -1058,6 +1187,28 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Firebase addGoat write error:', err);
         setSyncStatus('error');
         setSyncError(err.message || 'Permission denied on Realtime Database write');
+      }
+    }
+  };
+
+  const updateGoat = async (id: string, updates: Partial<GoatRecord>) => {
+    const activeUid = firebaseUser?.uid;
+    setGoats(prev => {
+      const updated = prev.map(g => (g.id === id ? { ...g, ...updates } : g));
+      persistRecordsLocally(activeUid, { goats: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        const itemRef = ref(rtdb, `users/${activeUid}/records/goats/${id}`);
+        await update(itemRef, updates);
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Firebase updateGoat error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to update goat record in database');
       }
     }
   };
@@ -1209,6 +1360,39 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return updated;
     });
 
+    // Automatically update goat status based on health record
+    // Critical / Under Treatment -> Quarantine; Healthy / Recovered -> Active (if was Quarantine)
+    // Note: As explicitly requested, pregnancy status is NOT automated and must be changed manually.
+    let matchedHealthGoatId: string | null = null;
+    let nextGoatStatus: 'Quarantine' | 'Active' | null = null;
+
+    if (newRecord.status === 'Under Treatment' || newRecord.status === 'Critical') {
+      nextGoatStatus = 'Quarantine';
+    } else if (newRecord.status === 'Healthy' || newRecord.status === 'Recovered') {
+      nextGoatStatus = 'Active';
+    }
+
+    if (nextGoatStatus) {
+      setGoats(prev => {
+        const updated = prev.map(g => {
+          if (
+            g.tag_number.toUpperCase() === newRecord.goat_id.trim().toUpperCase() ||
+            g.id === newRecord.goat_id.trim()
+          ) {
+            matchedHealthGoatId = g.id;
+            // Never overwrite Sold status
+            if (g.status === 'Sold') return g;
+            // Only set to Active if goat was in Quarantine (preserve Pregnant status!)
+            if (nextGoatStatus === 'Active' && g.status !== 'Quarantine') return g;
+            return { ...g, status: nextGoatStatus! };
+          }
+          return g;
+        });
+        persistRecordsLocally(activeUid, { goats: updated });
+        return updated;
+      });
+    }
+
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/health/${id}`);
@@ -1224,6 +1408,17 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           fetal_age_days: newRecord.fetal_age_days || null,
           custom_gestation_days: newRecord.custom_gestation_days || null,
         });
+
+        if (matchedHealthGoatId && nextGoatStatus) {
+          try {
+            await update(ref(rtdb, `users/${activeUid}/records/goats/${matchedHealthGoatId}`), {
+              status: nextGoatStatus,
+            });
+          } catch (e) {
+            console.warn('Firebase goat status update on health record error:', e);
+          }
+        }
+
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -1280,6 +1475,25 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return updated;
     });
 
+    // Automatically update goat status to 'Sold' when a sale record has been made
+    let matchedSaleGoatId: string | null = null;
+    const cleanGoatInput = newRecord.goat_id.trim().toUpperCase();
+    setGoats(prev => {
+      const updated = prev.map(g => {
+        if (
+          g.tag_number.toUpperCase() === cleanGoatInput ||
+          g.id === newRecord.goat_id.trim() ||
+          (g.name && g.name.trim().toUpperCase() === cleanGoatInput)
+        ) {
+          matchedSaleGoatId = g.id;
+          return { ...g, status: 'Sold' as const };
+        }
+        return g;
+      });
+      persistRecordsLocally(activeUid, { goats: updated });
+      return updated;
+    });
+
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/sales/${id}`);
@@ -1289,6 +1503,17 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           price: newRecord.price,
           sale_date: newRecord.sale_date,
         });
+
+        if (matchedSaleGoatId) {
+          try {
+            await update(ref(rtdb, `users/${activeUid}/records/goats/${matchedSaleGoatId}`), {
+              status: 'Sold',
+            });
+          } catch (e) {
+            console.warn('Firebase goat status update on sale record error:', e);
+          }
+        }
+
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -1517,6 +1742,264 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSyncError(err.message || 'Failed to delete milk record');
       }
     }
+  };
+
+  // FEED INVENTORY ACTIONS
+  const addFeed = async (data: Omit<FeedRecord, 'id'>) => {
+    const activeUid = firebaseUser?.uid;
+    let id = 'feed-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+
+    if (activeUid) {
+      try {
+        const feedsRef = ref(rtdb, `users/${activeUid}/records/feeds`);
+        const newRef = push(feedsRef);
+        if (newRef.key) id = newRef.key;
+      } catch (err) {
+        console.warn('Could not generate feed key:', err);
+      }
+    }
+
+    const newRecord: FeedRecord = {
+      ...data,
+      id,
+    };
+
+    setFeeds(prev => {
+      const updated = [newRecord, ...prev];
+      persistRecordsLocally(activeUid, { feeds: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        const itemRef = ref(rtdb, `users/${activeUid}/records/feeds/${id}`);
+        await set(itemRef, newRecord);
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Firebase addFeed error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to save feed record to database');
+      }
+    }
+  };
+
+  const updateFeed = async (id: string, updates: Partial<FeedRecord>) => {
+    const activeUid = firebaseUser?.uid;
+
+    setFeeds(prev => {
+      const updated = prev.map(f => (f.id === id ? { ...f, ...updates } : f));
+      persistRecordsLocally(activeUid, { feeds: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        const itemRef = ref(rtdb, `users/${activeUid}/records/feeds/${id}`);
+        await update(itemRef, updates);
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Firebase updateFeed error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to update feed record');
+      }
+    }
+  };
+
+  const deleteFeed = async (id: string) => {
+    const activeUid = firebaseUser?.uid;
+    setFeeds(prev => {
+      const updated = prev.filter(f => f.id !== id);
+      localStorage.setItem('sgm_feeds', JSON.stringify(updated));
+      persistRecordsLocally(activeUid, { feeds: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/feeds/${id}`));
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Delete feed error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to delete feed record');
+      }
+    }
+  };
+
+  const clearAllFeeds = async () => {
+    const activeUid = firebaseUser?.uid;
+    setFeeds([]);
+    localStorage.setItem('sgm_feeds', JSON.stringify([]));
+    persistRecordsLocally(activeUid, { feeds: [] });
+
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/feeds`));
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Clear all feeds error:', err);
+      }
+    }
+  };
+
+  const consumeFeed = async (id: string, amount: number, notes?: string) => {
+    const target = feeds.find(f => f.id === id);
+    if (!target) return;
+    const newQty = Math.max(0, target.quantity - amount);
+    await updateFeed(id, {
+      quantity: newQty,
+      notes: notes ? `${notes} (Used ${amount} ${target.unit})` : target.notes,
+    });
+  };
+
+  const restockFeed = async (id: string, amount: number, cost?: number) => {
+    const target = feeds.find(f => f.id === id);
+    if (!target) return;
+    const newQty = target.quantity + amount;
+    const now = new Date().toISOString().split('T')[0];
+    await updateFeed(id, {
+      quantity: newQty,
+      last_restocked: now,
+      cost_per_unit: cost !== undefined ? cost : target.cost_per_unit,
+    });
+
+    // Automatically record an expense if cost was provided
+    if (cost && cost > 0) {
+      await addExpense({
+        category: 'Feed',
+        title: `Restock: ${target.name} (${amount} ${target.unit})`,
+        amount: Math.round(amount * cost),
+        date: now,
+        notes: `Automated inventory restock ledger. Supplier: ${target.supplier || 'N/A'}`
+      });
+    }
+  };
+
+  // MEDICATION INVENTORY ACTIONS
+  const addMedication = async (data: Omit<MedicationRecord, 'id'>) => {
+    const activeUid = firebaseUser?.uid;
+    let id = 'med-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+
+    if (activeUid) {
+      try {
+        const medsRef = ref(rtdb, `users/${activeUid}/records/medications`);
+        const newRef = push(medsRef);
+        if (newRef.key) id = newRef.key;
+      } catch (err) {
+        console.warn('Could not generate medication key:', err);
+      }
+    }
+
+    const newRecord: MedicationRecord = {
+      ...data,
+      id,
+    };
+
+    setMedications(prev => {
+      const updated = [newRecord, ...prev];
+      persistRecordsLocally(activeUid, { medications: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        const itemRef = ref(rtdb, `users/${activeUid}/records/medications/${id}`);
+        await set(itemRef, newRecord);
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Firebase addMedication error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to save medication record to database');
+      }
+    }
+  };
+
+  const updateMedication = async (id: string, updates: Partial<MedicationRecord>) => {
+    const activeUid = firebaseUser?.uid;
+
+    setMedications(prev => {
+      const updated = prev.map(m => (m.id === id ? { ...m, ...updates } : m));
+      persistRecordsLocally(activeUid, { medications: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        const itemRef = ref(rtdb, `users/${activeUid}/records/medications/${id}`);
+        await update(itemRef, updates);
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Firebase updateMedication error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to update medication record');
+      }
+    }
+  };
+
+  const deleteMedication = async (id: string) => {
+    const activeUid = firebaseUser?.uid;
+    setMedications(prev => {
+      const updated = prev.filter(m => m.id !== id);
+      localStorage.setItem('sgm_medications', JSON.stringify(updated));
+      persistRecordsLocally(activeUid, { medications: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/medications/${id}`));
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Delete medication error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to delete medication record');
+      }
+    }
+  };
+
+  const clearAllMedications = async () => {
+    const activeUid = firebaseUser?.uid;
+    setMedications([]);
+    localStorage.setItem('sgm_medications', JSON.stringify([]));
+    persistRecordsLocally(activeUid, { medications: [] });
+
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/medications`));
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Clear all medications error:', err);
+      }
+    }
+  };
+
+  const consumeMedication = async (id: string, amount: number, goatId?: string, notes?: string) => {
+    const target = medications.find(m => m.id === id);
+    if (!target) return;
+    const newQty = Math.max(0, target.quantity - amount);
+    await updateMedication(id, {
+      quantity: newQty,
+      notes: notes ? `${notes} (Administered ${amount} ${target.unit}${goatId ? ' to goat ' + goatId : ''})` : target.notes,
+    });
+  };
+
+  const restockMedication = async (id: string, amount: number) => {
+    const target = medications.find(m => m.id === id);
+    if (!target) return;
+    const newQty = target.quantity + amount;
+    const now = new Date().toISOString().split('T')[0];
+    await updateMedication(id, {
+      quantity: newQty,
+      last_restocked: now,
+    });
   };
 
   const importBatchRecords = async (records: {
@@ -1861,6 +2344,16 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       });
 
+      const feedsObj: Record<string, any> = {};
+      feeds.forEach(f => {
+        feedsObj[f.id] = f;
+      });
+
+      const medicationsObj: Record<string, any> = {};
+      medications.forEach(m => {
+        medicationsObj[m.id] = m;
+      });
+
       await set(recordsRef, {
         goats: goatsObj,
         breeding: breedingObj,
@@ -1869,6 +2362,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         expenses: expensesObj,
         workers: workersObj,
         milk: milkObj,
+        feeds: feedsObj,
+        medications: medicationsObj,
       });
 
       setSyncStatus('connected');
@@ -1974,6 +2469,16 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       });
 
+      const feedsObj: Record<string, any> = {};
+      initialFeeds.forEach(f => {
+        feedsObj[f.id] = f;
+      });
+
+      const medicationsObj: Record<string, any> = {};
+      initialMedications.forEach(m => {
+        medicationsObj[m.id] = m;
+      });
+
       await set(recordsRef, {
         goats: goatsObj,
         breeding: breedingObj,
@@ -1982,6 +2487,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         expenses: expensesObj,
         workers: workersObj,
         milk: milkObj,
+        feeds: feedsObj,
+        medications: medicationsObj,
       });
 
       await set(ref(rtdb, `users/${activeUid}/user_profile`), {
@@ -2008,6 +2515,10 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setExpenses(initialExpenses);
       setWorkers(initialWorkers);
       setMilk(initialMilk);
+      setFeeds(initialFeeds);
+      setMedications(initialMedications);
+      localStorage.setItem('sgm_feeds', JSON.stringify(initialFeeds));
+      localStorage.setItem('sgm_medications', JSON.stringify(initialMedications));
     }
   };
 
@@ -2037,6 +2548,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         expenses,
         workers,
         milk,
+        feeds,
+        medications,
         login,
         signup,
         updateFarmProfile,
@@ -2044,6 +2557,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         enterDemoMode,
         addGoat,
+        updateGoat,
         deleteGoat,
         addBreeding,
         updateBreeding,
@@ -2058,6 +2572,18 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteWorker,
         addMilk,
         deleteMilk,
+        addFeed,
+        updateFeed,
+        deleteFeed,
+        clearAllFeeds,
+        consumeFeed,
+        restockFeed,
+        addMedication,
+        updateMedication,
+        deleteMedication,
+        clearAllMedications,
+        consumeMedication,
+        restockMedication,
         importBatchRecords,
         pushSeedDataToFirebase,
         syncAllCurrentRecordsToFirebase,

@@ -79,6 +79,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const totalMilkLiters = milk.reduce((acc, m) => acc + (m.total_liters || 0), 0);
   const totalStaff = workers.length;
 
+  const profileChecklist = [
+    { key: 'farm_name', label: 'Farm Name', done: !!(user?.farm_name || farmName) },
+    { key: 'owner_name', label: 'Owner Name', done: !!user?.owner_name },
+    { key: 'location', label: 'Location / County', done: !!user?.location },
+    { key: 'phone', label: 'Contact Phone', done: !!user?.phone },
+    { key: 'primary_breed', label: 'Primary Breed', done: !!user?.primary_breed },
+    { key: 'production_focus', label: 'Production Focus', done: !!user?.production_focus },
+    { key: 'logo_url', label: 'Farm Logo', done: !!user?.logo_url },
+  ];
+  const completedProfileCount = profileChecklist.filter(c => c.done).length;
+  const profileCompletionRate = Math.round((completedProfileCount / profileChecklist.length) * 100);
+
   const handleOpenEdit = () => {
     setEditFarmName(user?.farm_name || farmName);
     setEditOwnerName(user?.owner_name || '');
@@ -271,6 +283,51 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center gap-2 text-emerald-800 text-sm font-semibold">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           <span>{saveStatus}</span>
+        </div>
+      )}
+
+      {/* Profile Completion Status Meter */}
+      {profileCompletionRate < 100 && (
+        <div className="bg-white dark:bg-stone-900 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-2 flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <span>Farm Profile Completeness: {profileCompletionRate}%</span>
+              </span>
+              <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                {completedProfileCount} of {profileChecklist.length} Details Completed
+              </span>
+            </div>
+            <div className="w-full h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                style={{ width: `${profileCompletionRate}%` }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {profileChecklist.map(item => (
+                <span
+                  key={item.key}
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+                    item.done
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                      : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border border-stone-200 dark:border-stone-700'
+                  }`}
+                >
+                  {item.done ? '✓' : '○'} {item.label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            id="btn-profile-complete-now"
+            onClick={handleOpenEdit}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shrink-0 shadow-xs"
+          >
+            Complete Details
+          </button>
         </div>
       )}
 

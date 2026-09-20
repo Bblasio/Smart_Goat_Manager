@@ -9,7 +9,8 @@ import {
   MilkRecord,
   FarmUser,
   FeedRecord,
-  MedicationRecord
+  MedicationRecord,
+  KidGrowthRecord
 } from '../types';
 import {
   initialFarmUser,
@@ -21,7 +22,8 @@ import {
   initialWorkers,
   initialMilk,
   initialFeeds,
-  initialMedications
+  initialMedications,
+  initialKidGrowthRecords
 } from '../data/mockData';
 import {
   auth,
@@ -66,6 +68,7 @@ interface FarmContextType {
   milk: MilkRecord[];
   feeds: FeedRecord[];
   medications: MedicationRecord[];
+  kidGrowthRecords: KidGrowthRecord[];
   login: (email: string, password?: string, farmName?: string) => Promise<{ success: boolean; error?: string }>;
   signup: (
     email: string,
@@ -89,6 +92,7 @@ interface FarmContextType {
   enterDemoMode: () => void;
   addGoat: (goat: Omit<GoatRecord, 'id' | 'created_at'>) => Promise<void>;
   updateGoat: (id: string, updates: Partial<GoatRecord>) => Promise<void>;
+  bulkUpdateGoats: (ids: string[], updates: Partial<GoatRecord>) => Promise<void>;
   deleteGoat: (id: string) => Promise<void>;
   addBreeding: (breed: Omit<BreedingRecord, 'id'>) => Promise<void>;
   updateBreeding: (id: string, breed: Partial<BreedingRecord>) => Promise<void>;
@@ -115,6 +119,10 @@ interface FarmContextType {
   clearAllMedications: () => Promise<void>;
   consumeMedication: (id: string, amount: number, goatId?: string, notes?: string) => Promise<void>;
   restockMedication: (id: string, amount: number) => Promise<void>;
+  addKidGrowthRecord: (record: Omit<KidGrowthRecord, 'id' | 'created_at'>) => Promise<void>;
+  updateKidGrowthRecord: (id: string, updates: Partial<KidGrowthRecord>) => Promise<void>;
+  deleteKidGrowthRecord: (id: string) => Promise<void>;
+  clearAllKidGrowthRecords: () => Promise<void>;
   importBatchRecords: (records: {
     goats?: Omit<GoatRecord, 'id' | 'created_at'>[];
     breeding?: Omit<BreedingRecord, 'id'>[];
@@ -260,6 +268,19 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     return initialMedications;
+  });
+
+  const [kidGrowthRecords, setKidGrowthRecords] = useState<KidGrowthRecord[]>(() => {
+    const saved = localStorage.getItem('sgm_kid_growth');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return initialKidGrowthRecords;
   });
 
   // Ref to track active UID to avoid stale closures
@@ -665,6 +686,37 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setMedications([]);
             localStorage.setItem('sgm_medications', JSON.stringify([]));
           }
+
+          // Parse Kid Growth Records
+          if (recordsContainer.kid_growth) {
+            const rawKids = recordsContainer.kid_growth;
+            const parsedKids: KidGrowthRecord[] = Object.entries(rawKids).map(([id, val]: [string, any]) => ({
+              id,
+              kid_tag: val.kid_tag || '',
+              kid_name: val.kid_name || '',
+              gender: val.gender || 'Male',
+              breed: val.breed || '',
+              dob: val.dob || '',
+              dam_tag: val.dam_tag || '',
+              dam_name: val.dam_name || '',
+              sire_tag: val.sire_tag || '',
+              sire_name: val.sire_name || '',
+              birth_weight_kg: Number(val.birth_weight_kg) || 0,
+              thirty_day_weight_kg: val.thirty_day_weight_kg !== undefined ? Number(val.thirty_day_weight_kg) : undefined,
+              weaning_date: val.weaning_date || '',
+              weaning_weight_kg: val.weaning_weight_kg !== undefined ? Number(val.weaning_weight_kg) : undefined,
+              target_weaning_weight_kg: val.target_weaning_weight_kg !== undefined ? Number(val.target_weaning_weight_kg) : undefined,
+              adg_grams_per_day: val.adg_grams_per_day !== undefined ? Number(val.adg_grams_per_day) : undefined,
+              status: val.status || 'Nursing',
+              notes: val.notes || '',
+              created_at: val.created_at || new Date().toISOString(),
+            }));
+            setKidGrowthRecords(parsedKids);
+            localStorage.setItem('sgm_kid_growth', JSON.stringify(parsedKids));
+          } else {
+            setKidGrowthRecords([]);
+            localStorage.setItem('sgm_kid_growth', JSON.stringify([]));
+          }
         } else {
           // Snapshot does not exist -> This account has zero records in RTDB
           setGoats([]);
@@ -675,6 +727,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setMilk([]);
           setFeeds([]);
           setMedications([]);
+          setKidGrowthRecords([]);
         }
       },
       error => {
@@ -1110,6 +1163,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       milk?: MilkRecord[];
       feeds?: FeedRecord[];
       medications?: MedicationRecord[];
+      kid_growth?: KidGrowthRecord[];
     }
   ) => {
     try {
@@ -1124,6 +1178,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         milk: overrides?.milk !== undefined ? overrides.milk : milk,
         feeds: overrides?.feeds !== undefined ? overrides.feeds : feeds,
         medications: overrides?.medications !== undefined ? overrides.medications : medications,
+        kid_growth: overrides?.kid_growth !== undefined ? overrides.kid_growth : kidGrowthRecords,
         saved_at: new Date().toISOString(),
       };
       localStorage.setItem(key, JSON.stringify(payload));
@@ -1132,6 +1187,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       if (overrides?.medications !== undefined) {
         localStorage.setItem('sgm_medications', JSON.stringify(overrides.medications));
+      }
+      if (overrides?.kid_growth !== undefined) {
+        localStorage.setItem('sgm_kid_growth', JSON.stringify(overrides.kid_growth));
       }
     } catch (e) {
       console.warn('LocalStorage backup error:', e);
@@ -1209,6 +1267,33 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Firebase updateGoat error:', err);
         setSyncStatus('error');
         setSyncError(err.message || 'Failed to update goat record in database');
+      }
+    }
+  };
+
+  const bulkUpdateGoats = async (ids: string[], updates: Partial<GoatRecord>) => {
+    if (!ids || ids.length === 0) return;
+    const idSet = new Set(ids);
+    const activeUid = firebaseUser?.uid;
+    setGoats(prev => {
+      const updated = prev.map(g => (idSet.has(g.id) ? { ...g, ...updates } : g));
+      persistRecordsLocally(activeUid, { goats: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        const updatePayload: Record<string, any> = {};
+        ids.forEach(id => {
+          Object.entries(updates).forEach(([key, val]) => {
+            updatePayload[`users/${activeUid}/records/goats/${id}/${key}`] = val;
+          });
+        });
+        await update(ref(rtdb), updatePayload);
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Firebase bulkUpdateGoats error:', err);
       }
     }
   };
@@ -2002,6 +2087,130 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  // KID GROWTH & WEANING ACTIONS
+  const addKidGrowthRecord = async (data: Omit<KidGrowthRecord, 'id' | 'created_at'>) => {
+    const activeUid = firebaseUser?.uid;
+    const createdAt = new Date().toISOString();
+    let id = 'kid-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+
+    if (activeUid) {
+      try {
+        const kidsRef = ref(rtdb, `users/${activeUid}/records/kid_growth`);
+        const newRef = push(kidsRef);
+        if (newRef.key) id = newRef.key;
+      } catch (err) {
+        console.warn('Could not generate kid_growth key:', err);
+      }
+    }
+
+    // Auto-calculate ADG if weaning weight or 30-day weight is provided
+    let calculatedAdg = data.adg_grams_per_day;
+    if (!calculatedAdg) {
+      if (data.weaning_weight_kg && data.birth_weight_kg && data.weaning_date && data.dob) {
+        const days = Math.max(1, Math.round((new Date(data.weaning_date).getTime() - new Date(data.dob).getTime()) / (1000 * 60 * 60 * 24)));
+        calculatedAdg = Math.round(((data.weaning_weight_kg - data.birth_weight_kg) / days) * 1000);
+      } else if (data.thirty_day_weight_kg && data.birth_weight_kg) {
+        calculatedAdg = Math.round(((data.thirty_day_weight_kg - data.birth_weight_kg) / 30) * 1000);
+      }
+    }
+
+    const newRecord: KidGrowthRecord = {
+      ...data,
+      adg_grams_per_day: calculatedAdg,
+      id,
+      created_at: createdAt,
+    };
+
+    setKidGrowthRecords(prev => {
+      const updated = [newRecord, ...prev];
+      persistRecordsLocally(activeUid, { kid_growth: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        const itemRef = ref(rtdb, `users/${activeUid}/records/kid_growth/${id}`);
+        await set(itemRef, newRecord);
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Firebase addKidGrowthRecord error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to save kid growth record to database');
+      }
+    }
+  };
+
+  const updateKidGrowthRecord = async (id: string, updates: Partial<KidGrowthRecord>) => {
+    const activeUid = firebaseUser?.uid;
+
+    setKidGrowthRecords(prev => {
+      const updated = prev.map(k => {
+        if (k.id !== id) return k;
+        const merged = { ...k, ...updates };
+        if (merged.weaning_weight_kg && merged.birth_weight_kg && merged.weaning_date && merged.dob && !updates.adg_grams_per_day) {
+          const days = Math.max(1, Math.round((new Date(merged.weaning_date).getTime() - new Date(merged.dob).getTime()) / (1000 * 60 * 60 * 24)));
+          merged.adg_grams_per_day = Math.round(((merged.weaning_weight_kg - merged.birth_weight_kg) / days) * 1000);
+        }
+        return merged;
+      });
+      persistRecordsLocally(activeUid, { kid_growth: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        const targetRef = ref(rtdb, `users/${activeUid}/records/kid_growth/${id}`);
+        await update(targetRef, updates);
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Firebase updateKidGrowthRecord error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to update kid growth record');
+      }
+    }
+  };
+
+  const deleteKidGrowthRecord = async (id: string) => {
+    const activeUid = firebaseUser?.uid;
+
+    setKidGrowthRecords(prev => {
+      const updated = prev.filter(k => k.id !== id);
+      persistRecordsLocally(activeUid, { kid_growth: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/kid_growth/${id}`));
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Delete kid growth error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to delete kid growth record');
+      }
+    }
+  };
+
+  const clearAllKidGrowthRecords = async () => {
+    const activeUid = firebaseUser?.uid;
+    setKidGrowthRecords([]);
+    localStorage.setItem('sgm_kid_growth', JSON.stringify([]));
+    persistRecordsLocally(activeUid, { kid_growth: [] });
+
+    if (activeUid) {
+      try {
+        await remove(ref(rtdb, `users/${activeUid}/records/kid_growth`));
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Clear all kid growth error:', err);
+      }
+    }
+  };
+
   const importBatchRecords = async (records: {
     goats?: Omit<GoatRecord, 'id' | 'created_at'>[];
     breeding?: Omit<BreedingRecord, 'id'>[];
@@ -2354,6 +2563,11 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         medicationsObj[m.id] = m;
       });
 
+      const kidGrowthObj: Record<string, any> = {};
+      kidGrowthRecords.forEach(k => {
+        kidGrowthObj[k.id] = k;
+      });
+
       await set(recordsRef, {
         goats: goatsObj,
         breeding: breedingObj,
@@ -2364,6 +2578,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         milk: milkObj,
         feeds: feedsObj,
         medications: medicationsObj,
+        kid_growth: kidGrowthObj,
       });
 
       setSyncStatus('connected');
@@ -2479,6 +2694,11 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         medicationsObj[m.id] = m;
       });
 
+      const kidGrowthObj: Record<string, any> = {};
+      initialKidGrowthRecords.forEach(k => {
+        kidGrowthObj[k.id] = k;
+      });
+
       await set(recordsRef, {
         goats: goatsObj,
         breeding: breedingObj,
@@ -2489,6 +2709,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         milk: milkObj,
         feeds: feedsObj,
         medications: medicationsObj,
+        kid_growth: kidGrowthObj,
       });
 
       await set(ref(rtdb, `users/${activeUid}/user_profile`), {
@@ -2517,13 +2738,27 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMilk(initialMilk);
       setFeeds(initialFeeds);
       setMedications(initialMedications);
+      setKidGrowthRecords(initialKidGrowthRecords);
       localStorage.setItem('sgm_feeds', JSON.stringify(initialFeeds));
       localStorage.setItem('sgm_medications', JSON.stringify(initialMedications));
+      localStorage.setItem('sgm_kid_growth', JSON.stringify(initialKidGrowthRecords));
     }
   };
 
-  const createdDate = user?.created_at ? new Date(user.created_at) : new Date();
-  const daysActive = Math.max(1, Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const rawEstYear = user?.established_year || user?.founded_year;
+  const parsedEstYear = rawEstYear ? parseInt(rawEstYear, 10) : null;
+
+  let daysActive = 1;
+  if (parsedEstYear && !isNaN(parsedEstYear) && parsedEstYear > 1900 && parsedEstYear <= currentYear) {
+    // Calculated from January 1 of the established year through today
+    const estDate = new Date(parsedEstYear, 0, 1);
+    daysActive = Math.max(1, Math.floor((now.getTime() - estDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  } else {
+    const createdDate = user?.created_at ? new Date(user.created_at) : now;
+    daysActive = Math.max(1, Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
+  }
 
   const isAuthenticated = !authLoading && ((!!firebaseUser && !!user) || isDemoMode);
 
@@ -2550,6 +2785,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         milk,
         feeds,
         medications,
+        kidGrowthRecords,
         login,
         signup,
         updateFarmProfile,
@@ -2558,6 +2794,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enterDemoMode,
         addGoat,
         updateGoat,
+        bulkUpdateGoats,
         deleteGoat,
         addBreeding,
         updateBreeding,
@@ -2584,6 +2821,10 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearAllMedications,
         consumeMedication,
         restockMedication,
+        addKidGrowthRecord,
+        updateKidGrowthRecord,
+        deleteKidGrowthRecord,
+        clearAllKidGrowthRecords,
         importBatchRecords,
         pushSeedDataToFirebase,
         syncAllCurrentRecordsToFirebase,

@@ -45,6 +45,7 @@ interface DashboardViewProps {
   onNavigateToHealth?: () => void;
   onNavigateToTasks?: () => void;
   onNavigateToFeedSupply?: () => void;
+  onNavigateToProfile?: () => void;
   onOpenAddHealthModal?: () => void;
   onOpenAddSaleModal?: () => void;
 }
@@ -57,6 +58,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToHealth,
   onNavigateToTasks,
   onNavigateToFeedSupply,
+  onNavigateToProfile,
   onOpenAddHealthModal,
   onOpenAddSaleModal,
 }) => {
@@ -70,7 +72,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     sales,
     milk,
     firebaseUser,
+    user,
   } = useFarm();
+
+  // Farm Profile Completion Checklist
+  const profileFields = [
+    { key: 'farm_name', label: 'Farm Name', filled: Boolean(user?.farm_name?.trim() || farmName) },
+    { key: 'owner_name', label: 'Owner / Manager', filled: Boolean(user?.owner_name?.trim() || user?.manager_name?.trim()) },
+    { key: 'location', label: 'Location / County', filled: Boolean(user?.location?.trim()) },
+    { key: 'phone', label: 'Contact Phone', filled: Boolean(user?.phone?.trim()) },
+    { key: 'primary_breed', label: 'Primary Breed', filled: Boolean(user?.primary_breed?.trim()) },
+    { key: 'farm_size', label: 'Farm Size / Scale', filled: Boolean(user?.farm_size?.trim() || user?.size?.trim()) },
+  ];
+  const filledCount = profileFields.filter(f => f.filled).length;
+  const isProfileIncomplete = filledCount < profileFields.length;
+  const completionPercentage = Math.round((filledCount / profileFields.length) * 100);
+  const missingFields = profileFields.filter(f => !f.filled);
 
   const totalGoats = goats.length;
   const males = goats.filter(g => g.gender.toLowerCase().startsWith('m')).length;
@@ -177,6 +194,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
         </div>
+
+        {/* Farmer Profile Completion Notification for Newly Created / Incomplete Accounts */}
+        {isProfileIncomplete && (
+          <div className="mt-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-amber-950/40 border border-amber-300 dark:border-amber-800/80 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1.5 max-w-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-xl bg-amber-500 text-white shadow-2xs">
+                    <Sparkles className="w-4 h-4" />
+                  </span>
+                  <span className="text-xs font-black tracking-wide uppercase text-amber-900 dark:text-amber-200">
+                    Action Required: Complete Farm Profile ({filledCount}/{profileFields.length} Completed • {completionPercentage}%)
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-stone-900 dark:text-white">
+                  Finish setting up your farm details to unlock full reports & certificates
+                </h3>
+                <p className="text-xs text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
+                  Your account is created, but key farm profile details ({missingFields.map(f => f.label).join(', ')}) are not filled yet. Complete your profile to ensure official pedigree export sheets, veterinary receipts, and sales contracts show verified farm contact information.
+                </p>
+                <div className="w-full sm:w-72 bg-amber-200 dark:bg-amber-900/60 rounded-full h-2 overflow-hidden mt-2">
+                  <div
+                    className="bg-amber-600 dark:bg-amber-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${completionPercentage}%` }}
+                  />
+                </div>
+              </div>
+              {onNavigateToProfile && (
+                <button
+                  type="button"
+                  id="btn-dashboard-complete-profile"
+                  onClick={onNavigateToProfile}
+                  className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 flex items-center gap-1.5"
+                >
+                  <span>Complete Farm Profile</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Empty Herd State for New Accounts */}
         {totalGoats === 0 && (

@@ -23,9 +23,12 @@ import {
   ChevronRight,
   BadgeAlert,
   Check,
-  Tag
+  Tag,
+  Camera
 } from 'lucide-react';
 import { AppView } from '../types';
+import { suggestTaskTagAndCategory, GoatTaskSuggestion, createQuarantineBiosecurityTasks } from '../utils/taskHelper';
+import { TagScannerModal } from '../components/TagScannerModal';
 
 export type TaskTab = 'pending' | 'done' | 'important_history';
 export type TaskCategory = 'all' | 'vaccination' | 'deworming' | 'breeding' | 'medical' | 'hoof' | 'farm_record';
@@ -36,6 +39,7 @@ export interface FarmTaskItem {
   title: string;
   goat_id?: string;
   goat_name?: string;
+  tag?: 'Health Check' | 'Gestation' | string;
   category: 'vaccination' | 'deworming' | 'breeding' | 'medical' | 'hoof' | 'farm_record';
   due_date: string;
   days_remaining: number;
@@ -63,10 +67,37 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
   // New Custom Task Form State
   const [newTitle, setNewTitle] = useState('');
   const [newGoatId, setNewGoatId] = useState('');
+  const [newTag, setNewTag] = useState<'Health Check' | 'Gestation' | ''>('');
+  const [taskSuggestion, setTaskSuggestion] = useState<GoatTaskSuggestion | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [newCategory, setNewCategory] = useState<FarmTaskItem['category']>('farm_record');
   const [newDueDate, setNewDueDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [newDescription, setNewDescription] = useState('');
   const [newIsImportant, setNewIsImportant] = useState(true);
+
+  // Handle changing goat ID with automatic tag and category suggestion
+  const handleGoatIdChange = (val: string) => {
+    setNewGoatId(val);
+    const suggestion = suggestTaskTagAndCategory(val, goats, breeding, health);
+    setTaskSuggestion(suggestion);
+    if (suggestion) {
+      if (suggestion.suggestedTag) {
+        setNewTag(suggestion.suggestedTag);
+      }
+      if (!newTitle.trim() || newTitle.startsWith('Health') || newTitle.startsWith('Gestation') || newTitle.startsWith('Follow-up')) {
+        setNewTitle(suggestion.suggestedTitle);
+      }
+      if (newCategory === 'farm_record') {
+        setNewCategory(suggestion.suggestedCategory);
+      }
+    }
+  };
+
+  const applySuggestion = (suggestion: GoatTaskSuggestion) => {
+    if (suggestion.suggestedTag) setNewTag(suggestion.suggestedTag);
+    setNewCategory(suggestion.suggestedCategory);
+    setNewTitle(suggestion.suggestedTitle);
+  };
 
   // Completed status state synced with localStorage
   const [completedTaskMap, setCompletedTaskMap] = useState<Record<string, { completed_at: string }>>(() => {
@@ -118,9 +149,13 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
     const goatMap = new Map<string, typeof goats[0]>();
     goats.forEach(g => goatMap.set(g.tag_number, g));
 
-    // 1. CD/T Booster Vaccine for Expectant Does (Vital farm task)
+    // 1. CD/T Booster Vaccine for Expectant Does (Vital gestation task - only within 35 days of birth)
     breeding.forEach(b => {
       if (b.status === 'Delivered' || b.status === 'Failed' || !b.expected_birth) return;
+      const dueInDays = getDaysDiff(b.expected_birth);
+      // Realistic caprine protocol: only trigger when doe is in late gestation (within 35 days of delivery)
+      if (dueInDays > 35 || dueInDays < -10) return;
+
       const cdtDueDate = addDaysToDate(b.expected_birth, -30);
       const diff = getDaysDiff(cdtDueDate);
 
@@ -143,6 +178,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
           title: `Administer Pre-Kidding CD/T Booster (${b.female_id})`,
           goat_id: b.female_id,
           goat_name: goatMap.get(b.female_id)?.name,
+          tag: 'Gestation',
           category: 'vaccination',
           due_date: cdtDueDate,
           days_remaining: diff,
@@ -156,10 +192,14 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
       }
     });
 
-    // 2. Kidding Stall Preparation & Maternity Care (Vital farm task)
+    // 2. Kidding Stall Preparation & Maternity Care (Vital gestation task - only within 7 days of birth)
     breeding.forEach(b => {
       if (b.status === 'Delivered' || b.status === 'Failed' || !b.expected_birth) return;
-      const prepDueDate = addDaysToDate(b.expected_birth, -7);
+      const dueInDays = getDaysDiff(b.expected_birth);
+      // Only trigger if expected kidding is within 7 days
+      if (dueInDays > 7 || dueInDays < -3) return;
+
+      const prepDueDate = addDaysToDate(b.expected_birth, -5);
       const diff = getDaysDiff(prepDueDate);
 
       let urgency: TaskUrgency = 'upcoming';
@@ -173,6 +213,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
         title: `Prepare Clean Maternity Pen for Doe ${b.female_id}`,
         goat_id: b.female_id,
         goat_name: goatMap.get(b.female_id)?.name,
+        tag: 'Gestation',
         category: 'breeding',
         due_date: prepDueDate,
         days_remaining: diff,
@@ -194,6 +235,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
           title: `Daily Quarantine Protocol & Health Check: ${g.tag_number}`,
           goat_id: g.tag_number,
           goat_name: g.name,
+          tag: 'Health Check',
           category: 'medical',
           due_date: todayStr,
           days_remaining: 0,
@@ -207,53 +249,74 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
       }
     });
 
-    // 4. Follow-up treatments from active health conditions
+    // 4. Follow-up on Health Records made by the farm owner (Under Treatment or Critical)
+    // Strictly limited to active clinical cases logged within the last 14 days
     health.forEach(h => {
       const cond = (h.condition || '').toLowerCase();
-      if (cond.includes('sick') || cond.includes('mastitis') || cond.includes('foot rot') || cond.includes('fever')) {
-        const nextCheckDate = addDaysToDate(h.checkup_date, 5);
-        const diff = getDaysDiff(nextCheckDate);
+      const isCriticalOrTreating = h.status === 'Critical' || h.status === 'Under Treatment';
+      const hasActiveIllness = cond.includes('sick') || cond.includes('mastitis') || cond.includes('foot rot') || cond.includes('fever') || cond.includes('wound');
 
-        let urgency: TaskUrgency = 'upcoming';
-        if (diff < 0) urgency = 'overdue';
-        else if (diff === 0) urgency = 'due_today';
-        else urgency = 'upcoming';
+      if (isCriticalOrTreating || hasActiveIllness) {
+        const daysSinceCheckup = -getDaysDiff(h.checkup_date);
+        // Only surface recent active clinical logs (within last 14 days)
+        if (daysSinceCheckup >= 0 && daysSinceCheckup <= 14) {
+          const nextCheckDate = addDaysToDate(h.checkup_date, 5);
+          const diff = getDaysDiff(nextCheckDate);
 
-        list.push({
-          id: `task-health-followup-${h.id}`,
-          title: `Re-evaluate ${h.goat_id} (${h.condition})`,
-          goat_id: h.goat_id,
-          category: 'medical',
-          due_date: nextCheckDate,
-          days_remaining: diff,
-          urgency,
-          description: `Follow up on previous treatment: "${h.treatment}". Check for complete recovery or antibiotic withdrawal adherence.`,
-          is_important: true,
-          is_completed: !!completedTaskMap[`task-health-followup-${h.id}`],
-          completed_at: completedTaskMap[`task-health-followup-${h.id}`]?.completed_at,
-          created_at: h.checkup_date,
-        });
+          let urgency: TaskUrgency = 'upcoming';
+          if (diff < 0) urgency = 'overdue';
+          else if (diff === 0) urgency = 'due_today';
+          else urgency = 'upcoming';
+
+          list.push({
+            id: `task-health-followup-${h.id}`,
+            title: `Follow-up Clinical Check: ${h.goat_id} (${h.condition || 'Under Treatment'})`,
+            goat_id: h.goat_id,
+            tag: 'Health Check',
+            category: 'medical',
+            due_date: nextCheckDate,
+            days_remaining: diff,
+            urgency,
+            description: `Follow up on owner-logged treatment: "${h.treatment}". Check antibiotic withdrawal adherence and recovery progress.`,
+            is_important: true,
+            is_completed: !!completedTaskMap[`task-health-followup-${h.id}`],
+            completed_at: completedTaskMap[`task-health-followup-${h.id}`]?.completed_at,
+            created_at: h.checkup_date,
+          });
+        }
       }
     });
 
-    // 5. Periodic Herd Deworming FAMACHA Scoring (Important record task)
-    if (goats.length > 0) {
-      const dewormingDueDate = addDaysToDate(todayStr, 4);
-      const diff = getDaysDiff(dewormingDueDate);
-      list.push({
-        id: `task-herd-famacha-check`,
-        title: `Routine Herd FAMACHA Eye Mucosa & Deworming Audit`,
-        category: 'deworming',
-        due_date: dewormingDueDate,
-        days_remaining: diff,
-        urgency: 'upcoming',
-        description: `Inspect lower eyelid mucosa color score (1-5) on all grazing does and bucks. Target anthelmintic dose only for scores 4-5 to prevent resistance.`,
-        is_important: true,
-        is_completed: !!completedTaskMap[`task-herd-famacha-check`],
-        completed_at: completedTaskMap[`task-herd-famacha-check`]?.completed_at,
-        created_at: todayStr,
+    // 5. Automated Biosecurity Quarantine Timers (7-Day Intermediate & 14-Day Clearance)
+    // Automatically schedules midway checkup and clearance evaluation for any goat in quarantine
+    goats.filter(g => g.status === 'Quarantine').forEach(qGoat => {
+      const qTasks = createQuarantineBiosecurityTasks(qGoat, todayStr);
+      qTasks.forEach(qt => {
+        const diff = getDaysDiff(qt.due_date);
+        let urgency: TaskUrgency = 'upcoming';
+        if (diff < 0) urgency = 'overdue';
+        else if (diff === 0) urgency = 'due_today';
+        else if (diff <= 7) urgency = 'upcoming';
+        else urgency = 'routine';
+
+        list.push({
+          id: qt.id,
+          title: qt.title,
+          goat_id: qt.goat_id,
+          goat_name: qt.goat_name,
+          tag: qt.tag,
+          category: qt.category,
+          due_date: qt.due_date,
+          days_remaining: diff,
+          urgency,
+          description: qt.description,
+          is_important: qt.is_important,
+          is_completed: !!completedTaskMap[qt.id],
+          completed_at: completedTaskMap[qt.id]?.completed_at,
+          created_at: todayStr,
+        });
       });
-    }
+    });
 
     return list;
   }, [goats, health, breeding, completedTaskMap, todayStr]);
@@ -302,6 +365,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
       id: `task-custom-${Date.now()}`,
       title: newTitle.trim(),
       goat_id: newGoatId.trim() || undefined,
+      tag: newTag || undefined,
       category: newCategory,
       due_date: newDueDate,
       days_remaining: diff,
@@ -322,6 +386,8 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
 
     setNewTitle('');
     setNewGoatId('');
+    setNewTag('');
+    setTaskSuggestion(null);
     setNewDescription('');
     setShowAddTaskModal(false);
   };
@@ -355,35 +421,28 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
         });
       });
 
-    // 2. Vital Health Records (Vaccinations, Surgeries, Serious illnesses)
-    health.forEach(h => {
-      const cond = (h.condition || '').toLowerCase();
-      const treat = (h.treatment || '').toLowerCase();
-      const isCritical =
-        h.checkup_type === 'Vaccination' ||
-        cond.includes('sick') ||
-        cond.includes('mastitis') ||
-        cond.includes('foot rot') ||
-        treat.includes('antibiotic') ||
-        treat.includes('cd/t');
-
-      if (isCritical) {
+    // 2. Urgent / Critical Health Interventions (Only genuine critical cases or active owner logs, never mass uploaded routine vaccines)
+    health
+      .filter(h => h.status === 'Critical' || (h.status === 'Under Treatment' && (h.condition?.toLowerCase().includes('mastitis') || h.condition?.toLowerCase().includes('rot') || h.condition?.toLowerCase().includes('fracture'))))
+      .slice(0, 15)
+      .forEach(h => {
         list.push({
           id: `hist-health-${h.id}`,
-          title: `Health Intervention: ${h.checkup_type || 'Veterinary'} for ${h.goat_id}`,
+          title: `Urgent Medical Intervention: ${h.goat_id} (${h.condition || 'Critical Care'})`,
           date: h.checkup_date,
           type: 'health',
-          badge: h.checkup_type || 'Veterinary',
+          badge: h.status || 'Critical Health',
           goat_id: h.goat_id,
-          description: `${h.condition ? `Condition: ${h.condition}. ` : ''}Treatment: ${h.treatment || 'Routine therapy'} by ${h.vet_name || 'Farm Vet'}.`,
+          description: `Condition: ${h.condition || 'Critical'}. Treatment: ${h.treatment || 'Intensive care'} by ${h.vet_name || 'Veterinarian'}.`,
           importance: 'critical',
         });
-      }
-    });
+      });
 
-    // 3. Vital Breeding Deliveries & Kidding Records
-    breeding.forEach(b => {
-      if (b.status === 'Delivered' || b.actual_birth_date) {
+    // 3. Vital Breeding Deliveries & Kidding Records (Capped to recent entries)
+    breeding
+      .filter(b => b.status === 'Delivered' || b.actual_birth_date)
+      .slice(0, 15)
+      .forEach(b => {
         list.push({
           id: `hist-breeding-${b.id}`,
           title: `Kidding Delivery Recorded: Doe ${b.female_id}`,
@@ -394,22 +453,23 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
           description: `Successful kidding delivered with Sire ${b.male_id}. Registered in official farm breeding registry.`,
           importance: 'critical',
         });
-      }
-    });
-
-    // 4. Important Herd Sales / Transfers
-    sales.forEach(s => {
-      list.push({
-        id: `hist-sale-${s.id}`,
-        title: `Livestock Sale Finalized: Goat ${s.goat_id}`,
-        date: s.sale_date || todayStr,
-        type: 'sale',
-        badge: 'Herd Sale',
-        goat_id: s.goat_id,
-        description: `Sold to ${s.buyer_name || 'External Buyer'} for $${s.price.toLocaleString()}. Status updated to Sold.`,
-        importance: 'high',
       });
-    });
+
+    // 4. Important Herd Sales / Transfers (Capped to recent entries)
+    sales
+      .slice(0, 15)
+      .forEach(s => {
+        list.push({
+          id: `hist-sale-${s.id}`,
+          title: `Livestock Sale Finalized: Goat ${s.goat_id}`,
+          date: s.sale_date || todayStr,
+          type: 'sale',
+          badge: 'Herd Sale',
+          goat_id: s.goat_id,
+          description: `Sold to ${s.buyer_name || 'External Buyer'} for Ksh ${s.price.toLocaleString()}. Status updated to Sold.`,
+          importance: 'high',
+        });
+      });
 
     // Sort descending by date
     return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -691,6 +751,20 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
                             </span>
                           )}
 
+                          {task.tag === 'Gestation' && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300/60 dark:border-purple-800 flex items-center gap-1">
+                              <span>🤰</span>
+                              <span>Gestation</span>
+                            </span>
+                          )}
+
+                          {task.tag === 'Health Check' && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-300/60 dark:border-sky-800 flex items-center gap-1">
+                              <span>🩺</span>
+                              <span>Health Check</span>
+                            </span>
+                          )}
+
                           {isOverdue && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300">
                               Overdue by {Math.abs(task.days_remaining)}d
@@ -915,14 +989,25 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-stone-700 dark:text-stone-300 font-bold mb-1">
-                    Related Goat ID (Optional)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-stone-700 dark:text-stone-300 font-bold">
+                      Related Goat ID / Tag
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsScannerOpen(true)}
+                      className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 font-bold px-1.5 py-0.5 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+                      title="Scan ear tag barcode or QR code"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Scan Tag</span>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={newGoatId}
-                    onChange={e => setNewGoatId(e.target.value)}
-                    placeholder="e.g. GT-101"
+                    onChange={e => handleGoatIdChange(e.target.value)}
+                    placeholder="e.g. GT-101 or Doe Name"
                     className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-white"
                   />
                 </div>
@@ -945,6 +1030,82 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
                   </select>
                 </div>
               </div>
+
+              {/* Smart Tag / Focus Selector */}
+              <div>
+                <label className="block text-stone-700 dark:text-stone-300 font-bold mb-1.5">
+                  Task Focus Tag (Smart Filter)
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewTag('')}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
+                      newTag === ''
+                        ? 'bg-stone-800 dark:bg-stone-200 text-white dark:text-stone-900 border-stone-800 dark:border-stone-200 shadow-2xs'
+                        : 'bg-stone-50 dark:bg-stone-800/60 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:border-stone-400'
+                    }`}
+                  >
+                    Standard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewTag('Health Check')}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                      newTag === 'Health Check'
+                        ? 'bg-sky-600 text-white border-sky-600 shadow-2xs'
+                        : 'bg-sky-50 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800/70 hover:border-sky-400'
+                    }`}
+                  >
+                    <span>🩺</span>
+                    <span>Health Check</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewTag('Gestation')}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                      newTag === 'Gestation'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
+                        : 'bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800/70 hover:border-purple-400'
+                    }`}
+                  >
+                    <span>🤰</span>
+                    <span>Gestation</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Automatic Tag and Protocol Suggestion Banner */}
+              {taskSuggestion && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/50 dark:via-teal-950/40 dark:to-emerald-950/50 border border-emerald-300/80 dark:border-emerald-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black tracking-wider uppercase text-emerald-800 dark:text-emerald-300">
+                        ⚡ Auto-Detected Suggestion:
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
+                          taskSuggestion.suggestedTag === 'Gestation'
+                            ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300/70'
+                            : 'bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-300/70'
+                        }`}
+                      >
+                        {taskSuggestion.suggestedTag === 'Gestation' ? '🤰 Gestation' : '🩺 Health Check'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-900 dark:text-emerald-200 font-medium">
+                      {taskSuggestion.reason}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => applySuggestion(taskSuggestion)}
+                    className="self-start sm:self-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shrink-0 transition-colors shadow-2xs"
+                  >
+                    Apply Suggestion
+                  </button>
+                </div>
+              )}
 
               <div>
                 <label className="block text-stone-700 dark:text-stone-300 font-bold mb-1">
@@ -1003,6 +1164,19 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
             </form>
           </div>
         </div>
+      )}
+
+      {/* Tag Scanner Modal */}
+      {isScannerOpen && (
+        <TagScannerModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          goats={goats}
+          onScanTag={(scannedTag: string) => {
+            handleGoatIdChange(scannedTag);
+            setIsScannerOpen(false);
+          }}
+        />
       )}
     </div>
   );

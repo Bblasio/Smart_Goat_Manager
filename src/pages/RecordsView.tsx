@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
-import { RecordType, AppView, GoatRecord, SaleRecord } from '../types';
+import { RecordType, AppView, GoatRecord, SaleRecord, HealthRecord } from '../types';
 import {
   Trash2,
   Plus,
@@ -25,10 +25,16 @@ import {
   Activity,
   FileText,
   Calendar,
-  Printer
+  Printer,
+  CheckSquare,
+  Square,
+  Layers,
+  Edit,
+  GitFork
 } from 'lucide-react';
 import { ExcelImportModal } from '../components/ExcelImportModal';
 import { FarmReportModal } from '../components/FarmReportModal';
+import { PedigreeTreeModal } from '../components/PedigreeTreeModal';
 
 interface RecordsViewProps {
   onOpenAddModal: (type?: RecordType) => void;
@@ -39,6 +45,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   const {
     goats,
     updateGoat,
+    bulkUpdateGoats,
     deleteGoat,
     breeding,
     deleteBreeding,
@@ -55,12 +62,20 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   const [activeTab, setActiveTab] = useState<
     'goats' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor'
   >('goats');
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedGoatIds, setSelectedGoatIds] = useState<string[]>([]);
+  const [bulkStatusTarget, setBulkStatusTarget] = useState<'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead'>('Quarantine');
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [bulkSuccessMsg, setBulkSuccessMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [goatStatusFilter, setGoatStatusFilter] = useState<'all' | 'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead'>('all');
+  const [goatHealthFilter, setGoatHealthFilter] = useState<'all' | 'Healthy' | 'Under Treatment' | 'Critical' | 'Observation' | 'Pregnant'>('all');
+  const [goatBreedFilter, setGoatBreedFilter] = useState<string>('all');
   const [healthStatusFilter, setHealthStatusFilter] = useState<'all' | 'Healthy' | 'Under Treatment' | 'Critical' | 'Pregnancy Check'>('all');
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [excelCategory, setExcelCategory] = useState<'goats' | 'breeding' | 'health' | 'milk'>('goats');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [pedigreeTargetGoat, setPedigreeTargetGoat] = useState<GoatRecord | null>(null);
 
   const handleOpenTabExcelUpload = (category: 'goats' | 'breeding' | 'health' | 'milk') => {
     setExcelCategory(category);
@@ -147,6 +162,120 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     }
   };
 
+  const getGoatLatestHealth = (goat: GoatRecord): HealthRecord | undefined => {
+    const cleanTag = goat.tag_number.trim().toUpperCase();
+    const cleanName = goat.name ? goat.name.trim().toUpperCase() : '';
+    const matches = health.filter(h => {
+      const target = (h.goat_id || '').trim().toUpperCase();
+      return target === cleanTag || h.goat_id === goat.id || (cleanName && target === cleanName);
+    });
+    if (!matches.length) return undefined;
+    return [...matches].sort((a, b) => new Date(b.checkup_date).getTime() - new Date(a.checkup_date).getTime())[0];
+  };
+
+  const getGoatHealthStatus = (goat: GoatRecord): {
+    status: 'Healthy' | 'Under Treatment' | 'Critical' | 'Observation' | 'Pregnant' | 'Deceased';
+    condition?: string;
+    treatment?: string;
+    date?: string;
+    isPregnant?: boolean;
+  } => {
+    const effectiveHerdStatus = getGoatEffectiveStatus(goat);
+    if (effectiveHerdStatus === 'Dead') {
+      return { status: 'Deceased', condition: 'Deceased' };
+    }
+
+    const latest = getGoatLatestHealth(goat);
+    if (latest) {
+      const condLower = (latest.condition || '').toLowerCase();
+
+      if (latest.status === 'Critical' || condLower.includes('critical')) {
+        return { status: 'Critical', condition: latest.condition, treatment: latest.treatment, date: latest.checkup_date, isPregnant: latest.is_pregnant };
+      }
+      if (
+        latest.status === 'Under Treatment' ||
+        condLower.includes('sick') ||
+        condLower.includes('fever') ||
+        condLower.includes('infection') ||
+        condLower.includes('mastitis') ||
+        condLower.includes('pneumonia') ||
+        condLower.includes('bloat') ||
+        condLower.includes('weak')
+      ) {
+        return { status: 'Under Treatment', condition: latest.condition, treatment: latest.treatment, date: latest.checkup_date, isPregnant: latest.is_pregnant };
+      }
+      if (latest.status === 'Observation' || effectiveHerdStatus === 'Quarantine') {
+        return { status: 'Observation', condition: latest.condition || 'Quarantine protocol', treatment: latest.treatment, date: latest.checkup_date, isPregnant: latest.is_pregnant };
+      }
+      if (latest.is_pregnant || latest.checkup_type === 'Pregnancy Check' || effectiveHerdStatus === 'Pregnant') {
+        return { status: 'Pregnant', condition: latest.condition || 'Confirmed In-Kid', treatment: latest.treatment, date: latest.checkup_date, isPregnant: true };
+      }
+      return { status: 'Healthy', condition: latest.condition || 'Sound & Normal', treatment: latest.treatment, date: latest.checkup_date };
+    }
+
+    if (effectiveHerdStatus === 'Quarantine') {
+      return { status: 'Observation', condition: 'Quarantine / Isolation' };
+    }
+    if (effectiveHerdStatus === 'Pregnant') {
+      return { status: 'Pregnant', condition: 'Gestation underway', isPregnant: true };
+    }
+
+    return { status: 'Healthy', condition: 'Sound & Normal' };
+  };
+
+  const renderGoatHealthBadge = (healthInfo: ReturnType<typeof getGoatHealthStatus>) => {
+    switch (healthInfo.status) {
+      case 'Healthy':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            <span>Healthy</span>
+          </span>
+        );
+      case 'Under Treatment':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs">
+            <HeartPulse className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 animate-pulse" />
+            <span>Under Treatment</span>
+          </span>
+        );
+      case 'Critical':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700 shadow-2xs">
+            <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+            <span>Critical</span>
+          </span>
+        );
+      case 'Observation':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-50 dark:bg-yellow-950/60 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700 shadow-2xs">
+            <Activity className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400 shrink-0" />
+            <span>Observation</span>
+          </span>
+        );
+      case 'Pregnant':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700 shadow-2xs">
+            <Baby className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+            <span>Pregnant</span>
+          </span>
+        );
+      case 'Deceased':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border border-stone-300 dark:border-stone-700 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-stone-400 shrink-0" />
+            <span>Deceased</span>
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
+            <span>{healthInfo.status}</span>
+          </span>
+        );
+    }
+  };
+
   const getGoatStatusDotClass = (status?: string) => {
     switch (status) {
       case 'Pregnant':
@@ -186,23 +315,47 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   // Map goats by tag for quick name and detail lookup
   const goatMap = new Map(goats.map(g => [g.tag_number.toUpperCase(), g]));
 
+  // Unique breeds present in current herd
+  const availableBreeds = Array.from(new Set(goats.map(g => g.breed).filter(Boolean))).sort();
+
   // Search & Status filters
   const filteredGoats = goats.filter(g => {
     const q = searchQuery.trim().toLowerCase();
     const effectiveStatus = getGoatEffectiveStatus(g);
+    const healthInfo = getGoatHealthStatus(g);
+
+    // Filter by ID, Breed, or Current Health Status / Condition / Treatment
     const matchesSearch =
       !q ||
       g.tag_number.toLowerCase().includes(q) ||
       (g.name && g.name.toLowerCase().includes(q)) ||
-      effectiveStatus.toLowerCase().includes(q) ||
       g.breed.toLowerCase().includes(q) ||
-      g.gender.toLowerCase().includes(q);
+      g.gender.toLowerCase().includes(q) ||
+      healthInfo.status.toLowerCase().includes(q) ||
+      (healthInfo.condition && healthInfo.condition.toLowerCase().includes(q)) ||
+      (healthInfo.treatment && healthInfo.treatment.toLowerCase().includes(q)) ||
+      effectiveStatus.toLowerCase().includes(q);
 
-    const matchesStatus =
+    // Herd Status Filter
+    const matchesHerdStatus =
       goatStatusFilter === 'all' ||
       effectiveStatus.toLowerCase() === goatStatusFilter.toLowerCase();
 
-    return matchesSearch && matchesStatus;
+    // Health Status Filter
+    const matchesHealthStatus =
+      goatHealthFilter === 'all' ||
+      (goatHealthFilter === 'Healthy' && healthInfo.status === 'Healthy') ||
+      (goatHealthFilter === 'Under Treatment' && healthInfo.status === 'Under Treatment') ||
+      (goatHealthFilter === 'Critical' && healthInfo.status === 'Critical') ||
+      (goatHealthFilter === 'Observation' && healthInfo.status === 'Observation') ||
+      (goatHealthFilter === 'Pregnant' && (healthInfo.status === 'Pregnant' || healthInfo.isPregnant || effectiveStatus === 'Pregnant'));
+
+    // Breed Filter
+    const matchesBreed =
+      goatBreedFilter === 'all' ||
+      g.breed.toLowerCase() === goatBreedFilter.toLowerCase();
+
+    return matchesSearch && matchesHerdStatus && matchesHealthStatus && matchesBreed;
   });
 
   const filteredBreeding = breeding.filter(b => {
@@ -383,6 +536,9 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
               onClick={() => {
                 setActiveTab(tab.id as any);
                 setSearchQuery('');
+                setGoatStatusFilter('all');
+                setGoatHealthFilter('all');
+                setGoatBreedFilter('all');
               }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
                 activeTab === tab.id
@@ -424,7 +580,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   type="text"
                   placeholder={
                     activeTab === 'goats'
-                      ? 'Filter goats by ear tag (e.g. GT-101), name (Apollo), breed, or status (Active, Pregnant, Quarantine)...'
+                      ? 'Search herd by Goat ID (e.g. GT-101), Breed (e.g. Boer), or Current Health Status (Healthy, Under Treatment, Mastitis)...'
                       : activeTab === 'health'
                       ? 'Filter health records by ear tag (e.g. GT-103), goat name (Nala), or status (Healthy, Under Treatment)...'
                       : `Filter ${activeTab} records by keyword or tag...`
@@ -484,6 +640,26 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   </button>
                 )}
 
+                {activeTab === 'goats' && (
+                  <button
+                    type="button"
+                    id="btn-toggle-bulk-mode"
+                    onClick={() => {
+                      setIsBulkMode(prev => !prev);
+                      setSelectedGoatIds([]);
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors shadow-2xs ${
+                      isBulkMode
+                        ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                        : 'bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700'
+                    }`}
+                    title="Select multiple herd goats to update status together"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    <span>{isBulkMode ? 'Exit Bulk Edit' : 'Bulk Edit'}</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   id="btn-tab-open-report"
@@ -513,37 +689,40 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
               </div>
             </div>
 
-            {/* Quick Status Filter Pills for Goats */}
+            {/* Quick Status and Health Filters for Goats */}
             {activeTab === 'goats' && (
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div className="flex flex-col gap-2.5 pt-1 border-t border-stone-200/70 dark:border-stone-800">
+                {/* 1. Health Status Filters */}
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 flex items-center gap-1 mr-1">
-                    <Filter className="w-3 h-3 text-stone-400" />
-                    Status:
+                  <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 flex items-center gap-1 mr-1">
+                    <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
+                    Health Status:
                   </span>
                   {[
-                    { id: 'all', label: 'All Goats', count: goats.length },
-                    { id: 'Active', label: 'Active', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Active').length },
-                    { id: 'Pregnant', label: 'Pregnant', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Pregnant').length },
-                    { id: 'Quarantine', label: 'Quarantine', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Quarantine').length },
-                    { id: 'Sold', label: 'Sold', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Sold').length },
-                    { id: 'Dead', label: 'Dead / Deceased', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Dead').length },
+                    { id: 'all', label: 'All Health', count: goats.length },
+                    { id: 'Healthy', label: 'Healthy', count: goats.filter(g => getGoatHealthStatus(g).status === 'Healthy').length, dot: 'bg-emerald-500' },
+                    { id: 'Under Treatment', label: 'Under Treatment', count: goats.filter(g => getGoatHealthStatus(g).status === 'Under Treatment').length, dot: 'bg-amber-500' },
+                    { id: 'Critical', label: 'Critical', count: goats.filter(g => getGoatHealthStatus(g).status === 'Critical').length, dot: 'bg-rose-500' },
+                    { id: 'Observation', label: 'Observation', count: goats.filter(g => getGoatHealthStatus(g).status === 'Observation').length, dot: 'bg-yellow-500' },
+                    { id: 'Pregnant', label: 'Pregnant', count: goats.filter(g => getGoatHealthStatus(g).status === 'Pregnant' || getGoatHealthStatus(g).isPregnant || getGoatEffectiveStatus(g) === 'Pregnant').length, dot: 'bg-purple-500' },
                   ].map(pill => (
                     <button
                       key={pill.id}
-                      id={`pill-goat-status-${pill.id}`}
-                      onClick={() => setGoatStatusFilter(pill.id as any)}
+                      id={`pill-goat-health-${pill.id.toLowerCase().replace(/\s+/g, '-')}`}
+                      type="button"
+                      onClick={() => setGoatHealthFilter(pill.id as any)}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                        goatStatusFilter === pill.id
-                          ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                        goatHealthFilter === pill.id
+                          ? 'bg-rose-600 text-white font-semibold shadow-2xs'
                           : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700'
                       }`}
                     >
+                      {pill.dot && <span className={`w-1.5 h-1.5 rounded-full ${goatHealthFilter === pill.id ? 'bg-white' : pill.dot}`} />}
                       <span>{pill.label}</span>
                       <span
                         className={`text-[10px] px-1 rounded-full ${
-                          goatStatusFilter === pill.id
-                            ? 'bg-emerald-800 text-white'
+                          goatHealthFilter === pill.id
+                            ? 'bg-rose-800 text-white'
                             : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
                         }`}
                       >
@@ -553,23 +732,133 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   ))}
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
-                  <span>
-                    Showing <strong className="text-stone-800 dark:text-stone-200">{filteredGoats.length}</strong> of{' '}
-                    <strong className="text-stone-800 dark:text-stone-200">{goats.length}</strong> goats
-                  </span>
-                  {(searchQuery || goatStatusFilter !== 'all') && (
-                    <button
-                      onClick={() => {
-                        setSearchQuery('');
-                        setGoatStatusFilter('all');
-                      }}
-                      className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline font-medium"
-                    >
-                      Reset
-                    </button>
-                  )}
+                {/* 2. Herd Status & Breed Filters */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 flex items-center gap-1 mr-1">
+                      <Filter className="w-3.5 h-3.5 text-emerald-600" />
+                      Herd Status:
+                    </span>
+                    {[
+                      { id: 'all', label: 'All Herd', count: goats.length },
+                      { id: 'Active', label: 'Active', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Active').length },
+                      { id: 'Pregnant', label: 'Pregnant', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Pregnant').length },
+                      { id: 'Quarantine', label: 'Quarantine', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Quarantine').length },
+                      { id: 'Sold', label: 'Sold', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Sold').length },
+                      { id: 'Dead', label: 'Dead / Deceased', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Dead').length },
+                    ].map(pill => (
+                      <button
+                        key={pill.id}
+                        id={`pill-goat-status-${pill.id.toLowerCase()}`}
+                        type="button"
+                        onClick={() => setGoatStatusFilter(pill.id as any)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          goatStatusFilter === pill.id
+                            ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                            : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700'
+                        }`}
+                      >
+                        <span>{pill.label}</span>
+                        <span
+                          className={`text-[10px] px-1 rounded-full ${
+                            goatStatusFilter === pill.id
+                              ? 'bg-emerald-800 text-white'
+                              : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
+                          }`}
+                        >
+                          {pill.count}
+                        </span>
+                      </button>
+                    ))}
+
+                    {/* Breed Selector */}
+                    {availableBreeds.length > 0 && (
+                      <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-stone-200 dark:border-stone-700">
+                        <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-300">
+                          Breed:
+                        </span>
+                        <select
+                          id="select-goat-breed-filter"
+                          value={goatBreedFilter}
+                          onChange={e => setGoatBreedFilter(e.target.value)}
+                          className="text-xs bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+                        >
+                          <option value="all">All Breeds ({goats.length})</option>
+                          {availableBreeds.map(b => (
+                            <option key={b} value={b}>
+                              {b} ({goats.filter(g => g.breed === b).length})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Filter Summary & Quick Reset */}
+                  <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
+                    <span>
+                      Showing <strong className="text-stone-800 dark:text-stone-200">{filteredGoats.length}</strong> of{' '}
+                      <strong className="text-stone-800 dark:text-stone-200">{goats.length}</strong> goats
+                    </span>
+                    {(searchQuery || goatStatusFilter !== 'all' || goatHealthFilter !== 'all' || goatBreedFilter !== 'all') && (
+                      <button
+                        id="btn-reset-goat-filters"
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setGoatStatusFilter('all');
+                          setGoatHealthFilter('all');
+                          setGoatBreedFilter('all');
+                        }}
+                        className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-semibold hover:underline ml-1"
+                      >
+                        <X className="w-3 h-3" />
+                        <span>Reset Filters</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {/* Active Filter Tags */}
+                {(searchQuery || goatStatusFilter !== 'all' || goatHealthFilter !== 'all' || goatBreedFilter !== 'all') && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-stone-400 dark:text-stone-500">
+                      Active Filters:
+                    </span>
+                    {searchQuery && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        <span>Keyword: &ldquo;{searchQuery}&rdquo;</span>
+                        <button type="button" onClick={() => setSearchQuery('')} className="hover:text-emerald-950 dark:hover:text-white">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+                    {goatHealthFilter !== 'all' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                        <span>Health: {goatHealthFilter}</span>
+                        <button type="button" onClick={() => setGoatHealthFilter('all')} className="hover:text-rose-950 dark:hover:text-white">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+                    {goatStatusFilter !== 'all' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        <span>Herd: {goatStatusFilter}</span>
+                        <button type="button" onClick={() => setGoatStatusFilter('all')} className="hover:text-emerald-950 dark:hover:text-white">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+                    {goatBreedFilter !== 'all' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700">
+                        <span>Breed: {goatBreedFilter}</span>
+                        <button type="button" onClick={() => setGoatBreedFilter('all')} className="hover:text-stone-900 dark:hover:text-white">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -653,35 +942,203 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
 
       {/* TAB 1: GOATS */}
       {activeTab === 'goats' && (
-        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
-                <tr>
-                  <th className="px-6 py-3.5">Ear Tag & Name</th>
-                  <th className="px-6 py-3.5">Herd Status</th>
-                  <th className="px-6 py-3.5">Breed</th>
-                  <th className="px-6 py-3.5">Gender</th>
-                  <th className="px-6 py-3.5">Weight (kg)</th>
-                  <th className="px-6 py-3.5">Date of Birth</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                {filteredGoats.length > 0 ? (
-                  filteredGoats.map(goat => {
-                    const effectiveStatus = getGoatEffectiveStatus(goat);
-                    const saleRecord = effectiveStatus === 'Sold' ? getGoatSaleRecord(goat) : undefined;
-                    return (
-                    <tr key={goat.id} className="hover:bg-stone-50/75 dark:hover:bg-stone-800/50 transition-colors">
+        <>
+          {/* Bulk Action Bar for Goats */}
+          {isBulkMode && (
+            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/80 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <span className="p-2 rounded-xl bg-amber-500/15 text-amber-800 dark:text-amber-200">
+                  <Layers className="w-5 h-5 text-amber-700 dark:text-amber-300" />
+                </span>
+                <div>
+                  <div className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                    <span>Bulk Selection Mode</span>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100">
+                      {selectedGoatIds.length} of {filteredGoats.length} Selected
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80">
+                    Select goats using checkboxes to update their herd status together in one click.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  id="btn-select-all-goats"
+                  onClick={() => {
+                    if (selectedGoatIds.length === filteredGoats.length) {
+                      setSelectedGoatIds([]);
+                    } else {
+                      setSelectedGoatIds(filteredGoats.map(g => g.id));
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 border border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+                >
+                  {selectedGoatIds.length === filteredGoats.length && filteredGoats.length > 0 ? 'Deselect All' : 'Select All'}
+                </button>
+
+                <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg px-2.5 py-1">
+                  <span className="text-xs font-medium text-stone-600 dark:text-stone-300">Set Status:</span>
+                  <select
+                    id="select-bulk-status"
+                    value={bulkStatusTarget}
+                    onChange={e => setBulkStatusTarget(e.target.value as any)}
+                    className="text-xs font-bold bg-transparent text-stone-800 dark:text-stone-100 focus:outline-none cursor-pointer"
+                  >
+                    <option value="Quarantine">Quarantine</option>
+                    <option value="Sold">Sold</option>
+                    <option value="Active">Active</option>
+                    <option value="Pregnant">Pregnant</option>
+                    <option value="Dead">Dead (Culled / Deceased)</option>
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  id="btn-apply-bulk-update"
+                  disabled={selectedGoatIds.length === 0 || isBulkUpdating}
+                  onClick={async () => {
+                    if (selectedGoatIds.length === 0) return;
+                    setIsBulkUpdating(true);
+                    try {
+                      await bulkUpdateGoats(selectedGoatIds, { status: bulkStatusTarget });
+                      if (bulkStatusTarget === 'Quarantine') {
+                        setBulkSuccessMsg(`Successfully isolated ${selectedGoatIds.length} goat(s) to "Quarantine". Automated 7-day intermediate checkup and 14-day biosecurity clearance tasks are scheduled.`);
+                      } else {
+                        setBulkSuccessMsg(`Successfully updated ${selectedGoatIds.length} goat(s) to "${bulkStatusTarget}".`);
+                      }
+                      setSelectedGoatIds([]);
+                      setTimeout(() => setBulkSuccessMsg(null), 4500);
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setIsBulkUpdating(false);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all shadow-2xs flex items-center gap-1.5 ${
+                    selectedGoatIds.length === 0 || isBulkUpdating
+                      ? 'bg-stone-400 dark:bg-stone-700 cursor-not-allowed opacity-60'
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                >
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>{isBulkUpdating ? 'Updating...' : `Apply Status (${selectedGoatIds.length})`}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBulkMode(false);
+                    setSelectedGoatIds([]);
+                  }}
+                  className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                  title="Close Bulk Edit"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {bulkSuccessMsg && (
+            <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{bulkSuccessMsg}</span>
+              </div>
+              <button onClick={() => setBulkSuccessMsg(null)} className="text-emerald-700 hover:text-emerald-900">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
+                  <tr>
+                    {isBulkMode && (
+                      <th className="px-4 py-3.5 w-12 text-center">
+                        <input
+                          type="checkbox"
+                          checked={filteredGoats.length > 0 && selectedGoatIds.length === filteredGoats.length}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedGoatIds(filteredGoats.map(g => g.id));
+                            } else {
+                              setSelectedGoatIds([]);
+                            }
+                          }}
+                          className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                          title="Select / Deselect All Filtered Goats"
+                        />
+                      </th>
+                    )}
+                    <th className="px-6 py-3.5">Ear Tag & Name</th>
+                    <th className="px-6 py-3.5">Current Health</th>
+                    <th className="px-6 py-3.5">Herd Status</th>
+                    <th className="px-6 py-3.5">Breed</th>
+                    <th className="px-6 py-3.5">Gender</th>
+                    <th className="px-6 py-3.5">Weight (kg)</th>
+                    <th className="px-6 py-3.5">Date of Birth</th>
+                    <th className="px-6 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                  {filteredGoats.length > 0 ? (
+                    filteredGoats.map(goat => {
+                      const effectiveStatus = getGoatEffectiveStatus(goat);
+                      const saleRecord = effectiveStatus === 'Sold' ? getGoatSaleRecord(goat) : undefined;
+                      const healthInfo = getGoatHealthStatus(goat);
+                      const isSelected = selectedGoatIds.includes(goat.id);
+                      return (
+                      <tr
+                        key={goat.id}
+                        className={`transition-colors ${
+                          isSelected
+                            ? 'bg-amber-50/60 dark:bg-amber-950/30'
+                            : 'hover:bg-stone-50/75 dark:hover:bg-stone-800/50'
+                        }`}
+                      >
+                        {isBulkMode && (
+                          <td className="px-4 py-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                setSelectedGoatIds(prev =>
+                                  prev.includes(goat.id) ? prev.filter(id => id !== goat.id) : [...prev, goat.id]
+                                );
+                              }}
+                              className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                            />
+                          </td>
+                        )}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${getGoatStatusDotClass(effectiveStatus)}`} />
+                            <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{goat.tag_number}</span>
+                            {goat.name && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <Tag className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                                {goat.name}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${getGoatStatusDotClass(effectiveStatus)}`} />
-                          <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{goat.tag_number}</span>
-                          {goat.name && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                              <Tag className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                              {goat.name}
+                        <div className="flex flex-col gap-1">
+                          <div>{renderGoatHealthBadge(healthInfo)}</div>
+                          {healthInfo.condition && healthInfo.status !== 'Healthy' && (
+                            <span className="text-[11px] text-stone-500 dark:text-stone-400 max-w-[170px] truncate" title={healthInfo.condition}>
+                              {healthInfo.condition}
+                            </span>
+                          )}
+                          {healthInfo.date && (
+                            <span className="text-[10px] text-stone-400 dark:text-stone-500 font-mono">
+                              Checked: {healthInfo.date}
                             </span>
                           )}
                         </div>
@@ -723,21 +1180,33 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                         {goat.dob || '—'}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          id={`btn-del-goat-${goat.id}`}
-                          onClick={() => deleteGoat(goat.id)}
-                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
-                          title="Delete Goat Record"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            id={`btn-pedigree-goat-${goat.id}`}
+                            onClick={() => setPedigreeTargetGoat(goat)}
+                            className="p-1.5 text-sky-600 hover:text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950/50 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
+                            title="View Multi-Generational Pedigree & Inbreeding Safety Tree"
+                          >
+                            <GitFork className="w-4 h-4" />
+                            <span className="hidden md:inline text-[11px]">Pedigree</span>
+                          </button>
+                          <button
+                            id={`btn-del-goat-${goat.id}`}
+                            onClick={() => deleteGoat(goat.id)}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                            title="Delete Goat Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
                 })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
+                    <td colSpan={isBulkMode ? 9 : 8} className="px-6 py-12 text-center">
                       <div className="max-w-md mx-auto text-center space-y-3">
                         <p className="text-stone-700 dark:text-stone-300 font-semibold">No goats found</p>
                         <p className="text-xs text-stone-500 dark:text-stone-400">
@@ -765,6 +1234,8 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                           onClick={() => {
                             setSearchQuery('');
                             setGoatStatusFilter('all');
+                            setGoatHealthFilter('all');
+                            setGoatBreedFilter('all');
                           }}
                           className="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline inline-block"
                         >
@@ -778,6 +1249,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* TAB 2: BREEDING */}
@@ -1263,6 +1735,14 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       <FarmReportModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
+      />
+
+      {/* Multi-Generational Pedigree & Inbreeding Safety Tree Modal */}
+      <PedigreeTreeModal
+        isOpen={!!pedigreeTargetGoat}
+        onClose={() => setPedigreeTargetGoat(null)}
+        rootSubject={pedigreeTargetGoat}
+        allGoats={goats}
       />
     </div>
   );

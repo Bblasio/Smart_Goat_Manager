@@ -8,6 +8,8 @@ export interface GoatRecord {
   created_at: string;
   weight_kg?: number;
   status?: 'Active' | 'Sold' | 'Quarantine' | 'Pregnant' | 'Dead';
+  dam_tag?: string;
+  sire_tag?: string;
 }
 
 export interface BreedingRecord {
@@ -94,8 +96,30 @@ export interface FarmUser {
   created_at: string;
 }
 
-export type RecordType = 'goat' | 'breeding' | 'health' | 'sale' | 'expense' | 'worker' | 'milk' | 'feed' | 'medication';
+export type RecordType = 'goat' | 'breeding' | 'health' | 'sale' | 'expense' | 'worker' | 'milk' | 'feed' | 'medication' | 'kid_growth';
 export type AppView = 'dashboard' | 'tasks' | 'breeding_estimator' | 'records' | 'health_vet' | 'feed_supply' | 'reports' | 'profile';
+
+export interface KidGrowthRecord {
+  id: string;
+  kid_tag: string;
+  kid_name?: string;
+  gender: 'Male' | 'Female';
+  breed: string;
+  dob: string;
+  dam_tag?: string;
+  dam_name?: string;
+  sire_tag?: string;
+  sire_name?: string;
+  birth_weight_kg: number;
+  thirty_day_weight_kg?: number;
+  weaning_date?: string;
+  weaning_weight_kg?: number;
+  target_weaning_weight_kg?: number;
+  adg_grams_per_day?: number;
+  status: 'Nursing' | 'Weaned' | 'Sold' | 'Retained';
+  notes?: string;
+  created_at: string;
+}
 
 export type FeedCategory = 'Fodder & Hay' | 'Concentrate' | 'Mineral & Salt' | 'Silage' | 'Supplement';
 export type FeedUnit = 'kg' | 'bags' | 'bales' | 'tons' | 'blocks';

@@ -15,7 +15,7 @@ import { AuthView } from './pages/AuthView';
 import { AddRecordModal } from './components/AddRecordModal';
 import { AppLaunchLoader } from './components/AppLaunchLoader';
 import { RecordType, AppView } from './types';
-import { Menu } from 'lucide-react';
+import { Menu, Sparkles, X } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
   const { isAuthenticated, authLoading, isDemoMode, farmName, user, logout } = useFarm();
@@ -26,6 +26,15 @@ const MainLayout: React.FC = () => {
   const [modalDefaultType, setModalDefaultType] = useState<RecordType>('goat');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [minLaunchTimePassed, setMinLaunchTimePassed] = useState(false);
+  const [profilePromptDismissed, setProfilePromptDismissed] = useState(false);
+
+  const isProfileComplete = Boolean(
+    user?.farm_name &&
+    user?.owner_name &&
+    user?.location &&
+    user?.phone &&
+    user?.primary_breed
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -135,6 +144,44 @@ const MainLayout: React.FC = () => {
           </div>
         )}
 
+        {/* Profile Incomplete Notification Banner */}
+        {!isDemoMode && isAuthenticated && !isProfileComplete && !profilePromptDismissed && activeTab !== 'profile' && (
+          <div className="no-print bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-emerald-950/70 border-b border-emerald-200 dark:border-emerald-800/80 px-4 py-3 text-xs text-emerald-900 dark:text-emerald-200 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <span className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-2xs shrink-0">
+                <Sparkles className="w-4 h-4" />
+              </span>
+              <div>
+                <span className="font-bold text-emerald-950 dark:text-emerald-100 block sm:inline mr-1">
+                  Complete Your Farm Profile:
+                </span>
+                <span className="text-emerald-800 dark:text-emerald-300">
+                  Fill in your farm location, contact phone, and primary goat breed to personalize official reports, sales receipts, and medical logs.
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                id="btn-complete-profile-banner"
+                onClick={() => handleNavigate('profile')}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs flex items-center gap-1"
+              >
+                <span>Complete Profile</span>
+                <span>→</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProfilePromptDismissed(true)}
+                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                title="Dismiss reminder"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Mobile Header Bar */}
         <header className="no-print lg:hidden sticky top-0 z-30 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -188,6 +235,7 @@ const MainLayout: React.FC = () => {
               onNavigateToHealth={() => handleNavigate('health_vet')}
               onNavigateToTasks={() => handleNavigate('tasks')}
               onNavigateToFeedSupply={() => handleNavigate('feed_supply')}
+              onNavigateToProfile={() => handleNavigate('profile')}
               onOpenAddHealthModal={() => handleOpenAddModal('health')}
               onOpenAddSaleModal={() => handleOpenAddModal('sale')}
             />

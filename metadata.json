@@ -1,7 +1,9 @@
 {
   "name": "Smart Goat Management System",
   "description": "Comprehensive goat farm management application to track livestock records, breeding cycles, health, sales, workers, and production analytics.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "camera"
+  ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

@@ -18,12 +18,12 @@ import {
   Info
 } from 'lucide-react';
 
-export type PendingTaskCategory = 'all' | 'vaccination' | 'deworming' | 'hoof' | 'clinical';
+export type PendingTaskCategory = 'all' | 'vaccination' | 'deworming' | 'hoof' | 'clinical' | 'breeding';
 export type TaskUrgency = 'overdue' | 'due_today' | 'upcoming' | 'routine';
 
 export interface PendingTaskItem {
   id: string;
-  category: 'vaccination' | 'deworming' | 'hoof' | 'clinical';
+  category: 'vaccination' | 'deworming' | 'hoof' | 'clinical' | 'breeding';
   title: string;
   goat_id: string;
   goat_name?: string;
@@ -107,14 +107,14 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
     // 1. VACCINATION SCHEDULES (Pre-Kidding CD/T & Routine Boosters)
     // -------------------------------------------------------------
 
-    // A. Pre-Kidding CD/T Toxoid Booster for Expectant Does
-    // Recommended 4-6 weeks (approx 28-35 days) prior to kidding
+    // A. Pre-Kidding CD/T Toxoid Booster for Expectant Does (Late gestation: within 35 days)
     breeding.forEach(b => {
       if (b.status === 'Delivered' || b.status === 'Failed' || !b.expected_birth) return;
 
       const dueInDays = getDaysDiff(b.expected_birth);
-      // If expected birth is within 45 days, CD/T booster should be administered
-      // Booster date = expected_birth - 30 days
+      // Realistic caprine protocol: only trigger when doe is in late gestation (within 35 days of delivery)
+      if (dueInDays > 35 || dueInDays < -10) return;
+
       const cdtDueDate = addDaysToDate(b.expected_birth, -30);
       const boosterDiff = getDaysDiff(cdtDueDate);
 
@@ -152,227 +152,69 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
       }
     });
 
-    // B. Annual / Semi-Annual Vaccine Boosters from existing health records
-    const healthVaccinations = health.filter(h =>
-      h.checkup_type === 'Vaccination' ||
-      h.treatment.toLowerCase().includes('vaccin') ||
-      h.treatment.toLowerCase().includes('cd/t') ||
-      h.treatment.toLowerCase().includes('ppr') ||
-      h.treatment.toLowerCase().includes('ccpp') ||
-      h.treatment.toLowerCase().includes('anthrax')
-    );
+    // B. Kidding Stall Preparation (Late gestation: within 7 days of expected birth)
+    breeding.forEach(b => {
+      if (b.status === 'Delivered' || b.status === 'Failed' || !b.expected_birth) return;
+      const dueInDays = getDaysDiff(b.expected_birth);
+      if (dueInDays > 7 || dueInDays < -3) return;
 
-    // Group by goat to find the latest vaccination
-    const latestVacByGoat = new Map<string, typeof health[0]>();
-    healthVaccinations.forEach(h => {
-      const existing = latestVacByGoat.get(h.goat_id);
-      if (!existing || new Date(h.checkup_date) > new Date(existing.checkup_date)) {
-        latestVacByGoat.set(h.goat_id, h);
-      }
-    });
+      const prepDueDate = addDaysToDate(b.expected_birth, -5);
+      const diff = getDaysDiff(prepDueDate);
 
-    latestVacByGoat.forEach((record, goatId) => {
-      // Annual booster due 365 days after previous vaccination
-      const nextDue = addDaysToDate(record.checkup_date, 365);
-      const diff = getDaysDiff(nextDue);
+      let urgency: TaskUrgency = 'upcoming';
+      if (diff < 0) urgency = 'overdue';
+      else if (diff === 0) urgency = 'due_today';
+      else if (diff <= 3) urgency = 'upcoming';
+      else urgency = 'routine';
 
-      // Only surface if due within 30 days or overdue
-      if (diff <= 30) {
-        let urgency: TaskUrgency = 'routine';
-        if (diff < 0) urgency = 'overdue';
-        else if (diff === 0) urgency = 'due_today';
-        else if (diff <= 14) urgency = 'upcoming';
-
-        const g = goatMap.get(goatId);
-        tasks.push({
-          id: `vac-booster-${goatId}-${record.id}`,
-          category: 'vaccination',
-          title: `Annual Clostridial / PPR Booster: ${goatId}`,
-          goat_id: goatId,
-          goat_name: g?.name,
-          goat_breed: g?.breed,
-          due_date: nextDue,
-          days_remaining: diff,
-          urgency,
-          description: `Annual vaccination cycle renewal following ${record.treatment} given on ${record.checkup_date}.`,
-          recommended_treatment: record.treatment || 'Annual Polyvalent Booster Vaccine 2ml SC',
-          last_record_date: record.checkup_date,
-          related_entity_id: record.id,
-        });
-      }
-    });
-
-    // C. Default herd vaccination if herd has active goats with no recorded vaccine
-    if (tasks.filter(t => t.category === 'vaccination').length === 0 && goats.length > 0) {
-      const unvaccinatedGoat = goats.find(g => !healthVaccinations.some(h => h.goat_id === g.tag_number)) || goats[0];
+      const doeGoat = goatMap.get(b.female_id);
       tasks.push({
-        id: `vac-primary-${unvaccinatedGoat.tag_number}`,
-        category: 'vaccination',
-        title: `Primary CD/T & Clostridial Vaccination: ${unvaccinatedGoat.tag_number}`,
-        goat_id: unvaccinatedGoat.tag_number,
-        goat_name: unvaccinatedGoat.name,
-        goat_breed: unvaccinatedGoat.breed,
-        due_date: todayStr,
-        days_remaining: 0,
-        urgency: 'due_today',
-        description: `Primary immunization protocol against enterotoxemia (pulpy kidney) and tetanus for active herd member.`,
-        recommended_treatment: 'CD/T Toxoid 2ml Subcutaneous (with 21-day booster follow-up)',
+        id: `maternity-prep-${b.female_id}-${b.id}`,
+        category: 'breeding',
+        title: `Maternity Stall Preparation: ${b.female_id}`,
+        goat_id: b.female_id,
+        goat_name: doeGoat?.name,
+        goat_breed: doeGoat?.breed,
+        due_date: prepDueDate,
+        days_remaining: diff,
+        urgency,
+        description: `Disinfect kidding stall with agricultural lime, lay fresh dry straw bedding, verify heat lamp and iodine navel dip. Expected: ${b.expected_birth}.`,
+        recommended_treatment: 'Clean pen, dry straw bedding, 7% iodine tincture navel dip, clean towels',
+        related_entity_id: b.id,
       });
-    }
-
-    // -------------------------------------------------------------
-    // 2. DEWORMING SCHEDULES (Parasite / FAMACHA / Anthelmintic)
-    // -------------------------------------------------------------
-    const healthDewormings = health.filter(h =>
-      h.checkup_type === 'Deworming' ||
-      h.treatment.toLowerCase().includes('deworm') ||
-      h.treatment.toLowerCase().includes('albendazole') ||
-      h.treatment.toLowerCase().includes('ivermectin') ||
-      h.treatment.toLowerCase().includes('levamisole') ||
-      h.treatment.toLowerCase().includes('drench') ||
-      h.condition.toLowerCase().includes('worm') ||
-      h.condition.toLowerCase().includes('parasite')
-    );
-
-    const latestDewormByGoat = new Map<string, typeof health[0]>();
-    healthDewormings.forEach(h => {
-      const existing = latestDewormByGoat.get(h.goat_id);
-      if (!existing || new Date(h.checkup_date) > new Date(existing.checkup_date)) {
-        latestDewormByGoat.set(h.goat_id, h);
-      }
     });
 
-    // Standard goat anthelmintic rotation: 60-90 days interval
-    latestDewormByGoat.forEach((record, goatId) => {
-      const nextDue = addDaysToDate(record.checkup_date, 75); // 75 days cycle
-      const diff = getDaysDiff(nextDue);
-
-      if (diff <= 21) { // surface if due within 3 weeks or overdue
-        let urgency: TaskUrgency = 'routine';
-        if (diff < 0) urgency = 'overdue';
-        else if (diff === 0) urgency = 'due_today';
-        else if (diff <= 7) urgency = 'upcoming';
-
-        const g = goatMap.get(goatId);
+    // C. Urgent Bio-Security & Clinical Observation for Quarantined Animals
+    goats.forEach(g => {
+      if (g.status === 'Quarantine') {
         tasks.push({
-          id: `deworm-cycle-${goatId}-${record.id}`,
-          category: 'deworming',
-          title: `Quarterly Anthelmintic Deworming: ${goatId}`,
-          goat_id: goatId,
-          goat_name: g?.name,
-          goat_breed: g?.breed,
-          due_date: nextDue,
-          days_remaining: diff,
-          urgency,
-          description: `Scheduled 75-day rotational parasite drench following previous treatment on ${record.checkup_date} (${record.treatment}).`,
-          recommended_treatment: 'Albendazole 10% Oral Drench (or Ivermectin pour-on rotation)',
-          last_record_date: record.checkup_date,
-          related_entity_id: record.id,
-        });
-      }
-    });
-
-    // If herd has goats without any deworming record, generate proactive schedule
-    const unDewormedGoats = goats.filter(g => (g.status === 'Active' || !g.status) && !latestDewormByGoat.has(g.tag_number));
-    if (unDewormedGoats.length > 0) {
-      unDewormedGoats.slice(0, 2).forEach(g => {
-        tasks.push({
-          id: `deworm-routine-${g.tag_number}`,
-          category: 'deworming',
-          title: `Herd Deworming & FAMACHA Inspection: ${g.tag_number}`,
+          id: `quarantine-check-${g.tag_number}`,
+          category: 'clinical',
+          title: `Daily Quarantine Protocol & Health Check: ${g.tag_number}`,
           goat_id: g.tag_number,
           goat_name: g.name,
           goat_breed: g.breed,
           due_date: todayStr,
           days_remaining: 0,
           urgency: 'due_today',
-          description: `Examine eyelid mucous membrane color (FAMACHA score 1-5) and administer weight-calibrated broad-spectrum anthelmintic drench.`,
-          recommended_treatment: 'Oral Broad-Spectrum Anthelmintic Drench (calibrated for live weight)',
-        });
-      });
-    }
-
-    // -------------------------------------------------------------
-    // 3. HOOF TRIMMING SCHEDULES (Claw / Scald / Foot Rot Prevention)
-    // -------------------------------------------------------------
-    const healthHoofRecords = health.filter(h =>
-      h.treatment.toLowerCase().includes('hoof') ||
-      h.treatment.toLowerCase().includes('trim') ||
-      h.condition.toLowerCase().includes('hoof') ||
-      h.condition.toLowerCase().includes('rot') ||
-      h.condition.toLowerCase().includes('scald') ||
-      h.condition.toLowerCase().includes('lameness')
-    );
-
-    const latestHoofByGoat = new Map<string, typeof health[0]>();
-    healthHoofRecords.forEach(h => {
-      const existing = latestHoofByGoat.get(h.goat_id);
-      if (!existing || new Date(h.checkup_date) > new Date(existing.checkup_date)) {
-        latestHoofByGoat.set(h.goat_id, h);
-      }
-    });
-
-    // Routine caprine hoof trimming is required every 6 to 8 weeks (approx 45 days)
-    latestHoofByGoat.forEach((record, goatId) => {
-      const nextDue = addDaysToDate(record.checkup_date, 45);
-      const diff = getDaysDiff(nextDue);
-
-      if (diff <= 14) {
-        let urgency: TaskUrgency = 'routine';
-        if (diff < 0) urgency = 'overdue';
-        else if (diff === 0) urgency = 'due_today';
-        else if (diff <= 5) urgency = 'upcoming';
-
-        const g = goatMap.get(goatId);
-        tasks.push({
-          id: `hoof-maintenance-${goatId}-${record.id}`,
-          category: 'hoof',
-          title: `Claw & Hoof Trimming Maintenance: ${goatId}`,
-          goat_id: goatId,
-          goat_name: g?.name,
-          goat_breed: g?.breed,
-          due_date: nextDue,
-          days_remaining: diff,
-          urgency,
-          description: `Periodic 6-week claw trimming to balance weight bearing, eliminate overgrown wall pockets, and prevent foot scald.`,
-          recommended_treatment: 'Clean hooves, pare overgrown wall flush with sole, spray with copper/zinc sulfate',
-          last_record_date: record.checkup_date,
-          related_entity_id: record.id,
+          description: `Monitor vitals (temperature 38.5-39.7°C, rumen motility, appetite). Ensure strict biosecurity separation from main herd.`,
+          recommended_treatment: 'Take rectal temperature, assess mucus membranes, record feed intake',
         });
       }
     });
 
-    // If no recent hoof trim records exist, surface herd hoof inspection schedule
-    if (tasks.filter(t => t.category === 'hoof').length === 0 && goats.length > 0) {
-      const candidateGoat = goats[0];
-      tasks.push({
-        id: `hoof-routine-herd-${candidateGoat.tag_number}`,
-        category: 'hoof',
-        title: `Routine Hoof Trimming & Foot Rot Inspection: ${candidateGoat.tag_number}`,
-        goat_id: candidateGoat.tag_number,
-        goat_name: candidateGoat.name,
-        goat_breed: candidateGoat.breed,
-        due_date: todayStr,
-        days_remaining: 0,
-        urgency: 'due_today',
-        description: `Inspect hooves for interdigital dermatitis, pare outer horn flush with sole, and evaluate gait across stalls.`,
-        recommended_treatment: 'Biannual/Quarterly Hoof Shears Maintenance & Antiseptic Footbath',
-      });
-    }
-
-    // -------------------------------------------------------------
-    // 4. CLINICAL MEDICAL FOLLOW-UPS (Sick, Recovering, or Critical)
-    // -------------------------------------------------------------
-    const activeConditions = health.filter(h =>
-      h.status === 'Under Treatment' ||
-      h.status === 'Critical' ||
-      h.status === 'Observation' ||
-      h.condition.toLowerCase().includes('sick') ||
-      h.condition.toLowerCase().includes('fever') ||
-      h.condition.toLowerCase().includes('mastitis') ||
-      h.condition.toLowerCase().includes('wound') ||
-      h.condition.toLowerCase().includes('pneumonia')
-    );
+    // D. Active Medical Follow-ups on Health Records logged by the farm owner
+    // Only records with status 'Critical' or 'Under Treatment' logged within the last 14 days
+    const activeConditions = health.filter(h => {
+      const cond = (h.condition || '').toLowerCase();
+      const isCriticalOrTreating = h.status === 'Under Treatment' || h.status === 'Critical' || h.status === 'Observation';
+      const hasActiveIllness = cond.includes('sick') || cond.includes('fever') || cond.includes('mastitis') || cond.includes('wound') || cond.includes('pneumonia');
+      if (isCriticalOrTreating || hasActiveIllness) {
+        const daysSinceCheckup = -getDaysDiff(h.checkup_date);
+        return daysSinceCheckup >= 0 && daysSinceCheckup <= 14;
+      }
+      return false;
+    });
 
     activeConditions.slice(0, 3).forEach(rec => {
       const g = goatMap.get(rec.goat_id);
@@ -481,6 +323,7 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
   const dewormCount = generatedTasks.filter(t => t.category === 'deworming' && !completedTaskIds[t.id]).length;
   const hoofCount = generatedTasks.filter(t => t.category === 'hoof' && !completedTaskIds[t.id]).length;
   const clinicalCount = generatedTasks.filter(t => t.category === 'clinical' && !completedTaskIds[t.id]).length;
+  const breedingCount = generatedTasks.filter(t => t.category === 'breeding' && !completedTaskIds[t.id]).length;
 
   return (
     <section id="section-pending-tasks" className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs overflow-hidden transition-colors">
@@ -657,6 +500,27 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
             </span>
           </button>
         )}
+
+        {breedingCount > 0 && (
+          <button
+            type="button"
+            id="tab-pending-breeding"
+            onClick={() => setActiveCategory('breeding')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              activeCategory === 'breeding'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Gestation & Kidding</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+              activeCategory === 'breeding' ? 'bg-indigo-800 text-white' : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+            }`}>
+              {breedingCount}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Task Cards List */}
@@ -668,7 +532,7 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
               All Tasks Completed & Up to Date!
             </h4>
             <p className="text-xs max-w-md mx-auto leading-relaxed">
-              No pending vaccination, deworming, or hoof trimming schedules due for this category. New tasks will be dynamically scheduled based on your health records and gestation cycles.
+              No pending gestation, clinical follow-up, or urgent health schedules detected. Tasks are realistically scheduled based on expectant does and owner health logs.
             </p>
           </div>
         ) : (
@@ -693,6 +557,10 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
               categoryIcon = <Stethoscope className="w-4 h-4 text-rose-600 dark:text-rose-400" />;
               categoryBg = 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800/80';
               categoryLabel = 'Clinical Care';
+            } else if (task.category === 'breeding') {
+              categoryIcon = <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
+              categoryBg = 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800/80';
+              categoryLabel = 'Gestation';
             }
 
             return (

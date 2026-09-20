@@ -36,6 +36,10 @@ import { RecentActivities } from '../components/RecentActivities';
 import { LocalFarmWeatherWidget } from '../components/LocalFarmWeatherWidget';
 import { RecentSalesFeed } from '../components/RecentSalesFeed';
 import { FeedSupplyAlertWidget } from '../components/FeedSupplyAlertWidget';
+import { QuarantineMonitorWidget } from '../components/QuarantineMonitorWidget';
+import { KidNurseryWidget } from '../components/KidNurseryWidget';
+import { DrugWithdrawalTrackerWidget } from '../components/DrugWithdrawalTrackerWidget';
+import { FinancialCashFlowWidget } from '../components/FinancialCashFlowWidget';
 
 interface DashboardViewProps {
   onNavigateToRecords: () => void;
@@ -48,6 +52,7 @@ interface DashboardViewProps {
   onNavigateToProfile?: () => void;
   onOpenAddHealthModal?: () => void;
   onOpenAddSaleModal?: () => void;
+  onOpenAddExpenseModal?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -61,6 +66,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToProfile,
   onOpenAddHealthModal,
   onOpenAddSaleModal,
+  onOpenAddExpenseModal,
 }) => {
   const {
     farmName,
@@ -335,6 +341,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onNavigateToFeedSupply={onNavigateToFeedSupply || onNavigateToRecords}
       />
 
+      {/* Feature 1: Biosecurity & Active Quarantine Monitor */}
+      <QuarantineMonitorWidget
+        onNavigateToTasks={onNavigateToTasks}
+        onNavigateToHealth={onNavigateToHealth}
+        onNavigateToRecords={onNavigateToRecords}
+      />
+
+      {/* Feature 3: Veterinary Drug Withdrawal & Milk/Meat Clearance Tracker */}
+      <DrugWithdrawalTrackerWidget
+        onNavigateToHealth={onNavigateToHealth}
+        onOpenAddHealthModal={onOpenAddHealthModal}
+      />
+
       {/* Featured Banner: Breeding & Kidding Predictor Widget */}
       <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-stone-900 rounded-2xl p-6 text-white shadow-xs relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2 max-w-xl">
@@ -544,8 +563,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* Feature 2: Kid Nursery & Average Daily Gain (ADG) Benchmark */}
+      <KidNurseryWidget
+        onNavigateToRecords={onNavigateToRecords}
+        onNavigateToBreeding={onNavigateToBreedingEstimator}
+      />
+
       {/* Primary Analytical Row: 6-Month Weight Trends Chart */}
       <WeightTrendsChart goats={goats} healthRecords={health} />
+
+      {/* Feature 4: Financial Summary & Cash Flow Sparkline */}
+      <FinancialCashFlowWidget
+        onNavigateToReports={onNavigateToReports}
+        onNavigateToRecords={onNavigateToRecords}
+        onOpenAddSaleModal={onOpenAddSaleModal}
+        onOpenAddExpenseModal={onOpenAddExpenseModal}
+      />
 
       {/* Recent Sales Activity Feed: Last 5 Transactions & Quick Financial Insights */}
       <RecentSalesFeed

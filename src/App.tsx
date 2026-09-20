@@ -238,6 +238,7 @@ const MainLayout: React.FC = () => {
               onNavigateToProfile={() => handleNavigate('profile')}
               onOpenAddHealthModal={() => handleOpenAddModal('health')}
               onOpenAddSaleModal={() => handleOpenAddModal('sale')}
+              onOpenAddExpenseModal={() => handleOpenAddModal('expense')}
             />
           )}
 

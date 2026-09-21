@@ -641,9 +641,9 @@ export const BreedingEstimatorView: React.FC = () => {
           </span>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-stone-200">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-stone-50 text-xs font-semibold text-stone-600 uppercase tracking-wider">
+        <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-800">
+          <table className="w-full text-left text-sm record-table-grid">
+            <thead className="bg-stone-50 dark:bg-stone-800/80 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
               <tr>
                 <th className="px-5 py-3">Doe Tag</th>
                 <th className="px-5 py-3">Sire</th>
@@ -654,7 +654,7 @@ export const BreedingEstimatorView: React.FC = () => {
                 <th className="px-5 py-3 text-right">Quick Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="bg-white dark:bg-stone-900">
               {breeding
                 .filter(b => b.status === 'Active' || !b.status)
                 .map(b => {

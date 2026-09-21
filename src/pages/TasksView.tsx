@@ -277,7 +277,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
             due_date: nextCheckDate,
             days_remaining: diff,
             urgency,
-            description: `Follow up on owner-logged treatment: "${h.treatment}". Check antibiotic withdrawal adherence and recovery progress.`,
+            description: `Follow up on owner-logged treatment: "${h.treatment}". Monitor recovery progress and animal well-being.`,
             is_important: true,
             is_completed: !!completedTaskMap[`task-health-followup-${h.id}`],
             completed_at: completedTaskMap[`task-health-followup-${h.id}`]?.completed_at,

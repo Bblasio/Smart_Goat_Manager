@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { formatActiveDurationCompact } from '../utils/dateHelper';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -68,9 +69,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <h1 className="font-bold text-stone-900 text-lg leading-tight tracking-tight">
                   {farmName}
                 </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" title={`${daysActive} days recorded`}>
                   <Calendar className="w-3 h-3" />
-                  {daysActive}d active
+                  {formatActiveDurationCompact(daysActive)} active
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs">

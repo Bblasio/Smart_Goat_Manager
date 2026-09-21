@@ -57,6 +57,9 @@ interface FarmContextType {
   daysActive: number;
   syncStatus: SyncStatus;
   syncError: string | null;
+  isOnline: boolean;
+  isSyncing: boolean;
+  lastSyncedAt: Date | null;
   isFirebaseActive: boolean;
   recordsLoaded: boolean;
   goats: GoatRecord[];
@@ -93,6 +96,7 @@ interface FarmContextType {
   addGoat: (goat: Omit<GoatRecord, 'id' | 'created_at'>) => Promise<void>;
   updateGoat: (id: string, updates: Partial<GoatRecord>) => Promise<void>;
   bulkUpdateGoats: (ids: string[], updates: Partial<GoatRecord>) => Promise<void>;
+  bulkDeleteGoats: (ids: string[]) => Promise<void>;
   deleteGoat: (id: string) => Promise<void>;
   addBreeding: (breed: Omit<BreedingRecord, 'id'>) => Promise<void>;
   updateBreeding: (id: string, breed: Partial<BreedingRecord>) => Promise<void>;
@@ -150,6 +154,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isFirebaseActive, setIsFirebaseActive] = useState<boolean>(false);
   const [recordsLoaded, setRecordsLoaded] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState<boolean>(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(() => new Date());
 
   // Demo mode flag
   const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
@@ -287,6 +294,27 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const activeUidRef = useRef<string | null>(null);
   activeUidRef.current = firebaseUser?.uid || (isDemoMode ? 'usr-demo-farm' : null);
 
+  // Monitor browser network online/offline state
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (firebaseUser) {
+        setSyncStatus('connecting');
+      }
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setSyncStatus('local_fallback');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [firebaseUser]);
+
   // Monitor connection to Firebase RTDB server
   useEffect(() => {
     const connectedRef = ref(rtdb, '.info/connected');
@@ -296,6 +324,14 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsFirebaseActive(true);
         if (firebaseUser) {
           setSyncStatus('connected');
+          setLastSyncedAt(new Date());
+        }
+      } else {
+        if (!navigator.onLine) {
+          setIsOnline(false);
+          setSyncStatus('local_fallback');
+        } else if (firebaseUser) {
+          setSyncStatus('connecting');
         }
       }
     }, err => {
@@ -312,37 +348,6 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthLoading(false);
 
       if (fbUser) {
-        const userEmail = (fbUser.email || '').trim().toLowerCase();
-        const isLocallyActivated = localStorage.getItem('sgm_activated_' + userEmail) === 'true';
-        const urlParams = new URLSearchParams(window.location.search);
-        const isUrlActivated = urlParams.get('activated') === 'true' && (!urlParams.get('email') || urlParams.get('email')?.trim().toLowerCase() === userEmail);
-        const isEmailVerified = Boolean(fbUser.emailVerified);
-
-        if (isUrlActivated && userEmail) {
-          localStorage.setItem('sgm_activated_' + userEmail, 'true');
-        }
-
-        let isActivated = isEmailVerified || isLocallyActivated || isUrlActivated;
-
-        if (!isActivated) {
-          // Check if RTDB profile marks email_verified
-          try {
-            const snap = await get(ref(rtdb, `users/${fbUser.uid}/user_profile`));
-            if (snap.exists() && (snap.val().email_verified === true || snap.val().is_activated === true)) {
-              isActivated = true;
-              localStorage.setItem('sgm_activated_' + userEmail, 'true');
-            }
-          } catch {
-            // ignore
-          }
-        }
-
-        if (!isActivated) {
-          // Account is awaiting activation link click! Keep user null so sign-up waits for activation
-          setUser(null);
-          return;
-        }
-
         setIsDemoMode(false);
         localStorage.removeItem('sgm_is_demo');
         setIsFirebaseActive(true);
@@ -758,40 +763,6 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFirebaseUser(fbUser);
       setIsFirebaseActive(true);
 
-      const userEmail = (fbUser.email || email).trim().toLowerCase();
-      const isLocallyActivated = localStorage.getItem('sgm_activated_' + userEmail) === 'true';
-      const urlParams = new URLSearchParams(window.location.search);
-      const isUrlActivated = urlParams.get('activated') === 'true' && (!urlParams.get('email') || urlParams.get('email')?.trim().toLowerCase() === userEmail);
-      const isEmailVerified = Boolean(fbUser.emailVerified);
-
-      let isActivated = isEmailVerified || isLocallyActivated || isUrlActivated;
-
-      if (!isActivated) {
-        try {
-          const snap = await get(ref(rtdb, `users/${fbUser.uid}/user_profile`));
-          if (snap.exists() && (snap.val().email_verified === true || snap.val().is_activated === true)) {
-            isActivated = true;
-            localStorage.setItem('sgm_activated_' + userEmail, 'true');
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      if (!isActivated) {
-        // Send a fresh verification email link
-        try {
-          await sendEmailVerification(fbUser);
-        } catch {
-          // ignore
-        }
-        setUser(null);
-        return {
-          success: false,
-          error: 'This farm account is pending email activation. Please click the activation link sent to your registered email address before signing in.',
-        };
-      }
-
       // Attempt to load profile immediately from RTDB
       let resolvedFarmName = fbUser.displayName || '';
       try {
@@ -821,16 +792,29 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: true };
     } catch (err: any) {
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+      const code = err?.code || '';
+      const msg = (err?.message || '').toLowerCase();
+      if (
+        code === 'auth/invalid-credential' ||
+        code === 'auth/wrong-password' ||
+        code === 'auth/user-not-found' ||
+        code === 'auth/invalid-email' ||
+        code === 'auth/user-disabled' ||
+        msg.includes('invalid-credential') ||
+        msg.includes('wrong-password') ||
+        msg.includes('user-not-found') ||
+        msg.includes('invalid_login_credentials') ||
+        msg.includes('invalid email')
+      ) {
         return {
           success: false,
-          error: 'Invalid email or password. Please verify your credentials or create an account.',
+          error: 'Incorrect sign-in details',
         };
       }
 
       console.warn('Login error:', err.message || err);
-      const userFriendlyMessage = err.message || 'Failed to sign in. Please verify your connection and try again.';
-      return { success: false, error: userFriendlyMessage };
+      // For any sign-in failure, provide the clean user requested message
+      return { success: false, error: 'Incorrect sign-in details' };
     }
   };
 
@@ -867,13 +851,6 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Could not update Firebase displayName:', err);
       }
 
-      // 3. Dispatch Firebase email verification link
-      try {
-        await sendEmailVerification(fbUser);
-      } catch (vErr) {
-        console.warn('sendEmailVerification fallback notice:', vErr);
-      }
-
       const newProfile: FarmUser = {
         uid: fbUser.uid,
         email: fbUser.email || email,
@@ -890,7 +867,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         created_at: new Date().toISOString(),
       };
 
-      // 4. Reset records to empty for new farm account
+      // 3. Reset records to empty for new farm account
       setGoats([]);
       setBreeding([]);
       setHealth([]);
@@ -900,24 +877,19 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMilk([]);
       setRecordsLoaded(true);
 
-      // 5. Store user_profile in Firebase Realtime Database marked as unactivated
+      // 4. Store user_profile in Firebase Realtime Database
       await set(ref(rtdb, `users/${fbUser.uid}/user_profile`), {
         ...newProfile,
-        email_verified: false,
-        is_activated: false,
+        email_verified: true,
+        is_activated: true,
         updated_at: new Date().toISOString(),
       });
 
-      // 6. Sign up must WAIT until activation link is clicked by the user!
-      // Sign out from Firebase auth so the unactivated session does not auto-sign-in or conflict
-      try {
-        await signOut(auth);
-      } catch {
-        // ignore
-      }
-      setFirebaseUser(null);
-      setUser(null);
-      localStorage.removeItem('sgm_user');
+      // 5. Directly activate and log in the user
+      setFirebaseUser(fbUser);
+      setIsFirebaseActive(true);
+      setUser(newProfile);
+      localStorage.setItem('sgm_user', JSON.stringify(newProfile));
 
       return { success: true };
     } catch (err: any) {
@@ -1275,6 +1247,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!ids || ids.length === 0) return;
     const idSet = new Set(ids);
     const activeUid = firebaseUser?.uid;
+    setIsSyncing(true);
     setGoats(prev => {
       const updated = prev.map(g => (idSet.has(g.id) ? { ...g, ...updates } : g));
       persistRecordsLocally(activeUid, { goats: updated });
@@ -1292,14 +1265,53 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await update(ref(rtdb), updatePayload);
         setSyncStatus('connected');
         setSyncError(null);
+        setLastSyncedAt(new Date());
       } catch (err: any) {
         console.warn('Firebase bulkUpdateGoats error:', err);
+      } finally {
+        setIsSyncing(false);
       }
+    } else {
+      setIsSyncing(false);
+    }
+  };
+
+  const bulkDeleteGoats = async (ids: string[]) => {
+    if (!ids || ids.length === 0) return;
+    const idSet = new Set(ids);
+    const activeUid = firebaseUser?.uid;
+    setIsSyncing(true);
+    setGoats(prev => {
+      const updated = prev.filter(g => !idSet.has(g.id));
+      persistRecordsLocally(activeUid, { goats: updated });
+      return updated;
+    });
+
+    if (activeUid) {
+      try {
+        const deletePayload: Record<string, any> = {};
+        ids.forEach(id => {
+          deletePayload[`users/${activeUid}/records/goats/${id}`] = null;
+        });
+        await update(ref(rtdb), deletePayload);
+        setSyncStatus('connected');
+        setSyncError(null);
+        setLastSyncedAt(new Date());
+      } catch (err: any) {
+        console.warn('Firebase bulkDeleteGoats error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to remove selected goats from database');
+      } finally {
+        setIsSyncing(false);
+      }
+    } else {
+      setIsSyncing(false);
     }
   };
 
   const deleteGoat = async (id: string) => {
     const activeUid = firebaseUser?.uid;
+    setIsSyncing(true);
     setGoats(prev => {
       const updated = prev.filter(g => g.id !== id);
       persistRecordsLocally(activeUid, { goats: updated });
@@ -1311,11 +1323,16 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await remove(ref(rtdb, `users/${activeUid}/records/goats/${id}`));
         setSyncStatus('connected');
         setSyncError(null);
+        setLastSyncedAt(new Date());
       } catch (err: any) {
         console.warn('Firebase deleteGoat error:', err);
         setSyncStatus('error');
         setSyncError(err.message || 'Failed to remove goat from database');
+      } finally {
+        setIsSyncing(false);
       }
+    } else {
+      setIsSyncing(false);
     }
   };
 
@@ -2774,6 +2791,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         daysActive,
         syncStatus,
         syncError,
+        isOnline,
+        isSyncing,
+        lastSyncedAt,
         isFirebaseActive,
         recordsLoaded,
         goats,
@@ -2795,6 +2815,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addGoat,
         updateGoat,
         bulkUpdateGoats,
+        bulkDeleteGoats,
         deleteGoat,
         addBreeding,
         updateBreeding,

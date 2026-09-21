@@ -189,10 +189,10 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
       </div>
 
       {/* Health Records Table */}
-      <div className="bg-white border border-stone-200 rounded-2xl shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-stone-50 text-xs font-semibold text-stone-600 uppercase tracking-wider">
+          <table className="w-full text-left text-sm record-table-grid">
+            <thead className="bg-stone-50 dark:bg-stone-800/80 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
               <tr>
                 <th className="px-6 py-3.5">Goat Tag</th>
                 <th className="px-6 py-3.5">Checkup Date</th>
@@ -203,7 +203,7 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
                 <th className="px-6 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="bg-white dark:bg-stone-900">
               {filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-stone-400 text-xs">

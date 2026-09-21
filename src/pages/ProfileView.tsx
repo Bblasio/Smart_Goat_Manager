@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { FarmUser } from '../types';
+import { formatActiveDuration } from '../utils/dateHelper';
 import {
   Building2,
   MapPin,
@@ -228,11 +229,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     Est. {user.founded_year}
                   </span>
                 )}
-                {!user?.production_focus && !user?.founded_year && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-stone-200 border border-white/15">
-                    Farm Profile
-                  </span>
-                )}
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-stone-200 border border-white/15">
+                  Active for {formatActiveDuration(daysActive)}
+                </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
                 {user?.farm_name || farmName}

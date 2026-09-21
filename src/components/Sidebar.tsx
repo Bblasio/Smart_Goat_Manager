@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { ThemeToggle } from './ThemeToggle';
+import { formatActiveDurationCompact } from '../utils/dateHelper';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -22,7 +23,8 @@ import {
   X,
   Building2,
   TrendingUp,
-  Package
+  Package,
+  Bell
 } from 'lucide-react';
 import { AppView } from '../types';
 
@@ -32,6 +34,8 @@ interface SidebarProps {
   onOpenAddModal: () => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  onOpenNotificationModal?: () => void;
+  todayNotificationCount?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -40,6 +44,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAddModal,
   mobileOpen,
   setMobileOpen,
+  onOpenNotificationModal,
+  todayNotificationCount = 0,
 }) => {
   const {
     farmName,
@@ -122,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </h1>
                 <div className="flex items-center gap-1.5 text-[11px] text-stone-400">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  <span>{daysActive}d active</span>
+                  <span title={`${daysActive} total days active`}>{formatActiveDurationCompact(daysActive)} active</span>
                 </div>
               </div>
             </button>
@@ -136,6 +142,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Daily Farm Alerts Quick Button */}
+          {onOpenNotificationModal && (
+            <button
+              type="button"
+              id="btn-sidebar-notifications"
+              onClick={() => {
+                onOpenNotificationModal();
+                setMobileOpen(false);
+              }}
+              className={`w-full mt-3 flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
+                todayNotificationCount > 0
+                  ? 'bg-rose-950/50 hover:bg-rose-900/70 text-rose-200 border-rose-800/80 shadow-xs'
+                  : 'bg-stone-800/70 hover:bg-stone-700/80 text-stone-300 border-stone-700/60'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Bell className={`w-4 h-4 ${todayNotificationCount > 0 ? 'text-rose-400 animate-bounce' : 'text-stone-400'}`} />
+                  {todayNotificationCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                  )}
+                </div>
+                <span>Daily Alerts</span>
+              </div>
+              {todayNotificationCount > 0 ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white shadow-2xs">
+                  {todayNotificationCount} Today
+                </span>
+              ) : (
+                <span className="text-[10px] text-stone-400">All Clear</span>
+              )}
+            </button>
+          )}
 
           {/* Sync Status Pill */}
           <div className="mt-3.5 pt-3 border-t border-stone-800/80 text-xs">

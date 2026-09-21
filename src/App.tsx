@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FarmProvider, useFarm } from './context/FarmContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider, useToast } from './context/ToastContext';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Sidebar } from './components/Sidebar';
+import { DesktopHeader } from './components/DesktopHeader';
+import { MobileBottomNav } from './components/MobileBottomNav';
+import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { DashboardView } from './pages/DashboardView';
 import { BreedingEstimatorView } from './pages/BreedingEstimatorView';
 import { RecordsView } from './pages/RecordsView';
@@ -13,12 +17,17 @@ import { TasksView } from './pages/TasksView';
 import { FeedSupplyView } from './pages/FeedSupplyView';
 import { AuthView } from './pages/AuthView';
 import { AddRecordModal } from './components/AddRecordModal';
+import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { AppLaunchLoader } from './components/AppLaunchLoader';
+import { SyncStatusIndicator } from './components/SyncStatusIndicator';
+import { AppFooter } from './components/AppFooter';
 import { RecordType, AppView } from './types';
-import { Menu, Sparkles, X } from 'lucide-react';
+import { getFarmNotifications } from './utils/notificationHelper';
+import { Menu, Sparkles, X, Bell, Search, WifiOff } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-  const { isAuthenticated, authLoading, isDemoMode, farmName, user, logout } = useFarm();
+  const { isAuthenticated, authLoading, isDemoMode, farmName, user, logout, goats, breeding, health, isOnline } = useFarm();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<AppView>('dashboard');
   const [isNavigating, setIsNavigating] = useState(false);
   const [navigatingMessage, setNavigatingMessage] = useState('');
@@ -27,6 +36,45 @@ const MainLayout: React.FC = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [minLaunchTimePassed, setMinLaunchTimePassed] = useState(false);
   const [profilePromptDismissed, setProfilePromptDismissed] = useState(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('sgm_dismissed_notifs');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const notifications = useMemo(() => getFarmNotifications(goats, breeding, health), [goats, breeding, health]);
+  const activeTodayCount = notifications.todayNotifications.filter(n => !dismissedNotificationIds.includes(n.id)).length;
+
+  const handleDismissNotification = (id: string) => {
+    setDismissedNotificationIds(prev => {
+      const next = [...prev, id];
+      try {
+        localStorage.setItem('sgm_dismissed_notifs', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const handleDismissAllToday = () => {
+    setDismissedNotificationIds(prev => {
+      const todayIds = notifications.todayNotifications.map(n => n.id);
+      const next = Array.from(new Set([...prev, ...todayIds]));
+      try {
+        localStorage.setItem('sgm_dismissed_notifs', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    showToast('All alerts for today have been acknowledged', 'info');
+  };
 
   const isProfileComplete = Boolean(
     user?.farm_name &&
@@ -42,6 +90,27 @@ const MainLayout: React.FC = () => {
     }, 1100);
     return () => clearTimeout(timer);
   }, []);
+
+  // Global Keyboard Shortcuts (⌘K, /, N)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      } else if (e.key === '/' && !isInput) {
+        e.preventDefault();
+        setIsCommandPaletteOpen(true);
+      } else if ((e.key === 'n' || e.key === 'N') && !isInput && !isAddModalOpen && !isCommandPaletteOpen) {
+        e.preventDefault();
+        handleOpenAddModal('goat');
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isAddModalOpen, isCommandPaletteOpen]);
 
   const getTabLabel = (tab: AppView): string => {
     switch (tab) {
@@ -122,10 +191,33 @@ const MainLayout: React.FC = () => {
         onOpenAddModal={() => handleOpenAddModal('goat')}
         mobileOpen={mobileSidebarOpen}
         setMobileOpen={setMobileSidebarOpen}
+        onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
+        todayNotificationCount={activeTodayCount}
       />
 
       {/* Main Content Area (offset by left sidebar on desktop) */}
       <div className="flex-1 lg:pl-64 print:pl-0 flex flex-col min-w-0">
+        {/* Desktop Sticky Header Bar */}
+        <DesktopHeader
+          activeTab={activeTab}
+          setActiveTab={handleNavigate}
+          onOpenAddModal={handleOpenAddModal}
+          onOpenSearchModal={() => setIsCommandPaletteOpen(true)}
+          onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
+          todayNotificationCount={activeTodayCount}
+        />
+
+        {/* Offline Warning Banner */}
+        {!isOnline && (
+          <div className="no-print bg-amber-500/15 dark:bg-amber-950/60 border-b border-amber-300 dark:border-amber-800 px-4 py-2 text-xs font-semibold text-amber-950 dark:text-amber-200 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <WifiOff className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Working in Offline Mode. Records are saved safely on your device and will sync to the cloud automatically once reconnected.</span>
+            </div>
+            <SyncStatusIndicator compact={true} />
+          </div>
+        )}
+
         {/* Demo Mode Notice Banner */}
         {isDemoMode && (
           <div className="no-print bg-amber-500/10 dark:bg-amber-950/40 border-b border-amber-300 dark:border-amber-800 px-4 py-2.5 text-xs font-semibold text-amber-900 dark:text-amber-300 flex flex-wrap items-center justify-between gap-2">
@@ -183,7 +275,7 @@ const MainLayout: React.FC = () => {
         )}
 
         {/* Mobile Header Bar */}
-        <header className="no-print lg:hidden sticky top-0 z-30 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 px-4 py-3 flex items-center justify-between">
+        <header className="no-print lg:hidden sticky top-0 z-30 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -213,20 +305,35 @@ const MainLayout: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
+          <div className="flex items-center gap-1.5">
+            <SyncStatusIndicator compact={true} />
             <button
               type="button"
-              onClick={() => handleOpenAddModal('goat')}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-xs"
+              id="btn-mobile-search"
+              onClick={() => setIsCommandPaletteOpen(true)}
+              className="p-2 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl"
+              title="Quick Search (⌘K / /)"
             >
-              + Add
+              <Search className="w-5 h-5" />
             </button>
+            <button
+              type="button"
+              id="btn-mobile-notifications"
+              onClick={() => setIsNotificationModalOpen(true)}
+              className="relative p-2 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl"
+              title="View daily notifications"
+            >
+              <Bell className="w-5 h-5" />
+              {activeTodayCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-stone-900 animate-pulse" />
+              )}
+            </button>
+            <ThemeToggle />
           </div>
         </header>
 
         {/* Dynamic Main Views */}
-        <main className="flex-1 pb-16">
+        <main className="flex-1 pb-24 lg:pb-12">
           {activeTab === 'dashboard' && (
             <DashboardView
               onNavigateToRecords={() => handleNavigate('records')}
@@ -239,6 +346,7 @@ const MainLayout: React.FC = () => {
               onOpenAddHealthModal={() => handleOpenAddModal('health')}
               onOpenAddSaleModal={() => handleOpenAddModal('sale')}
               onOpenAddExpenseModal={() => handleOpenAddModal('expense')}
+              onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
             />
           )}
 
@@ -277,11 +385,18 @@ const MainLayout: React.FC = () => {
           )}
         </main>
 
-        <footer className="no-print border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 py-4 mt-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-stone-500 dark:text-stone-400">
-            All rights reserved {new Date().getFullYear()}
-          </div>
-        </footer>
+        {/* Mobile Bottom Navigation Bar */}
+        <MobileBottomNav
+          activeTab={activeTab}
+          setActiveTab={handleNavigate}
+          onOpenAddModal={handleOpenAddModal}
+        />
+
+        {/* Furnished Application Enterprise Footer */}
+        <AppFooter
+          onNavigate={handleNavigate}
+          onOpenAddModal={handleOpenAddModal}
+        />
       </div>
 
       {/* Global Add Record Modal */}
@@ -289,6 +404,27 @@ const MainLayout: React.FC = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         defaultType={modalDefaultType}
+      />
+
+      {/* Global Command Palette Modal */}
+      <CommandPaletteModal
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={handleNavigate}
+        onOpenAddModal={handleOpenAddModal}
+      />
+
+      {/* Global Notification Center Modal (Upcoming Breeding & Vaccination Alerts) */}
+      <NotificationCenterModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+        notifications={notifications.all}
+        todayNotifications={notifications.todayNotifications}
+        upcomingNotifications={notifications.upcomingNotifications}
+        dismissedIds={dismissedNotificationIds}
+        onDismiss={handleDismissNotification}
+        onDismissAllToday={handleDismissAllToday}
+        onNavigate={handleNavigate}
       />
     </div>
   );
@@ -298,7 +434,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <FarmProvider>
-        <MainLayout />
+        <ToastProvider>
+          <MainLayout />
+        </ToastProvider>
       </FarmProvider>
     </ThemeProvider>
   );

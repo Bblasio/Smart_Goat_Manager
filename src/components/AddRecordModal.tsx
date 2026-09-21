@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useToast } from '../context/ToastContext';
 import { RecordType, ExpenseCategory } from '../types';
 import { X, Check, Baby, Milk, Stethoscope, FileSpreadsheet } from 'lucide-react';
 import { ExcelImportModal } from './ExcelImportModal';
@@ -16,6 +17,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   defaultType = 'goat',
 }) => {
   const { addGoat, addBreeding, addHealth, addSale, addExpense, addWorker, addMilk, goats } = useFarm();
+  const { showToast } = useToast();
   const [recordType, setRecordType] = useState<RecordType>(defaultType);
   const [isExcelOpen, setIsExcelOpen] = useState(false);
 
@@ -253,12 +255,15 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
         setMilkGoatId('');
       }
 
+      showToast(`New ${recordType} record saved successfully!`, 'success');
+
       setTimeout(() => {
         onClose();
         setSuccessMsg('');
       }, 900);
     } catch (err: any) {
       setErrorMsg(err.message || 'Error adding record');
+      showToast(err.message || 'Error adding record', 'error');
     }
   };
 

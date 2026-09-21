@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useToast } from '../context/ToastContext';
 import { RecordType, AppView, GoatRecord, SaleRecord, HealthRecord } from '../types';
 import {
   Trash2,
@@ -35,6 +36,18 @@ import {
 import { ExcelImportModal } from '../components/ExcelImportModal';
 import { FarmReportModal } from '../components/FarmReportModal';
 import { PedigreeTreeModal } from '../components/PedigreeTreeModal';
+import {
+  formatGoatsForExcel,
+  formatBreedingForExcel,
+  formatHealthForExcel,
+  formatMilkForExcel,
+  formatSalesForExcel,
+  formatWorkersForExcel,
+  downloadExcelFile,
+  downloadCsvWithProperHeadings,
+} from '../utils/excelExport';
+
+export type TabType = 'goats' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor';
 
 interface RecordsViewProps {
   onOpenAddModal: (type?: RecordType) => void;
@@ -46,6 +59,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     goats,
     updateGoat,
     bulkUpdateGoats,
+    bulkDeleteGoats,
     deleteGoat,
     breeding,
     deleteBreeding,
@@ -58,14 +72,39 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     milk,
     deleteMilk,
   } = useFarm();
+  const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<
     'goats' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor'
   >('goats');
-  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [isBulkMode, setIsBulkMode] = useState(true);
   const [selectedGoatIds, setSelectedGoatIds] = useState<string[]>([]);
   const [bulkStatusTarget, setBulkStatusTarget] = useState<'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead'>('Quarantine');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+  const [isBatchDeleteModalOpen, setIsBatchDeleteModalOpen] = useState(false);
+  const [isBatchEditModalOpen, setIsBatchEditModalOpen] = useState(false);
+  const [batchEditForm, setBatchEditForm] = useState<{
+    updateStatus: boolean;
+    status: 'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead';
+    updateBreed: boolean;
+    breed: string;
+    updateGender: boolean;
+    gender: 'Male' | 'Female';
+    updateWeight: boolean;
+    weightMode: 'set' | 'adjust_add' | 'adjust_sub';
+    weightValue: string;
+  }>({
+    updateStatus: false,
+    status: 'Active',
+    updateBreed: false,
+    breed: '',
+    updateGender: false,
+    gender: 'Female',
+    updateWeight: false,
+    weightMode: 'set',
+    weightValue: '',
+  });
   const [bulkSuccessMsg, setBulkSuccessMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [goatStatusFilter, setGoatStatusFilter] = useState<'all' | 'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead'>('all');
@@ -80,6 +119,57 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   const handleOpenTabExcelUpload = (category: 'goats' | 'breeding' | 'health' | 'milk') => {
     setExcelCategory(category);
     setIsExcelModalOpen(true);
+  };
+
+  const handleApplyBatchEdit = async () => {
+    if (selectedGoatIds.length === 0) return;
+    setIsBulkUpdating(true);
+    try {
+      const updates: Partial<GoatRecord> = {};
+      if (batchEditForm.updateStatus) {
+        updates.status = batchEditForm.status;
+      }
+      if (batchEditForm.updateBreed && batchEditForm.breed.trim()) {
+        updates.breed = batchEditForm.breed.trim();
+      }
+      if (batchEditForm.updateGender) {
+        updates.gender = batchEditForm.gender;
+      }
+
+      if (batchEditForm.updateWeight && batchEditForm.weightValue !== '') {
+        const val = parseFloat(batchEditForm.weightValue);
+        if (!isNaN(val)) {
+          if (batchEditForm.weightMode === 'set') {
+            updates.weight_kg = val;
+            await bulkUpdateGoats(selectedGoatIds, updates);
+          } else {
+            // Per-goat relative calculation for add or subtract
+            for (const id of selectedGoatIds) {
+              const target = goats.find(g => g.id === id);
+              if (target) {
+                const currentW = target.weight_kg || 0;
+                const nextW = batchEditForm.weightMode === 'adjust_add' ? currentW + val : Math.max(0, currentW - val);
+                await updateGoat(id, { ...updates, weight_kg: parseFloat(nextW.toFixed(1)) });
+              }
+            }
+          }
+        } else {
+          await bulkUpdateGoats(selectedGoatIds, updates);
+        }
+      } else {
+        await bulkUpdateGoats(selectedGoatIds, updates);
+      }
+
+      showToast(`Successfully updated ${selectedGoatIds.length} goat record(s).`, 'success');
+      setBulkSuccessMsg(`Batch updated ${selectedGoatIds.length} goat(s) successfully.`);
+      setIsBatchEditModalOpen(false);
+      setSelectedGoatIds([]);
+      setTimeout(() => setBulkSuccessMsg(null), 4500);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to apply batch updates', 'error');
+    } finally {
+      setIsBulkUpdating(false);
+    }
   };
 
   // Helper to determine effective goat status, fetching from sales if sold
@@ -416,29 +506,70 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       w.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // CSV Export utility
+  // High quality Excel & CSV export with defined headings
+  const handleExportData = (
+    tab: TabType | 'selected-goats',
+    format: 'excel' | 'csv' = 'excel',
+    customData?: any[]
+  ) => {
+    let rows: Record<string, any>[] = [];
+    let baseFilename = '';
+    let sheetTitle = '';
+
+    if (tab === 'selected-goats' || (tab === 'goats' && customData)) {
+      const targetGoats = customData || goats;
+      rows = formatGoatsForExcel(targetGoats);
+      baseFilename = `selected_goats_registry`;
+      sheetTitle = 'Selected Goats';
+    } else if (tab === 'goats') {
+      const targetGoats = customData || (filteredGoats.length > 0 ? filteredGoats : goats);
+      rows = formatGoatsForExcel(targetGoats);
+      baseFilename = `herd_goats_registry`;
+      sheetTitle = 'Herd Registry';
+    } else if (tab === 'breeding') {
+      const targetBreeding = customData || (filteredBreeding.length > 0 ? filteredBreeding : breeding);
+      rows = formatBreedingForExcel(targetBreeding, goats);
+      baseFilename = `breeding_gestation_records`;
+      sheetTitle = 'Breeding Records';
+    } else if (tab === 'health') {
+      const targetHealth = customData || (filteredHealth.length > 0 ? filteredHealth : health);
+      rows = formatHealthForExcel(targetHealth, goats);
+      baseFilename = `health_veterinary_records`;
+      sheetTitle = 'Health Records';
+    } else if (tab === 'milk') {
+      const targetMilk = customData || (filteredMilk.length > 0 ? filteredMilk : milk);
+      rows = formatMilkForExcel(targetMilk, goats);
+      baseFilename = `milk_production_harvests`;
+      sheetTitle = 'Milk Records';
+    } else if (tab === 'sales') {
+      const targetSales = customData || (filteredSales.length > 0 ? filteredSales : sales);
+      rows = formatSalesForExcel(targetSales, goats);
+      baseFilename = `sales_dispatches_ledger`;
+      sheetTitle = 'Sales Ledger';
+    } else if (tab === 'workers') {
+      const targetWorkers = customData || (filteredWorkers.length > 0 ? filteredWorkers : workers);
+      rows = formatWorkersForExcel(targetWorkers);
+      baseFilename = `farm_staff_directory`;
+      sheetTitle = 'Farm Workers';
+    }
+
+    if (rows.length === 0) {
+      showToast(`No ${tab} records available to export.`, 'info');
+      return;
+    }
+
+    if (format === 'excel') {
+      downloadExcelFile(rows, sheetTitle, baseFilename);
+      showToast(`Exported ${rows.length} ${sheetTitle} records to Excel (.xlsx) with defined headings.`, 'success');
+    } else {
+      downloadCsvWithProperHeadings(rows, baseFilename);
+      showToast(`Exported ${rows.length} ${sheetTitle} records to CSV with defined headings.`, 'success');
+    }
+  };
+
+  // Backwards compatible exportToCSV
   const exportToCSV = (data: any[], filename: string) => {
-    if (!data.length) return;
-    const headers = Object.keys(data[0]);
-    const csvRows = [
-      headers.join(','),
-      ...data.map(row =>
-        headers
-          .map(fieldName => {
-            const val = row[fieldName] !== undefined && row[fieldName] !== null ? row[fieldName] : '';
-            return `"${String(val).replace(/"/g, '""')}"`;
-          })
-          .join(',')
-      ),
-    ];
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${filename}-${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    handleExportData(activeTab, 'csv', data);
   };
 
   return (
@@ -479,15 +610,21 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
 
           <button
             type="button"
-            onClick={() => {
-              if (activeTab === 'goats') exportToCSV(goats, 'goats-registry');
-              if (activeTab === 'breeding') exportToCSV(breeding, 'breeding-schedule');
-              if (activeTab === 'health') exportToCSV(health, 'health-records');
-              if (activeTab === 'milk') exportToCSV(milk, 'milk-yield');
-              if (activeTab === 'sales') exportToCSV(sales, 'sales-ledger');
-              if (activeTab === 'workers') exportToCSV(workers, 'farm-staff');
-            }}
+            id="btn-export-excel-header"
+            onClick={() => handleExportData(activeTab, 'excel')}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 rounded-xl text-xs font-semibold transition-colors shadow-xs"
+            title="Download formatted Excel spreadsheet with defined headings"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Export Excel</span>
+          </button>
+
+          <button
+            type="button"
+            id="btn-export-csv-header"
+            onClick={() => handleExportData(activeTab, 'csv')}
             className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold transition-colors shadow-xs"
+            title="Download CSV file with defined headings"
           >
             <Download className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
             <span>Export CSV</span>
@@ -650,13 +787,13 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                     }}
                     className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors shadow-2xs ${
                       isBulkMode
-                        ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                        ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20'
                         : 'bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700'
                     }`}
-                    title="Select multiple herd goats to update status together"
+                    title="Toggle batch selection checkboxes to update or delete multiple records"
                   >
                     <CheckSquare className="w-3.5 h-3.5" />
-                    <span>{isBulkMode ? 'Exit Bulk Edit' : 'Bulk Edit'}</span>
+                    <span>{isBulkMode ? 'Batch Select (Active)' : 'Batch Select'}</span>
                   </button>
                 )}
 
@@ -672,19 +809,23 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                 </button>
 
                 <button
+                  id="btn-export-excel-tab"
+                  onClick={() => handleExportData(activeTab, 'excel')}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
+                  title="Download formatted Excel (.xlsx) spreadsheet with defined headings"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Excel</span>
+                </button>
+
+                <button
                   id="btn-export-csv"
-                  onClick={() => {
-                    if (activeTab === 'goats') exportToCSV(filteredGoats, 'goats-records.csv');
-                    else if (activeTab === 'health') exportToCSV(filteredHealth, 'health-records.csv');
-                    else if (activeTab === 'breeding') exportToCSV(filteredBreeding, 'breeding-records.csv');
-                    else if (activeTab === 'milk') exportToCSV(filteredMilk, 'milk-records.csv');
-                    else if (activeTab === 'sales') exportToCSV(filteredSales, 'sales-records.csv');
-                    else if (activeTab === 'workers') exportToCSV(filteredWorkers, 'workers-records.csv');
-                  }}
+                  onClick={() => handleExportData(activeTab, 'csv')}
                   className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
+                  title="Download CSV file with defined headings"
                 >
                   <Download className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
-                  <span>Export CSV</span>
+                  <span>CSV</span>
                 </button>
               </div>
             </div>
@@ -943,30 +1084,30 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {/* TAB 1: GOATS */}
       {activeTab === 'goats' && (
         <>
-          {/* Bulk Action Bar for Goats */}
-          {isBulkMode && (
-            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/80 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          {/* Enhanced Batch Action Bar for Goats */}
+          {selectedGoatIds.length > 0 && (
+            <div className="sticky top-16 z-20 bg-stone-900 dark:bg-stone-950 text-white border border-stone-800 dark:border-stone-700/80 rounded-2xl p-4 mb-4 shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="flex items-center gap-3">
-                <span className="p-2 rounded-xl bg-amber-500/15 text-amber-800 dark:text-amber-200">
-                  <Layers className="w-5 h-5 text-amber-700 dark:text-amber-300" />
+                <span className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <Layers className="w-5 h-5 text-emerald-400" />
                 </span>
                 <div>
-                  <div className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
-                    <span>Bulk Selection Mode</span>
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100">
+                  <div className="text-xs font-bold text-white flex items-center gap-2">
+                    <span>Batch Selection Active</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500 text-stone-950">
                       {selectedGoatIds.length} of {filteredGoats.length} Selected
                     </span>
                   </div>
-                  <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80">
-                    Select goats using checkboxes to update their herd status together in one click.
+                  <p className="text-[11px] text-stone-300">
+                    Apply bulk status modifications or permanently delete selected goat records.
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 <button
                   type="button"
-                  id="btn-select-all-goats"
+                  id="btn-batch-select-all"
                   onClick={() => {
                     if (selectedGoatIds.length === filteredGoats.length) {
                       setSelectedGoatIds([]);
@@ -974,24 +1115,25 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                       setSelectedGoatIds(filteredGoats.map(g => g.id));
                     }
                   }}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 border border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 transition-colors"
                 >
-                  {selectedGoatIds.length === filteredGoats.length && filteredGoats.length > 0 ? 'Deselect All' : 'Select All'}
+                  {selectedGoatIds.length === filteredGoats.length && filteredGoats.length > 0 ? 'Deselect All' : 'Select All Filtered'}
                 </button>
 
-                <div className="flex items-center gap-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg px-2.5 py-1">
-                  <span className="text-xs font-medium text-stone-600 dark:text-stone-300">Set Status:</span>
+                {/* Batch Status Dropdown & Apply */}
+                <div className="flex items-center gap-1.5 bg-stone-800 border border-stone-700 rounded-xl px-3 py-1">
+                  <span className="text-xs font-medium text-stone-400">Status:</span>
                   <select
                     id="select-bulk-status"
                     value={bulkStatusTarget}
                     onChange={e => setBulkStatusTarget(e.target.value as any)}
-                    className="text-xs font-bold bg-transparent text-stone-800 dark:text-stone-100 focus:outline-none cursor-pointer"
+                    className="text-xs font-bold bg-transparent text-white focus:outline-none cursor-pointer"
                   >
-                    <option value="Quarantine">Quarantine</option>
-                    <option value="Sold">Sold</option>
-                    <option value="Active">Active</option>
-                    <option value="Pregnant">Pregnant</option>
-                    <option value="Dead">Dead (Culled / Deceased)</option>
+                    <option value="Quarantine" className="bg-stone-900 text-white">Quarantine</option>
+                    <option value="Active" className="bg-stone-900 text-white">Active</option>
+                    <option value="Pregnant" className="bg-stone-900 text-white">Pregnant</option>
+                    <option value="Sold" className="bg-stone-900 text-white">Sold</option>
+                    <option value="Dead" className="bg-stone-900 text-white">Dead (Culled / Deceased)</option>
                   </select>
                 </div>
 
@@ -1004,37 +1146,91 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                     setIsBulkUpdating(true);
                     try {
                       await bulkUpdateGoats(selectedGoatIds, { status: bulkStatusTarget });
+                      showToast(`Updated herd status to "${bulkStatusTarget}" for ${selectedGoatIds.length} goat(s).`, 'success');
                       if (bulkStatusTarget === 'Quarantine') {
-                        setBulkSuccessMsg(`Successfully isolated ${selectedGoatIds.length} goat(s) to "Quarantine". Automated 7-day intermediate checkup and 14-day biosecurity clearance tasks are scheduled.`);
+                        setBulkSuccessMsg(`Isolated ${selectedGoatIds.length} goat(s) to "Quarantine". Automated 7-day and 14-day checkup tasks scheduled.`);
                       } else {
                         setBulkSuccessMsg(`Successfully updated ${selectedGoatIds.length} goat(s) to "${bulkStatusTarget}".`);
                       }
                       setSelectedGoatIds([]);
                       setTimeout(() => setBulkSuccessMsg(null), 4500);
-                    } catch (e) {
-                      console.error(e);
+                    } catch (e: any) {
+                      showToast(e.message || 'Failed to update selected goats', 'error');
                     } finally {
                       setIsBulkUpdating(false);
                     }
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all shadow-2xs flex items-center gap-1.5 ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold text-white transition-all shadow-xs flex items-center gap-1.5 ${
                     selectedGoatIds.length === 0 || isBulkUpdating
-                      ? 'bg-stone-400 dark:bg-stone-700 cursor-not-allowed opacity-60'
-                      : 'bg-emerald-600 hover:bg-emerald-700'
+                      ? 'bg-stone-700 text-stone-400 cursor-not-allowed opacity-60'
+                      : 'bg-emerald-600 hover:bg-emerald-500 active:scale-98'
                   }`}
                 >
                   <CheckSquare className="w-3.5 h-3.5" />
-                  <span>{isBulkUpdating ? 'Updating...' : `Apply Status (${selectedGoatIds.length})`}</span>
+                  <span>{isBulkUpdating ? 'Updating...' : `Update Status (${selectedGoatIds.length})`}</span>
+                </button>
+
+                {/* Batch Edit Details Modal Trigger */}
+                <button
+                  type="button"
+                  id="btn-open-batch-edit-modal"
+                  disabled={selectedGoatIds.length === 0 || isBulkUpdating}
+                  onClick={() => setIsBatchEditModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 active:scale-98 text-white transition-all shadow-xs flex items-center gap-1.5"
+                  title="Update multiple fields (status, breed, gender, weight) across selected goats"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Edit Details ({selectedGoatIds.length})</span>
+                </button>
+
+                {/* Batch Delete Button */}
+                <button
+                  type="button"
+                  id="btn-open-batch-delete-modal"
+                  disabled={selectedGoatIds.length === 0 || isBulkUpdating}
+                  onClick={() => setIsBatchDeleteModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 active:scale-98 text-white transition-all shadow-xs flex items-center gap-1.5"
+                  title="Permanently delete all selected goat records"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Selected ({selectedGoatIds.length})</span>
+                </button>
+
+                {/* Export Selected to Excel & CSV */}
+                <button
+                  type="button"
+                  id="btn-export-selected-excel"
+                  onClick={() => {
+                    const selectedRecords = goats.filter(g => selectedGoatIds.includes(g.id));
+                    handleExportData('selected-goats', 'excel', selectedRecords);
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-medium bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border border-emerald-600 transition-colors flex items-center gap-1.5"
+                  title="Export only selected goats to formatted Excel file"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-300" />
+                  <span className="hidden sm:inline">Excel</span>
                 </button>
 
                 <button
                   type="button"
+                  id="btn-export-selected-goats"
                   onClick={() => {
-                    setIsBulkMode(false);
-                    setSelectedGoatIds([]);
+                    const selectedRecords = goats.filter(g => selectedGoatIds.includes(g.id));
+                    handleExportData('selected-goats', 'csv', selectedRecords);
                   }}
-                  className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
-                  title="Close Bulk Edit"
+                  className="px-3 py-1.5 rounded-xl text-xs font-medium bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 transition-colors flex items-center gap-1.5"
+                  title="Export only selected goats to CSV"
+                >
+                  <Download className="w-3.5 h-3.5 text-stone-400" />
+                  <span className="hidden sm:inline">CSV</span>
+                </button>
+
+                {/* Clear selection */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedGoatIds([])}
+                  className="p-1.5 text-stone-400 hover:text-white rounded-lg hover:bg-stone-800 transition-colors"
+                  title="Clear selection"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1056,14 +1252,20 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
 
           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-left text-sm record-table-grid">
                 <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                   <tr>
                     {isBulkMode && (
                       <th className="px-4 py-3.5 w-12 text-center">
                         <input
                           type="checkbox"
+                          id="checkbox-select-all-goats"
                           checked={filteredGoats.length > 0 && selectedGoatIds.length === filteredGoats.length}
+                          ref={el => {
+                            if (el) {
+                              el.indeterminate = selectedGoatIds.length > 0 && selectedGoatIds.length < filteredGoats.length;
+                            }
+                          }}
                           onChange={e => {
                             if (e.target.checked) {
                               setSelectedGoatIds(filteredGoats.map(g => g.id));
@@ -1086,7 +1288,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                     <th className="px-6 py-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                <tbody className="bg-white dark:bg-stone-900">
                   {filteredGoats.length > 0 ? (
                     filteredGoats.map(goat => {
                       const effectiveStatus = getGoatEffectiveStatus(goat);
@@ -1098,14 +1300,26 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                         key={goat.id}
                         className={`transition-colors ${
                           isSelected
-                            ? 'bg-amber-50/60 dark:bg-amber-950/30'
+                            ? 'bg-amber-50/70 dark:bg-amber-950/40 border-l-4 border-l-amber-500'
                             : 'hover:bg-stone-50/75 dark:hover:bg-stone-800/50'
                         }`}
+                        onClick={e => {
+                          const target = e.target as HTMLElement;
+                          if (target.closest('button') || target.closest('a') || target.closest('select') || target.closest('input')) {
+                            return;
+                          }
+                          if (isBulkMode) {
+                            setSelectedGoatIds(prev =>
+                              prev.includes(goat.id) ? prev.filter(id => id !== goat.id) : [...prev, goat.id]
+                            );
+                          }
+                        }}
                       >
                         {isBulkMode && (
                           <td className="px-4 py-4 text-center">
                             <input
                               type="checkbox"
+                              id={`checkbox-goat-${goat.id}`}
                               checked={isSelected}
                               onChange={() => {
                                 setSelectedGoatIds(prev =>
@@ -1113,6 +1327,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                                 );
                               }}
                               className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                              title={`Select ${goat.tag_number}`}
                             />
                           </td>
                         )}
@@ -1256,7 +1471,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {activeTab === 'breeding' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm record-table-grid">
               <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 <tr>
                   <th className="px-6 py-3.5">Female Tag (Dam)</th>
@@ -1267,7 +1482,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+              <tbody className="bg-white dark:bg-stone-900">
                 {filteredBreeding.length > 0 ? (
                   filteredBreeding.map(item => {
                     const exp = new Date(item.expected_birth);
@@ -1363,7 +1578,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {activeTab === 'health' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm record-table-grid">
               <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 <tr>
                   <th className="px-6 py-3.5">Goat Tag & Name</th>
@@ -1376,7 +1591,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+              <tbody className="bg-white dark:bg-stone-900">
                 {filteredHealth.length > 0 ? (
                   filteredHealth.map(item => {
                     const matchedGoat = goatMap.get(item.goat_id.toUpperCase());
@@ -1509,7 +1724,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {activeTab === 'milk' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm record-table-grid">
               <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 <tr>
                   <th className="px-6 py-3.5">Doe Tag</th>
@@ -1520,7 +1735,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+              <tbody className="bg-white dark:bg-stone-900">
                 {filteredMilk.length > 0 ? (
                   filteredMilk.map(m => (
                     <tr key={m.id} className="hover:bg-stone-50/75 dark:hover:bg-stone-800/50 transition-colors">
@@ -1584,7 +1799,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {activeTab === 'sales' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm record-table-grid">
               <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 <tr>
                   <th className="px-6 py-3.5">Goat Tag</th>
@@ -1594,7 +1809,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+              <tbody className="bg-white dark:bg-stone-900">
                 {filteredSales.length > 0 ? (
                   filteredSales.map(item => (
                     <tr key={item.id} className="hover:bg-stone-50/75 dark:hover:bg-stone-800/50 transition-colors">
@@ -1635,7 +1850,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {activeTab === 'workers' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm record-table-grid">
               <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 <tr>
                   <th className="px-6 py-3.5">Full Name</th>
@@ -1644,7 +1859,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+              <tbody className="bg-white dark:bg-stone-900">
                 {filteredWorkers.length > 0 ? (
                   filteredWorkers.map(item => (
                     <tr key={item.id} className="hover:bg-stone-50/75 dark:hover:bg-stone-800/50 transition-colors">
@@ -1744,6 +1959,328 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         rootSubject={pedigreeTargetGoat}
         allGoats={goats}
       />
+
+      {/* Batch Edit Modal */}
+      {isBatchEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400">
+                  <Edit className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">
+                    Batch Update {selectedGoatIds.length} Goat Records
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    Select the fields you want to update across all selected goats.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBatchEditModalOpen(false)}
+                className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Selected goats preview chips */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                Targeted Goats ({selectedGoatIds.length}):
+              </div>
+              <div className="max-h-24 overflow-y-auto p-2 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700/60 flex flex-wrap gap-1.5">
+                {goats
+                  .filter(g => selectedGoatIds.includes(g.id))
+                  .map(g => (
+                    <span
+                      key={g.id}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-mono font-bold bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-600 shadow-2xs"
+                    >
+                      <span>{g.tag_number}</span>
+                      {g.name && <span className="font-sans font-normal text-stone-500 dark:text-stone-400 text-[10px]">({g.name})</span>}
+                    </span>
+                  ))}
+              </div>
+            </div>
+
+            {/* Form Fields to Update */}
+            <div className="space-y-3.5 divide-y divide-stone-100 dark:divide-stone-800">
+              {/* 1. Status Update */}
+              <div className="pt-2 flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="batch-update-status-check"
+                  checked={batchEditForm.updateStatus}
+                  onChange={e => setBatchEditForm(prev => ({ ...prev, updateStatus: e.target.checked }))}
+                  className="mt-1 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                />
+                <div className="flex-1 space-y-1.5">
+                  <label htmlFor="batch-update-status-check" className="text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer">
+                    Update Herd Status
+                  </label>
+                  <select
+                    disabled={!batchEditForm.updateStatus}
+                    value={batchEditForm.status}
+                    onChange={e => setBatchEditForm(prev => ({ ...prev, status: e.target.value as any }))}
+                    className={`w-full text-xs font-medium rounded-xl border p-2 bg-white dark:bg-stone-800 transition-colors ${
+                      batchEditForm.updateStatus
+                        ? 'border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500/20'
+                        : 'border-stone-200 dark:border-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed bg-stone-50 dark:bg-stone-800/40'
+                    }`}
+                  >
+                    <option value="Active">Active (Healthy Herd)</option>
+                    <option value="Pregnant">Pregnant</option>
+                    <option value="Quarantine">Quarantine (Isolation)</option>
+                    <option value="Sold">Sold</option>
+                    <option value="Dead">Dead (Deceased / Culled)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 2. Breed Update */}
+              <div className="pt-3 flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="batch-update-breed-check"
+                  checked={batchEditForm.updateBreed}
+                  onChange={e => setBatchEditForm(prev => ({ ...prev, updateBreed: e.target.checked }))}
+                  className="mt-1 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                />
+                <div className="flex-1 space-y-1.5">
+                  <label htmlFor="batch-update-breed-check" className="text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer">
+                    Update Breed
+                  </label>
+                  <input
+                    type="text"
+                    list="batch-breed-suggestions"
+                    disabled={!batchEditForm.updateBreed}
+                    value={batchEditForm.breed}
+                    onChange={e => setBatchEditForm(prev => ({ ...prev, breed: e.target.value }))}
+                    placeholder="e.g. Boer, Anglo-Nubian, Saanen..."
+                    className={`w-full text-xs font-medium rounded-xl border p-2 bg-white dark:bg-stone-800 transition-colors ${
+                      batchEditForm.updateBreed
+                        ? 'border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500/20'
+                        : 'border-stone-200 dark:border-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed bg-stone-50 dark:bg-stone-800/40'
+                    }`}
+                  />
+                  <datalist id="batch-breed-suggestions">
+                    {availableBreeds.map(b => (
+                      <option key={b} value={b} />
+                    ))}
+                    <option value="Boer" />
+                    <option value="Anglo-Nubian" />
+                    <option value="Saanen" />
+                    <option value="Alpine" />
+                    <option value="Kiko" />
+                    <option value="LaMancha" />
+                    <option value="Nigerian Dwarf" />
+                    <option value="Kalahari Red" />
+                    <option value="Crossbreed" />
+                  </datalist>
+                </div>
+              </div>
+
+              {/* 3. Gender Update */}
+              <div className="pt-3 flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="batch-update-gender-check"
+                  checked={batchEditForm.updateGender}
+                  onChange={e => setBatchEditForm(prev => ({ ...prev, updateGender: e.target.checked }))}
+                  className="mt-1 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                />
+                <div className="flex-1 space-y-1.5">
+                  <label htmlFor="batch-update-gender-check" className="text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer">
+                    Update Gender
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <label className={`inline-flex items-center gap-1.5 text-xs ${batchEditForm.updateGender ? 'cursor-pointer text-stone-800 dark:text-stone-200' : 'text-stone-400 dark:text-stone-600 cursor-not-allowed'}`}>
+                      <input
+                        type="radio"
+                        name="batch-gender"
+                        value="Female"
+                        disabled={!batchEditForm.updateGender}
+                        checked={batchEditForm.gender === 'Female'}
+                        onChange={() => setBatchEditForm(prev => ({ ...prev, gender: 'Female' }))}
+                        className="text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span>Female (Doe)</span>
+                    </label>
+                    <label className={`inline-flex items-center gap-1.5 text-xs ${batchEditForm.updateGender ? 'cursor-pointer text-stone-800 dark:text-stone-200' : 'text-stone-400 dark:text-stone-600 cursor-not-allowed'}`}>
+                      <input
+                        type="radio"
+                        name="batch-gender"
+                        value="Male"
+                        disabled={!batchEditForm.updateGender}
+                        checked={batchEditForm.gender === 'Male'}
+                        onChange={() => setBatchEditForm(prev => ({ ...prev, gender: 'Male' }))}
+                        className="text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span>Male (Buck)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Weight Update */}
+              <div className="pt-3 flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="batch-update-weight-check"
+                  checked={batchEditForm.updateWeight}
+                  onChange={e => setBatchEditForm(prev => ({ ...prev, updateWeight: e.target.checked }))}
+                  className="mt-1 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                />
+                <div className="flex-1 space-y-2">
+                  <label htmlFor="batch-update-weight-check" className="text-xs font-bold text-stone-900 dark:text-stone-100 cursor-pointer">
+                    Update Weight (kg)
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <select
+                      disabled={!batchEditForm.updateWeight}
+                      value={batchEditForm.weightMode}
+                      onChange={e => setBatchEditForm(prev => ({ ...prev, weightMode: e.target.value as any }))}
+                      className={`text-xs font-medium rounded-xl border p-2 bg-white dark:bg-stone-800 transition-colors ${
+                        batchEditForm.updateWeight
+                          ? 'border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100'
+                          : 'border-stone-200 dark:border-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed bg-stone-50 dark:bg-stone-800/40'
+                      }`}
+                    >
+                      <option value="set">Set exact weight</option>
+                      <option value="adjust_add">Add weight (+ kg)</option>
+                      <option value="adjust_sub">Subtract weight (- kg)</option>
+                    </select>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      disabled={!batchEditForm.updateWeight}
+                      value={batchEditForm.weightValue}
+                      onChange={e => setBatchEditForm(prev => ({ ...prev, weightValue: e.target.value }))}
+                      placeholder="e.g. 35.5"
+                      className={`text-xs font-medium rounded-xl border p-2 bg-white dark:bg-stone-800 transition-colors ${
+                        batchEditForm.updateWeight
+                          ? 'border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100'
+                          : 'border-stone-200 dark:border-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed bg-stone-50 dark:bg-stone-800/40'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-stone-100 dark:border-stone-800">
+              <button
+                type="button"
+                onClick={() => setIsBatchEditModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                id="btn-confirm-batch-edit"
+                disabled={
+                  isBulkUpdating ||
+                  (!batchEditForm.updateStatus &&
+                    !batchEditForm.updateBreed &&
+                    !batchEditForm.updateGender &&
+                    !batchEditForm.updateWeight)
+                }
+                onClick={handleApplyBatchEdit}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{isBulkUpdating ? 'Saving Changes...' : `Apply Updates (${selectedGoatIds.length} Goats)`}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Delete Confirmation Modal */}
+      {isBatchDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">
+                  Delete {selectedGoatIds.length} Goat Records?
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400">
+                  This action is permanent and cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-900 dark:text-rose-200 leading-relaxed">
+              You are about to permanently remove <strong className="font-bold text-rose-950 dark:text-rose-100">{selectedGoatIds.length} goat(s)</strong> from your herd. These records will be erased from your active registry, health logs, weight charts, and cloud database.
+            </div>
+
+            {/* List of tags to be deleted */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                Selected Goats for Deletion:
+              </div>
+              <div className="max-h-36 overflow-y-auto p-2 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700/60 flex flex-wrap gap-1.5">
+                {goats
+                  .filter(g => selectedGoatIds.includes(g.id))
+                  .map(g => (
+                    <span
+                      key={g.id}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono font-bold bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-600 shadow-2xs"
+                    >
+                      <span>{g.tag_number}</span>
+                      {g.name && <span className="font-sans font-normal text-stone-500 dark:text-stone-400 text-[11px]">({g.name})</span>}
+                    </span>
+                  ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-stone-100 dark:border-stone-800">
+              <button
+                type="button"
+                disabled={isBatchDeleting}
+                onClick={() => setIsBatchDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                id="btn-confirm-batch-delete"
+                disabled={isBatchDeleting}
+                onClick={async () => {
+                  setIsBatchDeleting(true);
+                  try {
+                    const count = selectedGoatIds.length;
+                    await bulkDeleteGoats(selectedGoatIds);
+                    showToast(`Successfully deleted ${count} goat record(s) from herd.`, 'success');
+                    setSelectedGoatIds([]);
+                    setIsBatchDeleteModalOpen(false);
+                  } catch (err: any) {
+                    showToast(err.message || 'Failed to delete selected goats', 'error');
+                  } finally {
+                    setIsBatchDeleting(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all shadow-xs flex items-center gap-1.5 active:scale-98 disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isBatchDeleting ? 'Deleting Goats...' : `Confirm Delete (${selectedGoatIds.length})`}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import {
   Users,
@@ -15,7 +15,11 @@ import {
   Milk,
   Stethoscope,
   ArrowUpRight,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Bell,
+  Pin,
+  SlidersHorizontal,
+  LayoutGrid
 } from 'lucide-react';
 import {
   PieChart,
@@ -38,8 +42,16 @@ import { RecentSalesFeed } from '../components/RecentSalesFeed';
 import { FeedSupplyAlertWidget } from '../components/FeedSupplyAlertWidget';
 import { QuarantineMonitorWidget } from '../components/QuarantineMonitorWidget';
 import { KidNurseryWidget } from '../components/KidNurseryWidget';
-import { DrugWithdrawalTrackerWidget } from '../components/DrugWithdrawalTrackerWidget';
 import { FinancialCashFlowWidget } from '../components/FinancialCashFlowWidget';
+import { DailyNotificationBanner } from '../components/DailyNotificationBanner';
+import {
+  DashboardCustomizerModal,
+  DashboardWidgetId,
+  DEFAULT_PINNED_WIDGETS,
+  ALL_DASHBOARD_WIDGETS
+} from '../components/DashboardCustomizerModal';
+import { formatActiveDuration } from '../utils/dateHelper';
+import { getFarmNotifications } from '../utils/notificationHelper';
 
 interface DashboardViewProps {
   onNavigateToRecords: () => void;
@@ -53,6 +65,7 @@ interface DashboardViewProps {
   onOpenAddHealthModal?: () => void;
   onOpenAddSaleModal?: () => void;
   onOpenAddExpenseModal?: () => void;
+  onOpenNotificationModal?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -67,6 +80,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenAddHealthModal,
   onOpenAddSaleModal,
   onOpenAddExpenseModal,
+  onOpenNotificationModal,
 }) => {
   const {
     farmName,
@@ -160,15 +174,234 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     Matings: count,
   }));
 
+  const notifications = useMemo(() => getFarmNotifications(goats, breeding, health), [goats, breeding, health]);
+
+  // Customizable Dashboard Pinned Widgets State (Graphs & Activity Summaries)
+  const [pinnedWidgetIds, setPinnedWidgetIds] = useState<DashboardWidgetId[]>(() => {
+    try {
+      const saved = localStorage.getItem('smartgoat_pinned_widgets_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_PINNED_WIDGETS;
+  });
+
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+
+  const handleSavePinnedWidgets = (newIds: DashboardWidgetId[]) => {
+    setPinnedWidgetIds(newIds);
+    try {
+      localStorage.setItem('smartgoat_pinned_widgets_v2', JSON.stringify(newIds));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleTogglePin = (id: DashboardWidgetId) => {
+    const next = pinnedWidgetIds.includes(id)
+      ? pinnedWidgetIds.filter(item => item !== id)
+      : [...pinnedWidgetIds, id];
+    handleSavePinnedWidgets(next);
+  };
+
+  const renderDemographicsCard = () => (
+    <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs transition-colors flex flex-col justify-between">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h4 className="text-base font-bold text-stone-900 dark:text-white flex items-center gap-2">
+            <PieIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Herd Demographics</span>
+          </h4>
+          <p className="text-xs text-stone-500 dark:text-stone-400">Gender ratio for reproduction management</p>
+        </div>
+        {!pinnedWidgetIds.includes('demographics') && (
+          <button
+            type="button"
+            onClick={() => handleTogglePin('demographics')}
+            className="text-[11px] text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold px-2 py-1 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors flex items-center gap-1"
+            title="Pin to top"
+          >
+            <Pin className="w-3 h-3" />
+            <span>Pin</span>
+          </button>
+        )}
+      </div>
+
+      <div className="h-60 w-full flex items-center justify-center">
+        {genderData.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={genderData}
+                cx="50%"
+                cy="50%"
+                innerRadius={55}
+                outerRadius={80}
+                paddingAngle={4}
+                dataKey="value"
+              >
+                {genderData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1c1917',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                }}
+              />
+              <Legend verticalAlign="bottom" height={36} iconType="circle" />
+            </PieChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="text-xs text-stone-400 dark:text-stone-500">No goats recorded yet.</div>
+        )}
+      </div>
+
+      <div className="pt-3 border-t border-stone-100 dark:border-stone-800 text-xs text-stone-500 dark:text-stone-400 flex justify-between">
+        <span>Females: {females} ({totalGoats > 0 ? Math.round((females / totalGoats) * 100) : 0}%)</span>
+        <span>Males: {males} ({totalGoats > 0 ? Math.round((males / totalGoats) * 100) : 0}%)</span>
+      </div>
+    </div>
+  );
+
+  const renderBreedingActivityCard = () => (
+    <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs transition-colors">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h4 className="text-base font-bold text-stone-900 dark:text-white flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Monthly Breeding Activity</span>
+          </h4>
+          <p className="text-xs text-stone-500 dark:text-stone-400">Number of logged services / matings</p>
+        </div>
+        {!pinnedWidgetIds.includes('breeding_trends') && (
+          <button
+            type="button"
+            onClick={() => handleTogglePin('breeding_trends')}
+            className="text-[11px] text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold px-2 py-1 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors flex items-center gap-1"
+            title="Pin to top"
+          >
+            <Pin className="w-3 h-3" />
+            <span>Pin</span>
+          </button>
+        )}
+      </div>
+
+      <div className="h-60 w-full">
+        {breedingTrendData.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={breedingTrendData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-stone-100 dark:text-stone-800" />
+              <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} />
+              <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1c1917',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                }}
+              />
+              <Bar dataKey="Matings" fill="#10b981" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-full text-xs text-stone-400 dark:text-stone-500">
+            No monthly breeding history available.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderWidgetContent = (id: DashboardWidgetId) => {
+    switch (id) {
+      case 'weight_trends':
+        return <WeightTrendsChart goats={goats} healthRecords={health} />;
+      case 'recent_activity':
+        return (
+          <RecentActivities
+            onNavigateToRecords={onNavigateToRecords}
+            onNavigateToHealth={onNavigateToHealth}
+            onNavigateToBreeding={onNavigateToBreedingEstimator}
+          />
+        );
+      case 'cash_flow':
+        return (
+          <FinancialCashFlowWidget
+            onNavigateToReports={onNavigateToReports}
+            onNavigateToRecords={onNavigateToRecords}
+            onOpenAddSaleModal={onOpenAddSaleModal}
+            onOpenAddExpenseModal={onOpenAddExpenseModal}
+          />
+        );
+      case 'recent_sales':
+        return (
+          <RecentSalesFeed
+            sales={sales}
+            goats={goats}
+            onNavigateToRecords={onNavigateToRecords}
+            onOpenAddSale={onOpenAddSaleModal}
+          />
+        );
+      case 'demographics':
+        return renderDemographicsCard();
+      case 'breeding_trends':
+        return renderBreedingActivityCard();
+      case 'kid_nursery':
+        return (
+          <KidNurseryWidget
+            onNavigateToRecords={onNavigateToRecords}
+            onNavigateToBreeding={onNavigateToBreedingEstimator}
+          />
+        );
+      case 'feed_alerts':
+        return (
+          <FeedSupplyAlertWidget
+            onNavigateToFeedSupply={onNavigateToFeedSupply || onNavigateToRecords}
+          />
+        );
+      case 'quarantine_monitor':
+        return (
+          <QuarantineMonitorWidget
+            onNavigateToTasks={onNavigateToTasks}
+            onNavigateToHealth={onNavigateToHealth}
+            onNavigateToRecords={onNavigateToRecords}
+          />
+        );
+      case 'weather_advisory':
+        return (
+          <LocalFarmWeatherWidget
+            customLocation={farmName ? `${farmName} Station` : undefined}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Scheduled For Today Notification Banner (Alerts upcoming breeding & vaccination reminders) */}
+      <DailyNotificationBanner
+        todayNotifications={notifications.todayNotifications}
+        onOpenModal={() => onOpenNotificationModal?.()}
+      />
+
       {/* Top Banner / Welcome */}
       <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 sm:p-8 shadow-xs transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 mb-2">
               <Calendar className="w-3.5 h-3.5" />
-              Active for {daysActive} days
+              Active for {formatActiveDuration(daysActive)}
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-white tracking-tight">
               {farmName} Dashboard
@@ -177,7 +410,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Real-time herd monitoring, gestation tracking, milk production, and livestock records.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenNotificationModal && (
+              <button
+                type="button"
+                id="btn-dashboard-notifications"
+                onClick={onOpenNotificationModal}
+                className={`px-3.5 py-2.5 rounded-xl text-sm font-semibold border transition-all flex items-center gap-2 shadow-xs ${
+                  notifications.todayNotifications.length > 0
+                    ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 hover:bg-rose-100'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-200'
+                }`}
+              >
+                <div className="relative">
+                  <Bell className={`w-4 h-4 ${notifications.todayNotifications.length > 0 ? 'text-rose-500 animate-bounce' : 'text-stone-500'}`} />
+                  {notifications.todayNotifications.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500" />
+                  )}
+                </div>
+                <span>
+                  {notifications.todayNotifications.length > 0
+                    ? `${notifications.todayNotifications.length} Scheduled Today`
+                    : 'Alerts'}
+                </span>
+              </button>
+            )}
+
             <button
               type="button"
               id="btn-quick-breeding-tool"
@@ -331,28 +589,117 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onNavigateToHealth={onNavigateToHealth}
       />
 
+      {/* Customizable Pinned Widgets Section: Allows users to pin specific graphs or recent activity summaries to see first */}
+      <div id="dashboard-customizable-widget-section" className="space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+              <Pin className="w-5 h-5 fill-current" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-stone-900 dark:text-white">
+                  Pinned Highlights
+                </h3>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                  {pinnedWidgetIds.length} Pinned First
+                </span>
+              </div>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                Your prioritized graphs & recent activity summaries displayed first
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              id="btn-customize-dashboard-widgets"
+              onClick={() => setIsCustomizerOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-black dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 text-xs font-bold shadow-xs transition-colors w-full sm:w-auto"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Customize Widgets</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Pinned Widgets List */}
+        {pinnedWidgetIds.length > 0 ? (
+          <div className="space-y-6">
+            {pinnedWidgetIds.map((widgetId, idx) => {
+              const widgetMeta = ALL_DASHBOARD_WIDGETS.find(w => w.id === widgetId);
+              return (
+                <div key={`pinned-${widgetId}`} className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                        <Pin className="w-2.5 h-2.5 fill-current" />
+                        <span>Pinned #{idx + 1}</span>
+                      </span>
+                      <span className="text-xs font-semibold text-stone-600 dark:text-stone-300">
+                        {widgetMeta?.title}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePin(widgetId)}
+                      className="text-[11px] text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 font-medium px-2 py-0.5 rounded-md hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                      title="Unpin widget from top section"
+                    >
+                      Unpin
+                    </button>
+                  </div>
+                  {renderWidgetContent(widgetId)}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-8 rounded-2xl bg-white dark:bg-stone-900 border border-dashed border-stone-300 dark:border-stone-700 text-center space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-stone-400">
+              <Pin className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-stone-800 dark:text-stone-200">No widgets pinned to top</h4>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-md mx-auto">
+                Customize your dashboard by pinning weight graphs, financial cash flow, or recent activity feeds to see them right here first.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCustomizerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-xs"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Choose Widgets to Pin</span>
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Local Farm Weather & Micro-Climate Advisory Widget (Mocked Geolocation) */}
-      <LocalFarmWeatherWidget
-        customLocation={farmName ? `${farmName} Station` : undefined}
-      />
+      {!pinnedWidgetIds.includes('weather_advisory') && (
+        <LocalFarmWeatherWidget
+          customLocation={farmName ? `${farmName} Station` : undefined}
+        />
+      )}
 
       {/* Feed & Veterinary Supply Status & Low-Stock Alerts */}
-      <FeedSupplyAlertWidget
-        onNavigateToFeedSupply={onNavigateToFeedSupply || onNavigateToRecords}
-      />
+      {!pinnedWidgetIds.includes('feed_alerts') && (
+        <FeedSupplyAlertWidget
+          onNavigateToFeedSupply={onNavigateToFeedSupply || onNavigateToRecords}
+        />
+      )}
 
       {/* Feature 1: Biosecurity & Active Quarantine Monitor */}
-      <QuarantineMonitorWidget
-        onNavigateToTasks={onNavigateToTasks}
-        onNavigateToHealth={onNavigateToHealth}
-        onNavigateToRecords={onNavigateToRecords}
-      />
-
-      {/* Feature 3: Veterinary Drug Withdrawal & Milk/Meat Clearance Tracker */}
-      <DrugWithdrawalTrackerWidget
-        onNavigateToHealth={onNavigateToHealth}
-        onOpenAddHealthModal={onOpenAddHealthModal}
-      />
+      {!pinnedWidgetIds.includes('quarantine_monitor') && (
+        <QuarantineMonitorWidget
+          onNavigateToTasks={onNavigateToTasks}
+          onNavigateToHealth={onNavigateToHealth}
+          onNavigateToRecords={onNavigateToRecords}
+        />
+      )}
 
       {/* Featured Banner: Breeding & Kidding Predictor Widget */}
       <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-stone-900 rounded-2xl p-6 text-white shadow-xs relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -564,130 +911,69 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Feature 2: Kid Nursery & Average Daily Gain (ADG) Benchmark */}
-      <KidNurseryWidget
-        onNavigateToRecords={onNavigateToRecords}
-        onNavigateToBreeding={onNavigateToBreedingEstimator}
-      />
+      {!pinnedWidgetIds.includes('kid_nursery') && (
+        <KidNurseryWidget
+          onNavigateToRecords={onNavigateToRecords}
+          onNavigateToBreeding={onNavigateToBreedingEstimator}
+        />
+      )}
 
       {/* Primary Analytical Row: 6-Month Weight Trends Chart */}
-      <WeightTrendsChart goats={goats} healthRecords={health} />
+      {!pinnedWidgetIds.includes('weight_trends') && (
+        <WeightTrendsChart goats={goats} healthRecords={health} />
+      )}
 
       {/* Feature 4: Financial Summary & Cash Flow Sparkline */}
-      <FinancialCashFlowWidget
-        onNavigateToReports={onNavigateToReports}
-        onNavigateToRecords={onNavigateToRecords}
-        onOpenAddSaleModal={onOpenAddSaleModal}
-        onOpenAddExpenseModal={onOpenAddExpenseModal}
-      />
+      {!pinnedWidgetIds.includes('cash_flow') && (
+        <FinancialCashFlowWidget
+          onNavigateToReports={onNavigateToReports}
+          onNavigateToRecords={onNavigateToRecords}
+          onOpenAddSaleModal={onOpenAddSaleModal}
+          onOpenAddExpenseModal={onOpenAddExpenseModal}
+        />
+      )}
 
       {/* Recent Sales Activity Feed: Last 5 Transactions & Quick Financial Insights */}
-      <RecentSalesFeed
-        sales={sales}
-        goats={goats}
-        onNavigateToRecords={onNavigateToRecords}
-        onOpenAddSale={onOpenAddSaleModal}
-      />
+      {!pinnedWidgetIds.includes('recent_sales') && (
+        <RecentSalesFeed
+          sales={sales}
+          goats={goats}
+          onNavigateToRecords={onNavigateToRecords}
+          onOpenAddSale={onOpenAddSaleModal}
+        />
+      )}
 
-      {/* Secondary Dashboard Grid: Recent Activities & Breeding Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Recent Activities Component (7 Cols) */}
-        <div className="lg:col-span-7">
-          <RecentActivities
-            onNavigateToRecords={onNavigateToRecords}
-            onNavigateToHealth={onNavigateToHealth}
-            onNavigateToBreeding={onNavigateToBreedingEstimator}
-          />
-        </div>
-
-        {/* Herd Demographics & Composition (5 Cols) */}
-        <div className="lg:col-span-5 bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs transition-colors flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h4 className="text-base font-bold text-stone-900 dark:text-white flex items-center gap-2">
-                <PieIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Herd Demographics</span>
-              </h4>
-              <p className="text-xs text-stone-500 dark:text-stone-400">Gender ratio for reproduction management</p>
+      {/* Secondary Dashboard Grid: Recent Activities & Herd Demographics */}
+      {(!pinnedWidgetIds.includes('recent_activity') || !pinnedWidgetIds.includes('demographics')) && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {!pinnedWidgetIds.includes('recent_activity') && (
+            <div className={!pinnedWidgetIds.includes('demographics') ? 'lg:col-span-7' : 'lg:col-span-12'}>
+              <RecentActivities
+                onNavigateToRecords={onNavigateToRecords}
+                onNavigateToHealth={onNavigateToHealth}
+                onNavigateToBreeding={onNavigateToBreedingEstimator}
+              />
             </div>
-          </div>
+          )}
 
-          <div className="h-60 w-full flex items-center justify-center">
-            {genderData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={genderData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={80}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {genderData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1c1917',
-                      color: '#fff',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="text-xs text-stone-400 dark:text-stone-500">No goats recorded yet.</div>
-            )}
-          </div>
-
-          <div className="pt-3 border-t border-stone-100 dark:border-stone-800 text-xs text-stone-500 dark:text-stone-400 flex justify-between">
-            <span>Females: {females} ({totalGoats > 0 ? Math.round((females / totalGoats) * 100) : 0}%)</span>
-            <span>Males: {males} ({totalGoats > 0 ? Math.round((males / totalGoats) * 100) : 0}%)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Monthly Breeding Activity Bar Chart */}
-      <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs transition-colors">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h4 className="text-base font-bold text-stone-900 dark:text-white flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Monthly Breeding Activity</span>
-            </h4>
-            <p className="text-xs text-stone-500 dark:text-stone-400">Number of logged services / matings</p>
-          </div>
-        </div>
-
-        <div className="h-60 w-full">
-          {breedingTrendData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={breedingTrendData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-stone-100 dark:text-stone-800" />
-                <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1c1917',
-                    color: '#fff',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                />
-                <Bar dataKey="Matings" fill="#10b981" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-full text-xs text-stone-400 dark:text-stone-500">
-              No monthly breeding history available.
+          {!pinnedWidgetIds.includes('demographics') && (
+            <div className={!pinnedWidgetIds.includes('recent_activity') ? 'lg:col-span-5' : 'lg:col-span-12'}>
+              {renderDemographicsCard()}
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {/* Monthly Breeding Activity Bar Chart */}
+      {!pinnedWidgetIds.includes('breeding_trends') && renderBreedingActivityCard()}
+
+      {/* Dashboard Customizer Modal for Pinning & Ordering Preferred Widgets */}
+      <DashboardCustomizerModal
+        isOpen={isCustomizerOpen}
+        onClose={() => setIsCustomizerOpen(false)}
+        pinnedWidgetIds={pinnedWidgetIds}
+        onSavePinnedWidgets={handleSavePinnedWidgets}
+      />
     </div>
   );
 };

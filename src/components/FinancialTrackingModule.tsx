@@ -630,7 +630,7 @@ export const FinancialTrackingModule: React.FC = () => {
 
         {/* Ledger Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-sm record-table-grid">
             <thead className="bg-stone-50 text-xs font-semibold text-stone-600 uppercase tracking-wider border-b border-stone-200">
               <tr>
                 <th className="px-5 py-3">Date</th>
@@ -642,7 +642,7 @@ export const FinancialTrackingModule: React.FC = () => {
                 <th className="px-5 py-3 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="bg-white">
               {filteredLedger.length > 0 ? (
                 filteredLedger.map(entry => (
                   <tr key={entry.id} className="hover:bg-stone-50/60 transition-colors">

@@ -395,9 +395,9 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left text-xs record-table-grid">
               <thead>
-                <tr className="border-b border-stone-100 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
+                <tr className="border-b border-stone-200 dark:border-stone-700 bg-stone-50/70 dark:bg-stone-800/40 text-[11px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                   <th className="py-3.5 px-4">Kid Identifier</th>
                   <th className="py-3.5 px-4">Breed & Gender</th>
                   <th className="py-3.5 px-4">Age / DOB</th>
@@ -409,7 +409,7 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+              <tbody className="bg-white dark:bg-stone-900">
                 {filteredKids.map(kid => {
                   const ageDays = calculateAgeDays(kid.dob);
                   const ageWeeks = (ageDays / 7).toFixed(1);

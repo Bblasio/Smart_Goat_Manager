@@ -127,6 +127,11 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
     return { startDate: start, endDate: end, durationLabel: label, durationDays: days };
   }, [preset, todayStr, yesterdayStr, specificDay, twoDaysAgoStr, weekAgoStr, monthAgoStr, customStartDate, customEndDate]);
 
+  // Document Reference ID for audit trail
+  const docRefId = useMemo(() => {
+    return `SGM-AUD-${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}`;
+  }, [startDate, endDate]);
+
   // Date checker (inclusive)
   const isWithinRange = (dateString?: string) => {
     if (!dateString) return false;
@@ -396,92 +401,151 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
       `;
     }
 
+    const docRefId = `SGM-AUD-${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>${activeFarmName} - ${reportTitle}</title>
   <style>
-    @page { size: A4; margin: 15mm; }
+    @page { size: A4; margin: 12mm 14mm; }
+    * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      color: #222;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1f2937;
       background: #fff;
       margin: 0;
-      padding: 20px;
-      line-height: 1.4;
+      padding: 16px 20px;
+      line-height: 1.45;
+      font-size: 11.5px;
+    }
+    .print-btn-bar {
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .header-box {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      border-bottom: 2px solid #2e7d32;
-      padding-bottom: 12px;
-      margin-bottom: 15px;
+      border-bottom: 2.5px solid #059669;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
     }
     .farm-brand { display: flex; align-items: center; gap: 14px; }
-    .farm-title { font-size: 22px; font-weight: 800; margin: 0; color: #111; letter-spacing: -0.5px; }
-    .farm-email { font-size: 13px; font-weight: 600; color: #1b5e20; margin-top: 3px; }
-    .farm-meta { font-size: 11px; color: #555; margin-top: 2px; }
-    .doc-meta { text-align: right; font-size: 11px; color: #444; }
-    .doc-meta strong { color: #111; }
+    .farm-title { font-size: 24px; font-weight: 900; margin: 0; color: #111827; letter-spacing: -0.5px; }
+    .farm-email { font-size: 12.5px; font-weight: 600; color: #059669; margin-top: 3px; }
+    .farm-meta { font-size: 11px; color: #6b7280; margin-top: 3px; }
+    .doc-meta { text-align: right; font-size: 11px; color: #4b5563; }
+    .doc-meta strong { color: #111827; }
     .report-badge {
       display: inline-block;
-      background: #e8f5e9;
-      color: #1b5e20;
-      border: 1px solid #a5d6a7;
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 11px;
-      margin-top: 4px;
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+      text-transform: uppercase;
     }
     .kpi-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin-bottom: 15px;
+      gap: 12px;
+      margin-bottom: 20px;
     }
     .kpi-card {
-      border: 1px solid #e0e0e0;
-      background: #fafafa;
-      border-radius: 8px;
-      padding: 8px 12px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      border-radius: 10px;
+      padding: 10px 14px;
+      position: relative;
+      overflow: hidden;
     }
-    .kpi-title { font-size: 10px; text-transform: uppercase; color: #666; font-weight: 700; margin-bottom: 4px; }
-    .kpi-val { font-size: 16px; font-weight: 800; color: #111; }
-    .kpi-sub { font-size: 10px; color: #777; margin-top: 2px; }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: #9ca3af;
+    }
+    .kpi-card.sales::before { background: #059669; }
+    .kpi-card.expenses::before { background: #dc2626; }
+    .kpi-card.balance::before { background: #2563eb; }
+    .kpi-card.milk::before { background: #0d9488; }
+    .kpi-title { font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.4px; }
+    .kpi-val { font-size: 17px; font-weight: 800; color: #111827; }
+    .kpi-sub { font-size: 10px; color: #6b7280; margin-top: 2px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+      font-size: 11px;
+      border: 1.5px solid #64748b;
+    }
+    th, td {
+      border: 1px solid #94a3b8;
+      padding: 8px 10px;
+    }
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.3px;
+      border-bottom: 2px solid #64748b;
+    }
+    tbody tr:nth-child(even) { background-color: #f8fafc; }
+    tbody tr:hover { background-color: #f1f5f9; }
+    tfoot td {
+      border-top: 2px solid #64748b;
+      font-weight: 700;
+      padding: 8px 10px;
+      background: #f1f5f9;
+    }
+
     .report-footer {
-      border-top: 1px solid #e0e0e0;
+      border-top: 2px solid #cbd5e1;
       margin-top: 36px;
       padding-top: 14px;
-      text-align: center;
-      font-size: 11px;
-      color: #666;
-    }
-    .print-btn-bar {
-      margin-bottom: 20px;
-      padding: 10px;
-      background: #e8f5e9;
-      border: 1px solid #c8e6c9;
-      border-radius: 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      font-size: 11px;
+      color: #64748b;
     }
+
     @media print {
-      .print-btn-bar { display: none; }
-      body { padding: 0; }
+      .print-btn-bar { display: none !important; }
+      body { padding: 0 !important; }
+      @page { margin: 12mm 14mm; }
     }
   </style>
 </head>
 <body>
   <div class="print-btn-bar">
-    <span style="font-weight:600;font-size:13px;color:#2e7d32;">
-      Official Report Ready for Printing & Export
-    </span>
-    <button onclick="window.print()" style="background:#2e7d32;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:bold;cursor:pointer;font-size:12px;">
-      🖨️ Print Document / Save as PDF
+    <div>
+      <span style="font-weight:700;font-size:13px;color:#065f46;">
+        Official Executive Farm Report Ready for Print & PDF
+      </span>
+      <div style="font-size:11px;color:#047857;margin-top:2px;">
+        Formatted for Standard A4 Paper with high-contrast audit typography.
+      </div>
+    </div>
+    <button onclick="window.print()" style="background:#059669;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:bold;cursor:pointer;font-size:12px;box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+      🖨️ Print Report / Save PDF
     </button>
   </div>
 
@@ -495,44 +559,47 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
       </div>
     </div>
     <div class="doc-meta">
-      <div><strong>Report Type:</strong> ${reportTitle}</div>
-      <div><strong>Duration Window:</strong> ${durationLabel}</div>
-      <div><strong>Exact Dates:</strong> ${startDate} → ${endDate} (${durationDays} days)</div>
-      <div><strong>Generated:</strong> ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
-      <div class="report-badge">VERIFIED FARM AUDIT</div>
+      <div><strong>Document Type:</strong> ${reportTitle}</div>
+      <div><strong>Document Ref:</strong> <span style="font-family:monospace;font-weight:bold;color:#111827;">${docRefId}</span></div>
+      <div><strong>Reporting Window:</strong> ${durationLabel}</div>
+      <div><strong>Dates:</strong> ${startDate} → ${endDate} (${durationDays} days)</div>
+      <div><strong>Generated:</strong> ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+      <div><span class="report-badge">Verified Farm Operations Audit</span></div>
     </div>
   </div>
 
-  <!-- Highlights Bar -->
+  <!-- Executive Highlights Bar -->
   <div class="kpi-row">
-    <div class="kpi-card">
+    <div class="kpi-card sales">
       <div class="kpi-title">Sales Revenue</div>
-      <div class="kpi-val" style="color:#1b5e20;">KES ${totalSalesRevenue.toLocaleString()}</div>
+      <div class="kpi-val" style="color:#059669;">KES ${totalSalesRevenue.toLocaleString()}</div>
       <div class="kpi-sub">${filteredSales.length} livestock transactions</div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card expenses">
       <div class="kpi-title">Expenditures</div>
-      <div class="kpi-val" style="color:#b71c1c;">KES ${totalExpenditure.toLocaleString()}</div>
-      <div class="kpi-sub">${filteredExpenses.length} expense entries</div>
+      <div class="kpi-val" style="color:#dc2626;">KES ${totalExpenditure.toLocaleString()}</div>
+      <div class="kpi-sub">${filteredExpenses.length} operating entries</div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card balance">
       <div class="kpi-title">Net Operating Balance</div>
-      <div class="kpi-val" style="color:${netOperatingProfit >= 0 ? '#1b5e20' : '#b71c1c'};">
+      <div class="kpi-val" style="color:${netOperatingProfit >= 0 ? '#059669' : '#dc2626'};">
         ${netOperatingProfit >= 0 ? '+' : ''}KES ${netOperatingProfit.toLocaleString()}
       </div>
-      <div class="kpi-sub">Cash Flow Position</div>
+      <div class="kpi-sub">Net Cash Flow Position</div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card milk">
       <div class="kpi-title">Milk Production</div>
-      <div class="kpi-val" style="color:#004d40;">${totalMilkLiters} Liters</div>
-      <div class="kpi-sub">${filteredMilk.length} harvest logs</div>
+      <div class="kpi-val" style="color:#0d9488;">${totalMilkLiters} Liters</div>
+      <div class="kpi-sub">${filteredMilk.length} dairy harvest logs</div>
     </div>
   </div>
 
   ${contentHtml}
 
+  <!-- Report Footer -->
   <div class="report-footer">
-    All rights reserved ${new Date().getFullYear()}
+    <div>© ${new Date().getFullYear()} <strong>${activeFarmName}</strong>. All rights reserved. • Generated on ${new Date().toLocaleDateString()}</div>
+    <div>Document Ref: <strong style="font-family:monospace;">${docRefId}</strong> • Verified Operations Audit</div>
   </div>
 </body>
 </html>`;
@@ -1126,7 +1193,7 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
 
               {filteredSales.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-xs record-table-grid">
                     <thead className="bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-bold uppercase tracking-wider">
                       <tr>
                         <th className="px-3 py-2.5">Date</th>
@@ -1194,7 +1261,7 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
 
               {filteredExpenses.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-xs record-table-grid">
                     <thead className="bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-bold uppercase tracking-wider">
                       <tr>
                         <th className="px-3 py-2.5">Date</th>
@@ -1261,7 +1328,7 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
 
               {filteredMilk.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-xs record-table-grid">
                     <thead className="bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-bold uppercase tracking-wider">
                       <tr>
                         <th className="px-3 py-2">Date</th>
@@ -1311,7 +1378,7 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
 
               {filteredHealth.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-xs record-table-grid">
                     <thead className="bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-bold uppercase tracking-wider">
                       <tr>
                         <th className="px-3 py-2">Date</th>
@@ -1360,7 +1427,7 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
 
               {filteredBreeding.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-xs record-table-grid">
                     <thead className="bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-bold uppercase tracking-wider">
                       <tr>
                         <th className="px-3 py-2">Mating Date</th>
@@ -1426,9 +1493,10 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
             </div>
           )}
 
-          {/* Report Template Footer */}
-          <div className="pt-6 border-t border-stone-200 dark:border-stone-800 text-center text-xs text-stone-500 dark:text-stone-400">
-            All rights reserved {new Date().getFullYear()}
+          {/* Report Footer */}
+          <div className="pt-6 border-t border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-stone-500 dark:text-stone-400">
+            <span>© {new Date().getFullYear()} <strong className="text-stone-800 dark:text-stone-200">{user?.farm_name || farmName}</strong>. All rights reserved. • Generated on {new Date().toLocaleDateString()}</span>
+            <span className="font-mono text-[11px] bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-700">Verified Farm Report • Ref: {docRefId}</span>
           </div>
 
         </div>

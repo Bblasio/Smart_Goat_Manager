@@ -81,10 +81,10 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
   return (
     <div
       id="dashboard-summary-card"
-      className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-7 shadow-sm transition-all duration-200"
+      className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 sm:p-6 shadow-xs transition-all duration-200"
     >
       {/* Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-stone-100 dark:border-stone-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-100 dark:border-stone-800">
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -92,7 +92,7 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
               Live Herd Vitality Metrics
             </span>
           </div>
-          <h3 className="text-xl font-black text-stone-900 dark:text-white mt-1">
+          <h3 className="text-xl font-bold text-stone-900 dark:text-stone-100 mt-1 tracking-tight">
             Executive Farm Summary
           </h3>
         </div>
@@ -101,7 +101,7 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
             <button
               type="button"
               onClick={onNavigateToTasks}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-semibold transition-colors shadow-2xs"
             >
               <span>View Tasks & Schedules</span>
               <ChevronRight className="w-3.5 h-3.5 text-stone-500" />
@@ -111,24 +111,24 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
       </div>
 
       {/* 3 Core Metric Panels + 1 Production Companion */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 pt-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-4">
         {/* Metric 1: Total Herd Count */}
         <div
           id="summary-total-herd-count"
           onClick={onNavigateToRecords}
-          className="group relative p-5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700/80 hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+          className="group relative p-4 sm:p-5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 hover:border-emerald-500/80 dark:hover:border-emerald-500/80 transition-all cursor-pointer flex flex-col justify-between shadow-2xs hover:shadow-xs"
         >
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
                 Total Herd Count
               </span>
-              <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
                 <Users className="w-4 h-4" />
               </div>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-black text-stone-900 dark:text-white tracking-tight">
+              <span className="text-3xl sm:text-4xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight">
                 {totalHerdCount}
               </span>
               <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
@@ -140,7 +140,7 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
           <div className="mt-4 pt-3 border-t border-stone-200/60 dark:border-stone-700/60">
             <div className="flex items-center justify-between text-xs text-stone-600 dark:text-stone-300 font-medium">
               <span>{females} Does • {males} Bucks</span>
-              <span className="text-stone-400 group-hover:text-emerald-600 transition-colors flex items-center">
+              <span className="text-stone-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center">
                 Records <ArrowUpRight className="w-3 h-3 ml-0.5" />
               </span>
             </div>
@@ -156,19 +156,19 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
         <div
           id="summary-active-pregnancies"
           onClick={onNavigateToBreedingEstimator}
-          className="group relative p-5 rounded-2xl bg-purple-50/50 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/70 hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+          className="group relative p-4 sm:p-5 rounded-xl bg-purple-50/50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/70 hover:border-purple-500/80 dark:hover:border-purple-500/80 transition-all cursor-pointer flex flex-col justify-between shadow-2xs hover:shadow-xs"
         >
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-purple-800 dark:text-purple-300">
                 Active Pregnancies
               </span>
-              <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 flex items-center justify-center">
                 <Baby className="w-4 h-4" />
               </div>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-black text-purple-950 dark:text-purple-100 tracking-tight">
+              <span className="text-3xl sm:text-4xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight">
                 {activePregnanciesCount}
               </span>
               <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
@@ -207,10 +207,10 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
         <div
           id="summary-recent-health-alerts"
           onClick={onNavigateToTasks || onNavigateToHealth}
-          className={`group relative p-5 rounded-2xl border hover:shadow-md transition-all cursor-pointer flex flex-col justify-between ${
+          className={`group relative p-4 sm:p-5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between shadow-2xs hover:shadow-xs ${
             totalHealthAlertsCount > 0
-              ? 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/80 hover:border-rose-400'
-              : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 hover:border-emerald-400'
+              ? 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/80 hover:border-rose-500/80'
+              : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 hover:border-emerald-500/80'
           }`}
         >
           <div>
@@ -225,7 +225,7 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
                 Recent Health Alerts
               </span>
               <div
-                className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                   totalHealthAlertsCount > 0
                     ? 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300'
                     : 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300'
@@ -240,10 +240,10 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
             </div>
             <div className="flex items-baseline gap-2">
               <span
-                className={`text-3xl sm:text-4xl font-black tracking-tight ${
+                className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
                   totalHealthAlertsCount > 0
-                    ? 'text-rose-950 dark:text-rose-100'
-                    : 'text-emerald-950 dark:text-emerald-100'
+                    ? 'text-stone-900 dark:text-stone-100'
+                    : 'text-stone-900 dark:text-stone-100'
                 }`}
               >
                 {totalHealthAlertsCount}
@@ -288,22 +288,22 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
           </div>
         </div>
 
-        {/* Metric 4: Daily Milk Yield & Production (Invented operational companion) */}
+        {/* Metric 4: Daily Milk Yield & Production (Companion) */}
         <div
           id="summary-milk-yield-companion"
-          className="group relative p-5 rounded-2xl bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-800/70 hover:border-teal-400 dark:hover:border-teal-600 hover:shadow-md transition-all flex flex-col justify-between"
+          className="group relative p-4 sm:p-5 rounded-xl bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/70 hover:border-teal-500/80 dark:hover:border-teal-500/80 transition-all flex flex-col justify-between shadow-2xs hover:shadow-xs"
         >
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-teal-800 dark:text-teal-300">
                 Daily Milk Yield
               </span>
-              <div className="w-8 h-8 rounded-xl bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 flex items-center justify-center">
                 <Milk className="w-4 h-4" />
               </div>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-black text-teal-950 dark:text-teal-100 tracking-tight font-mono">
+              <span className="text-3xl sm:text-4xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight font-mono">
                 {todayMilkYield > 0 ? `${todayMilkYield.toFixed(1)}L` : '0.0L'}
               </span>
               <span className="text-xs font-semibold text-teal-700 dark:text-teal-300">

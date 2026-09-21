@@ -159,7 +159,6 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
       batch_number: (formData.get('batch_number') as string) || undefined,
       expiry_date: formData.get('expiry_date') as string,
       target_diseases: (formData.get('target_diseases') as string) || undefined,
-      withdrawal_period_days: formData.get('withdrawal_period_days') ? Number(formData.get('withdrawal_period_days')) : 0,
       storage_requirements: (formData.get('storage_requirements') as string) || undefined,
       supplier: (formData.get('supplier') as string) || undefined,
       notes: (formData.get('notes') as string) || undefined,
@@ -763,14 +762,6 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                         {med.expiry_date}
                       </span>
                     </div>
-                    {med.withdrawal_period_days !== undefined && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-stone-400">Withdrawal Period:</span>
-                        <span className="font-medium text-amber-700 dark:text-amber-400">
-                          {med.withdrawal_period_days > 0 ? `${med.withdrawal_period_days} days` : '0 days (None)'}
-                        </span>
-                      </div>
-                    )}
                     {med.target_diseases && (
                       <div className="pt-1">
                         <span className="text-stone-400 block mb-0.5">Indications:</span>
@@ -1296,21 +1287,6 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
 
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Withdrawal Period (Days)
-                  </label>
-                  <input
-                    type="number"
-                    name="withdrawal_period_days"
-                    defaultValue={editingMed?.withdrawal_period_days ?? 14}
-                    placeholder="0 if none"
-                    className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
                     Batch Code
                   </label>
                   <input
@@ -1321,19 +1297,19 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                     className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Storage Requirement
-                  </label>
-                  <input
-                    type="text"
-                    name="storage_requirements"
-                    defaultValue={editingMed?.storage_requirements || ''}
-                    placeholder="e.g. Refrigerate 2-8°C, Cool Dark Cabinet"
-                    className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Storage Requirement
+                </label>
+                <input
+                  type="text"
+                  name="storage_requirements"
+                  defaultValue={editingMed?.storage_requirements || ''}
+                  placeholder="e.g. Refrigerate 2-8°C, Cool Dark Cabinet"
+                  className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
+                />
               </div>
 
               <div>

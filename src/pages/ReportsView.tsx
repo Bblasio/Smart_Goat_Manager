@@ -449,20 +449,28 @@ export const ReportsView: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Printable Report Header for Standard A4 Paper (hidden on screen, visible only when printing) */}
-      <div className="hidden print:block mb-6 pb-4 border-b-2 border-stone-800 text-stone-950">
+      <div className="hidden print:block mb-8 pb-4 border-b-2 border-emerald-800 text-stone-950">
         <div className="flex justify-between items-start">
-          <div>
-            <div className="text-[10px] uppercase font-bold text-stone-600 tracking-wider">Smart Goat Management System</div>
-            <h1 className="text-2xl font-black uppercase tracking-tight text-stone-950 mt-0.5">{farmName}</h1>
-            <p className="text-xs text-stone-700 mt-0.5">Livestock Herd, Gestation & Production Audit Report</p>
-            <p className="text-[11px] text-stone-600 mt-1">
-              Location: {user?.location || 'Main Farm'} • Manager: {user?.owner_name || 'Farm Administrator'}
+          <div className="space-y-1">
+            <div className="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold text-[9px] uppercase tracking-wider">
+              Smart Goat Enterprise • Official Audit Document
+            </div>
+            <h1 className="text-2xl font-black uppercase tracking-tight text-stone-950 mt-1">{farmName}</h1>
+            <p className="text-xs font-semibold text-emerald-800">Livestock Herd Census, Clinical Health & Financial Analytics</p>
+            <p className="text-[11px] text-stone-600">
+              Location: {user?.location || 'Main Farm Facility'} • Operator: {user?.owner_name || 'Farm Administrator'} • Contact: {user?.phone || user?.email || 'Registered Herd Office'}
             </p>
           </div>
-          <div className="text-right text-xs text-stone-700">
-            <span className="inline-block px-2 py-0.5 border border-stone-400 font-mono font-bold text-[10px] uppercase rounded">Standard A4 Format</span>
-            <p className="mt-1 font-mono text-[11px]">Report Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p className="text-[11px] text-stone-600">Total Goats: {goats.length} | Health Logs: {health.length} | Breeding Records: {breeding.length}</p>
+          <div className="text-right text-xs text-stone-700 space-y-1">
+            <span className="inline-block px-2.5 py-0.5 border border-emerald-700 bg-emerald-50 text-emerald-900 font-mono font-bold text-[10px] uppercase rounded">
+              Standard A4 Audit
+            </span>
+            <p className="font-mono text-[11px] text-stone-900 font-bold">
+              Report Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+            <p className="text-[11px] text-stone-600">
+              Total Herd: <strong>{goats.length}</strong> | Clinical Logs: <strong>{health.length}</strong> | Breeding: <strong>{breeding.length}</strong>
+            </p>
           </div>
         </div>
       </div>
@@ -756,9 +764,9 @@ export const ReportsView: React.FC = () => {
             )}
 
             {topSales.length > 0 ? (
-              <div className="overflow-x-auto rounded-xl border border-stone-200">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-stone-50 text-xs font-semibold text-stone-600 uppercase tracking-wider">
+              <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-800">
+                <table className="w-full text-left text-sm record-table-grid">
+                  <thead className="bg-stone-50 dark:bg-stone-800/80 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                     <tr>
                       <th className="px-5 py-3">Rank</th>
                       <th className="px-5 py-3">Goat ID</th>
@@ -767,7 +775,7 @@ export const ReportsView: React.FC = () => {
                       <th className="px-5 py-3">Sale Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-100">
+                  <tbody className="bg-white dark:bg-stone-900">
                     {topSales.map((s, idx) => (
                       <tr key={s.id} className="hover:bg-stone-50/50">
                         <td className="px-5 py-3 text-xs font-bold text-stone-400 font-mono">
@@ -819,9 +827,9 @@ export const ReportsView: React.FC = () => {
             )}
 
             {predictedBirthsList.length > 0 ? (
-              <div className="overflow-x-auto rounded-xl border border-stone-200">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-stone-50 text-xs font-semibold text-stone-600 uppercase tracking-wider">
+              <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-800">
+                <table className="w-full text-left text-sm record-table-grid">
+                  <thead className="bg-stone-50 dark:bg-stone-800/80 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                     <tr>
                       <th className="px-5 py-3">Female Tag</th>
                       <th className="px-5 py-3">Sire (Male Tag)</th>
@@ -830,7 +838,7 @@ export const ReportsView: React.FC = () => {
                       <th className="px-5 py-3">Days Left</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-100">
+                  <tbody className="bg-white dark:bg-stone-900">
                     {predictedBirthsList.map((item, idx) => (
                       <tr key={idx} className="hover:bg-stone-50/50">
                         <td className="px-5 py-3 font-bold text-stone-900">{item!.femaleId}</td>
@@ -893,9 +901,9 @@ export const ReportsView: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-stone-200">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-rose-50/50 text-xs font-semibold text-rose-900 uppercase tracking-wider">
+                <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-800">
+                  <table className="w-full text-left text-sm record-table-grid">
+                    <thead className="bg-rose-50/50 dark:bg-rose-950/40 text-xs font-semibold text-rose-900 dark:text-rose-200 uppercase tracking-wider">
                       <tr>
                         <th className="px-5 py-3">Goat ID</th>
                         <th className="px-5 py-3">Price (Ksh)</th>
@@ -904,7 +912,7 @@ export const ReportsView: React.FC = () => {
                         <th className="px-5 py-3">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-stone-100">
+                    <tbody className="bg-white dark:bg-stone-900">
                       {anomalies.map(a => (
                         <tr key={a.id} className="hover:bg-rose-50/20">
                           <td className="px-5 py-3 font-bold text-stone-900">{a.goat_id}</td>
@@ -1107,9 +1115,9 @@ export const ReportsView: React.FC = () => {
         )}
       </div>
 
-      {/* Printable Report Template Footer for Standard A4 Paper */}
-      <div className="hidden print:block mt-8 pt-4 border-t border-stone-300 text-center text-xs text-stone-600">
-        All rights reserved {new Date().getFullYear()}
+      {/* Printable Report Footer */}
+      <div className="hidden print:block mt-8 pt-4 border-t border-stone-300 text-stone-600 text-center text-xs">
+        © {new Date().getFullYear()} {farmName}. All rights reserved. • Generated on {new Date().toLocaleDateString()}
       </div>
 
       {/* Farm Performance, Sales, Expenditure & Operations Report Modal */}

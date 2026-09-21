@@ -232,6 +232,16 @@ export const initialHealth: HealthRecord[] = [
     fetal_age_days: 46,
     custom_gestation_days: 150,
     vet_name: 'Dr. Mutua',
+  },
+  {
+    id: 'hlt-7',
+    goat_id: 'GT-103',
+    condition: 'Scheduled Herd Immunization',
+    treatment: 'Bar-Vac CD/T Clostridial & Tetanus Toxoid Booster Injection',
+    checkup_date: '2026-09-21',
+    checkup_type: 'Vaccination',
+    status: 'Healthy',
+    vet_name: 'Dr. Kariuki',
   }
 ];
 

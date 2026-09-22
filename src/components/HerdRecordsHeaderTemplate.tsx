@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Bell, Plus, RefreshCw, ChevronDown, Upload, FileText } from 'lucide-react';
+import { Search, Bell, Plus, RefreshCw, ChevronDown, Upload, FileText, User } from 'lucide-react';
 
 interface HerdRecordsHeaderTemplateProps {
   farmName?: string;
@@ -37,7 +37,7 @@ export const HerdRecordsHeaderTemplate: React.FC<HerdRecordsHeaderTemplateProps>
           </span>
           <span className="text-stone-400">&gt;</span>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-xs font-semibold cursor-pointer hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors">
-            <span className="text-xs">👤</span>
+            <User className="w-3.5 h-3.5 text-stone-500" />
             <span>{userName}</span>
             <ChevronDown className="w-3 h-3 text-stone-400" />
           </div>
@@ -125,14 +125,7 @@ export const HerdRecordsHeaderTemplate: React.FC<HerdRecordsHeaderTemplateProps>
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3.5 mb-1.5">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden shrink-0 border border-stone-300 dark:border-stone-700 shadow-xs">
-                <img
-                  src="/images/nav/records.jpg"
-                  alt="Herd & Farm Records"
-                  className="w-full h-full object-cover"
-                />
-              </div>
+            <div className="mb-1.5">
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#1e293b] dark:text-stone-100 font-serif tracking-tight">
                 Herd &amp; Farm Records
               </h1>

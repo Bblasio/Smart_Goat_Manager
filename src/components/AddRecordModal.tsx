@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useToast } from '../context/ToastContext';
 import { RecordType, ExpenseCategory } from '../types';
-import { X, Check, Baby, Milk, Stethoscope, FileSpreadsheet, Camera } from 'lucide-react';
+import { X, Check, Baby, Milk, Stethoscope, FileSpreadsheet } from 'lucide-react';
 import { ExcelImportModal } from './ExcelImportModal';
-import { GoatAvatar } from './GoatAvatar';
 
 interface AddRecordModalProps {
   isOpen: boolean;

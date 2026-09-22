@@ -242,13 +242,20 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 rounded-xl">
-              <Package className="w-6 h-6" />
+          <div className="flex items-center gap-3.5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shrink-0 border border-stone-200 dark:border-stone-700 shadow-sm bg-stone-100 dark:bg-stone-800">
+              <img
+                src="/images/nav/feed_supply.jpg"
+                alt="Feed & Supply"
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 mb-1">
+                <span>Rations, Forage &amp; Pharmacy</span>
+              </div>
               <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
-                Feed & Supply Management
+                Feed &amp; Supply Management
               </h1>
               <p className="text-sm text-stone-500 dark:text-stone-400">
                 Track feed stockpiles, mineral supplements, and veterinary medicines with automated low-stock warnings.

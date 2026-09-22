@@ -299,7 +299,11 @@ const MainLayout: React.FC = () => {
                   className="w-7 h-7 rounded-lg object-cover border border-stone-200 dark:border-stone-700 shrink-0"
                 />
               ) : (
-                <span className="text-xl">🐐</span>
+                <img
+                  src="/images/nav/profile.jpg"
+                  alt={farmName}
+                  className="w-7 h-7 rounded-lg object-cover border border-stone-200 dark:border-stone-700 shrink-0"
+                />
               )}
               <span className="font-bold text-stone-900 dark:text-stone-100 text-sm truncate max-w-[140px]">{farmName}</span>
             </button>

@@ -202,7 +202,7 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
     const activeEmail = user?.email || 'farm@smartgoatfarm.com';
     const activePhone = user?.phone || '—';
     const activeLocation = user?.location || '—';
-    const logoImg = user?.logo_url ? `<img src="${user.logo_url}" alt="Logo" style="width:64px;height:64px;border-radius:12px;object-fit:cover;border:1px solid #ddd;" />` : `<div style="font-size:36px;width:64px;height:64px;line-height:64px;text-align:center;background:#e6f4ea;border-radius:12px;">🐐</div>`;
+    const logoImg = user?.logo_url ? `<img src="${user.logo_url}" alt="Logo" style="width:64px;height:64px;border-radius:12px;object-fit:cover;border:1px solid #ddd;" />` : `<img src="/images/nav/profile.jpg" alt="Logo" style="width:64px;height:64px;border-radius:12px;object-fit:cover;border:1px solid #ddd;" />`;
 
     let reportTitle = 'FARM OPERATIONS & PRODUCTION REPORT';
     if (reportCategory === 'sales') reportTitle = 'OFFICIAL GOAT SALES & COMMERCIAL REVENUE LEDGER';
@@ -1060,7 +1060,11 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-3xl">🐐</span>
+                    <img
+                      src="/images/nav/profile.jpg"
+                      alt={user?.farm_name || farmName}
+                      className="w-full h-full object-cover"
+                    />
                   )}
                 </div>
 

@@ -5,6 +5,7 @@ import {
   BreedingRecord,
   SaleRecord,
 } from '../types';
+import { GoatAvatar } from './GoatAvatar';
 import {
   Search,
   Eye,
@@ -70,6 +71,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
   const [editWeight, setEditWeight] = useState<number | ''>('');
   const [editDob, setEditDob] = useState('');
   const [editStatus, setEditStatus] = useState<GoatRecord['status']>('Active');
+  const [editPhotoUrl, setEditPhotoUrl] = useState<string | undefined>(undefined);
 
   const handleOpenEdit = (goat: GoatRecord) => {
     setQuickEditGoat(goat);
@@ -80,6 +82,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
     setEditWeight(goat.weight_kg || '');
     setEditDob(goat.dob || '');
     setEditStatus(goat.status);
+    setEditPhotoUrl(goat.photo_url);
     setActiveMenuGoatId(null);
   };
 
@@ -95,6 +98,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
       weight_kg: editWeight === '' ? undefined : Number(editWeight),
       dob: editDob,
       status: editStatus,
+      photo_url: editPhotoUrl,
     });
     setQuickEditGoat(null);
   };
@@ -367,18 +371,23 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                       {/* Column 2: Tag & Name with circular avatar */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          {/* Circular goat avatar */}
-                          <div className="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-700/80 border border-stone-300/80 dark:border-stone-600 flex items-center justify-center shrink-0 text-stone-600 dark:text-stone-300 shadow-2xs">
-                            <span className="text-base select-none">🐐</span>
-                          </div>
+                          {/* Circular goat avatar with photo or real picture representation */}
+                          <GoatAvatar
+                            photoUrl={goat.photo_url}
+                            gender={goat.gender}
+                            tagNumber={goat.tag_number}
+                            name={goat.name}
+                            size="md"
+                            canUpload={false}
+                          />
 
                           <div>
-                            <div className="font-extrabold text-stone-900 dark:text-stone-100 font-mono text-sm tracking-tight">
-                              {goat.tag_number}
+                            <div className="font-extrabold text-stone-900 dark:text-stone-100 font-mono text-sm tracking-tight flex items-center gap-1.5">
+                              <span>{goat.tag_number}</span>
                             </div>
                             <div className="mt-1">
                               <span className="px-2.5 py-0.5 rounded-full border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800 text-[11px] text-stone-600 dark:text-stone-300 font-medium inline-block shadow-2xs">
-                                {goat.name || 'Name'}
+                                {goat.name || 'Unnamed Goat'}
                               </span>
                             </div>
                           </div>
@@ -396,8 +405,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                           )}
 
                           {healthInfo.status === 'Pregnant' && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#f3e8ff] text-[#7e22ce] border border-[#e9d5ff] dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800">
-                              <Clock className="w-3 h-3 text-[#9333ea] dark:text-purple-400" />
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#f3e8ff] text-[#7e22ce] border border-[#e9d5ff] dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800">
                               Pregnant
                             </span>
                           )}
@@ -614,9 +622,14 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-xl">
-                  🐐
-                </div>
+                <GoatAvatar
+                  photoUrl={quickViewGoat.photo_url}
+                  gender={quickViewGoat.gender}
+                  tagNumber={quickViewGoat.tag_number}
+                  name={quickViewGoat.name}
+                  size="lg"
+                  canUpload={false}
+                />
                 <div>
                   <h3 className="text-lg font-bold text-stone-900 dark:text-white font-mono">
                     {quickViewGoat.tag_number}

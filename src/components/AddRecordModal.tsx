@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useToast } from '../context/ToastContext';
 import { RecordType, ExpenseCategory } from '../types';
-import { X, Check, Baby, Milk, Stethoscope, FileSpreadsheet } from 'lucide-react';
+import { X, Check, Baby, Milk, Stethoscope, FileSpreadsheet, Camera } from 'lucide-react';
 import { ExcelImportModal } from './ExcelImportModal';
+import { GoatAvatar } from './GoatAvatar';
 
 interface AddRecordModalProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   const [goatDob, setGoatDob] = useState(todayStr);
   const [goatWeight, setGoatWeight] = useState('45');
   const [goatStatus, setGoatStatus] = useState<'Active' | 'Pregnant' | 'Quarantine' | 'Sold'>('Active');
+  const [goatPhoto, setGoatPhoto] = useState<string | undefined>(undefined);
 
   // Breeding form state
   const [breedFemale, setBreedFemale] = useState('');
@@ -117,10 +119,12 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           dob: goatDob,
           weight_kg: parseFloat(goatWeight) || 45,
           status: goatStatus,
+          photo_url: goatPhoto || undefined,
         });
         setSuccessMsg(`Goat ${goatTag.trim().toUpperCase()}${goatName ? ` (${goatName})` : ''} added successfully!`);
         setGoatTag('');
         setGoatName('');
+        setGoatPhoto(undefined);
       } else if (recordType === 'breeding') {
         if (!breedFemale.trim() || !breedMale.trim()) {
           setErrorMsg('Both Female Tag and Male Tag are required.');
@@ -293,7 +297,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           <div className="grid grid-cols-7 gap-1 p-1 bg-stone-100 rounded-xl">
             {(
               [
-                { type: 'goat', label: 'Goat', icon: '🐐' },
+                { type: 'goat', label: 'Goat', icon: '📋' },
                 { type: 'breeding', label: 'Breed', icon: '🧬' },
                 { type: 'health', label: 'Health', icon: '💊' },
                 { type: 'milk', label: 'Milk', icon: '🥛' },

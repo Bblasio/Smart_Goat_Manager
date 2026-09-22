@@ -426,15 +426,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onOpenModal={() => onOpenNotificationModal?.()}
       />
 
-      {/* Header and Summary Card (Restored Previous Version) */}
+      {/* Header and Summary Card */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-white tracking-tight flex items-center gap-2">
-            <span>🐐 {farmName || 'Farm'} Dashboard</span>
-          </h2>
-          <p className="text-stone-500 dark:text-stone-400 text-sm mt-1">
-            Overview of your herd's performance, breeding pipeline, and daily operations.
-          </p>
+        <div className="flex items-center gap-3.5">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-2 border-emerald-500/60 shadow-md shrink-0 bg-stone-100 dark:bg-stone-800 ring-2 ring-emerald-500/20">
+            <img
+              src="/images/nav/dashboard.jpg"
+              alt="Farm Operations Dashboard"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-white tracking-tight">
+              Good {(() => {
+                const h = new Date().getHours();
+                return h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
+              })()}, <span className="text-emerald-600 dark:text-emerald-400">{farmName || 'Farm'}</span>
+            </h2>
+            <p className="text-stone-500 dark:text-stone-400 text-sm mt-0.5">
+              Overview of your herd's performance, breeding pipeline, and daily operations.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -555,12 +567,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-sm cursor-pointer hover:bg-amber-100/80 dark:hover:bg-amber-900/50 transition-colors"
                 onClick={onNavigateToBreedingEstimator}
               >
-                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/70 flex items-center justify-center shrink-0">
-                  <Baby className="w-4 h-4 text-amber-700 dark:text-amber-300" />
-                </div>
                 <div className="flex-1 min-w-0">
                   <span className="font-bold">
-                    ⚠️ {birthsDueSoon.length} kidding(s) expected within 7 days!
+                    {birthsDueSoon.length} kidding(s) expected within 7 days!
                   </span>
                   <p className="text-xs text-amber-700 dark:text-amber-300/80">
                     Prepare maternity stalls for {birthsDueSoon.map(b => b.female_id).join(', ')}. Click to estimate delivery times.
@@ -834,7 +843,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div className="text-3xl font-extrabold text-stone-900 dark:text-white">{totalGoats}</div>
             <div className="text-xs text-stone-400 dark:text-stone-500 mt-2 flex items-center gap-1">
-              <span>🐐 In herd</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">● In active herd</span>
             </div>
           </div>
 
@@ -877,8 +886,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div className="text-3xl font-extrabold text-purple-600 dark:text-purple-400">{pregnantCount}</div>
             <div className="text-xs text-stone-400 dark:text-stone-500 mt-2 flex items-center gap-1">
-              <Baby className="w-3 h-3 text-purple-500" />
-              <span>Gestation active</span>
+              <span className="text-purple-600 dark:text-purple-400 font-medium">● Gestation active</span>
             </div>
           </div>
 

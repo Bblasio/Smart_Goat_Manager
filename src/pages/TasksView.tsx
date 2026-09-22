@@ -528,17 +528,26 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
       {/* Top Banner */}
       <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-xs transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 mb-2">
-              <CheckSquare className="w-3.5 h-3.5" />
-              <span>Farm Operations & Task Center</span>
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shrink-0 border border-stone-200 dark:border-stone-700 shadow-sm bg-stone-100 dark:bg-stone-800">
+              <img
+                src="/images/nav/tasks.jpg"
+                alt="Tasks & Operations"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-stone-900 dark:text-white tracking-tight">
-              Tasks & Important Farm Records
-            </h1>
-            <p className="text-stone-500 dark:text-stone-400 text-sm mt-1 max-w-2xl">
-              Track pending livestock management tasks, log completed health actions, and review the chronological history of vital farm records.
-            </p>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 mb-1.5">
+                <CheckSquare className="w-3.5 h-3.5" />
+                <span>Farm Operations & Task Center</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-stone-900 dark:text-white tracking-tight">
+                Tasks &amp; Important Farm Records
+              </h1>
+              <p className="text-stone-500 dark:text-stone-400 text-sm mt-1 max-w-2xl">
+                Track pending livestock management tasks, log completed health actions, and review the chronological history of vital farm records.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">

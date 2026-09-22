@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import {
-  Stethoscope,
   Plus,
   Search,
   Filter,
   Trash2,
   Calendar,
   HeartPulse,
-  Baby,
   ShieldCheck,
-  Syringe,
-  Pill,
   ArrowRight,
   Sparkles
 } from 'lucide-react';
@@ -58,12 +54,11 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-2">
-            <Stethoscope className="w-3.5 h-3.5" />
-            Veterinary & Clinical Protocols
+          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-2">
+            Veterinary &amp; Clinical Protocols
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
-            Herd Health & Pregnancy Checks
+            Herd Health &amp; Pregnancy Checks
           </h2>
           <p className="text-stone-500 text-sm mt-1">
             Track pregnancy ultrasounds, observed gestation age, vaccination booster dates, and treatments.
@@ -74,9 +69,8 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
           <button
             type="button"
             onClick={() => onNavigate('breeding_estimator')}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-xs"
+            className="inline-flex items-center px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-xs"
           >
-            <Baby className="w-4 h-4 text-emerald-600" />
             <span>Open Breeding Predictor</span>
           </button>
           <button
@@ -101,12 +95,12 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
               {pregnancyChecks.length} Does
             </div>
             <div className="text-xs text-emerald-700 mt-1 flex items-center gap-1">
-              <span>Ultrasound & fetal age verified</span>
+              <span>Ultrasound &amp; fetal age verified</span>
             </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
-            🤰
-          </div>
+          <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-semibold text-xs border border-emerald-200">
+            Active
+          </span>
         </div>
 
         <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-xs flex items-center justify-between">
@@ -118,29 +112,29 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
               {vaccinations.length} Administered
             </div>
             <div className="text-xs text-stone-500 mt-1">
-              CD/T, PPR, & Clostridial boosters
+              CD/T, PPR, &amp; Clostridial boosters
             </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-xl">
-            💉
-          </div>
+          <span className="px-2.5 py-1 rounded-lg bg-stone-100 text-stone-700 font-semibold text-xs border border-stone-200">
+            Protocol
+          </span>
         </div>
 
         <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider">
-              Parasite & Deworming
+              Parasite &amp; Deworming
             </span>
             <div className="text-2xl font-bold text-stone-900 mt-1">
               {dewormings.length} Treated
             </div>
             <div className="text-xs text-stone-500 mt-1">
-              Albendazole & Ivermectin doses
+              Albendazole &amp; Ivermectin doses
             </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
-            💊
-          </div>
+          <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 font-semibold text-xs border border-amber-200">
+            Routine
+          </span>
         </div>
       </div>
 
@@ -227,8 +221,7 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
                     <td className="px-6 py-3.5">
                       {item.fetal_age_days ? (
                         <div className="space-y-1">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                            <Baby className="w-3 h-3" />
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
                             {item.fetal_age_days}d gestation
                           </span>
                           <button

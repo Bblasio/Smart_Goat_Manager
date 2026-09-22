@@ -218,8 +218,12 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-xs">
-                          🐐
+                        <div className="w-7 h-7 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-700 shrink-0">
+                          <img
+                            src={goat.photo_url || (goat.gender === 'Male' ? '/jamunapari-goats.png' : '/images/nav/doe.jpg')}
+                            alt={goat.tag_number}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                         <div>
                           <div className="text-xs font-bold text-stone-900 dark:text-white flex items-center gap-2">

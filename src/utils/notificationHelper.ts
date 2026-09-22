@@ -162,7 +162,7 @@ export function getFarmNotifications(
           goatId: b.female_id,
           goatName: femaleGoat?.name,
           details: `Sire: ${b.male_id}`,
-          badge: '🐐 Mating Scheduled Today',
+          badge: 'Mating Scheduled Today',
         });
       }
     }

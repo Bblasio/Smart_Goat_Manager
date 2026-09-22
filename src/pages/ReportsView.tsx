@@ -410,7 +410,7 @@ export const ReportsView: React.FC = () => {
     } else if (ratio > 0.6) {
       recs.push({
         id: 'rec-high-preg',
-        text: '🐐 High pregnancy rate (> 60%) — ensure sufficient maternity pen space, creep feed, and colostrum supplies.',
+        text: 'High pregnancy rate (> 60%) — ensure sufficient maternity pen space, creep feed, and colostrum supplies.',
         type: 'info',
       });
     }
@@ -657,7 +657,7 @@ export const ReportsView: React.FC = () => {
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
               <span className="inline-flex items-center gap-1 font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-lg">
-                🐐 {goats.length} Herd Goats
+                ● {goats.length} Herd Goats
               </span>
               <span className="inline-flex items-center gap-1 font-semibold text-sky-900 bg-sky-50 border border-sky-200/80 px-2.5 py-1 rounded-lg">
                 🩺 {health.length} Health Records

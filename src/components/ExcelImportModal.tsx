@@ -846,7 +846,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
                 <div className="p-2.5 bg-white/80 dark:bg-stone-900/80 rounded-xl border border-emerald-200 dark:border-emerald-800/80">
                   <span className="text-stone-500 dark:text-stone-400 block text-[11px]">Herd Goats:</span>
-                  <strong className="text-sm text-stone-900 dark:text-white">🐐 {importSummary.goats} Goats</strong>
+                  <strong className="text-sm text-stone-900 dark:text-white">{importSummary.goats} Goats</strong>
                 </div>
                 <div className="p-2.5 bg-white/80 dark:bg-stone-900/80 rounded-xl border border-emerald-200 dark:border-emerald-800/80">
                   <span className="text-stone-500 dark:text-stone-400 block text-[11px]">Breeding Registry:</span>
@@ -1076,7 +1076,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div className="p-3 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700">
                     <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
-                      <span>🐐</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
                       <span>Herd Goats:</span>
                     </div>
                     <div className="text-lg font-black text-stone-900 dark:text-white mt-1">
@@ -1140,7 +1140,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                         : 'text-stone-600 dark:text-stone-300 hover:text-stone-900'
                     }`}
                   >
-                    <span>🐐 Herd Ledger ({parsedData.goats.length})</span>
+                    <span>Herd Ledger ({parsedData.goats.length})</span>
                   </button>
 
                   {parsedData.breeding.length > 0 && (

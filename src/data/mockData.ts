@@ -33,13 +33,14 @@ export const initialGoats: GoatRecord[] = [
   {
     id: 'goat-488',
     tag_number: 'GT-488',
-    name: 'Kalahari Doe',
-    breed: 'Kalahari Red',
+    name: 'Jamunapari Doe',
+    breed: 'Jamunapari',
     gender: 'Female',
     dob: '2021-08-10',
     created_at: '2021-08-10T10:00:00Z',
     weight_kg: 40,
     status: 'Active',
+    photo_url: '/jamunapari-goats.png',
   },
   {
     id: 'goat-223',

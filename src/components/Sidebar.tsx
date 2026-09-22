@@ -71,15 +71,72 @@ export const Sidebar: React.FC<SidebarProps> = ({
     (feeds?.filter(f => f.quantity <= f.min_threshold).length || 0) +
     (medications?.filter(m => m.quantity <= m.min_threshold).length || 0);
 
-  const navItems: { id: AppView; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-    { id: 'feed_supply', label: 'Feed & Supply', icon: Package, badge: lowStockCount > 0 ? `${lowStockCount} alert${lowStockCount > 1 ? 's' : ''}` : undefined },
-    { id: 'breeding_estimator', label: 'Breeding Estimator', icon: Baby, badge: 'New' },
-    { id: 'records', label: 'Herd & Farm Records', icon: ClipboardList },
-    { id: 'health_vet', label: 'Veterinary & Health', icon: Stethoscope },
-    { id: 'reports', label: 'Reports & Forecasts', icon: TrendingUp },
-    { id: 'profile', label: 'Farm Profile', icon: Building2 },
+  interface NavItemConfig {
+    id: AppView;
+    label: string;
+    sublabel: string;
+    photo: string;
+    badge?: string;
+    badgeClass?: string;
+  }
+
+  const navItems: NavItemConfig[] = [
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      sublabel: 'Overview & Herd KPIs',
+      photo: '/images/nav/dashboard.jpg',
+      badge: 'Live',
+      badgeClass: 'bg-stone-800 text-stone-300 border border-stone-700',
+    },
+    {
+      id: 'tasks',
+      label: 'Tasks',
+      sublabel: 'Operations & Chores',
+      photo: '/images/nav/tasks.jpg',
+      badge: todayNotificationCount > 0 ? `${todayNotificationCount}` : undefined,
+      badgeClass: todayNotificationCount > 0 ? 'bg-rose-500 text-white' : undefined,
+    },
+    {
+      id: 'feed_supply',
+      label: 'Feed & Supply',
+      sublabel: 'Rations, Hay & Meds',
+      photo: '/images/nav/feed_supply.jpg',
+      badge: lowStockCount > 0 ? `${lowStockCount} alert${lowStockCount > 1 ? 's' : ''}` : undefined,
+      badgeClass: 'bg-amber-900/60 text-amber-200 border border-amber-700/60',
+    },
+    {
+      id: 'breeding_estimator',
+      label: 'Breeding Estimator',
+      sublabel: 'Gestation & Kidding',
+      photo: '/images/nav/breeding.jpg',
+      badge: 'Pipeline',
+      badgeClass: 'bg-stone-800 text-stone-300 border border-stone-700',
+    },
+    {
+      id: 'records',
+      label: 'Herd & Farm Records',
+      sublabel: 'Pedigree & Tag Registry',
+      photo: '/images/nav/records.jpg',
+    },
+    {
+      id: 'health_vet',
+      label: 'Veterinary & Health',
+      sublabel: 'Vaccines & Vitals',
+      photo: '/images/nav/health_vet.jpg',
+    },
+    {
+      id: 'reports',
+      label: 'Reports & Forecasts',
+      sublabel: 'Analytics & Financials',
+      photo: '/images/nav/reports.jpg',
+    },
+    {
+      id: 'profile',
+      label: 'Farm Profile',
+      sublabel: 'Settings & Identity',
+      photo: '/images/nav/profile.jpg',
+    },
   ];
 
   return (
@@ -118,8 +175,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className="w-10 h-10 rounded-xl object-cover border border-emerald-500/50 shadow-xs shrink-0 group-hover:border-emerald-400 transition-colors"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white flex items-center justify-center text-xl shadow-xs shrink-0 group-hover:scale-105 transition-transform">
-                  🐐
+                <div className="w-10 h-10 rounded-xl overflow-hidden border border-emerald-500/50 shadow-xs shrink-0 group-hover:scale-105 transition-transform bg-stone-800">
+                  <img
+                    src="/jamunapari-goats.png"
+                    alt={farmName}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               )}
               <div className="min-w-0">
@@ -216,7 +277,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {navItems.map(item => {
-            const Icon = item.icon;
             const isActive = activeTab === item.id;
 
             return (
@@ -227,20 +287,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   setActiveTab(item.id);
                   setMobileOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`group w-full flex items-center justify-between p-2 rounded-xl text-left transition-all border ${
                   isActive
-                    ? 'bg-emerald-600 text-white font-semibold shadow-xs'
-                    : 'text-stone-300 hover:bg-stone-800 hover:text-white'
+                    ? 'bg-stone-800/80 border-stone-700/60 shadow-xs'
+                    : 'bg-transparent hover:bg-stone-800/40 border-transparent text-stone-400 hover:text-stone-200'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-stone-400'}`} />
-                  <span>{item.label}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border transition-all ${
+                    isActive ? 'border-emerald-500/70 shadow-xs' : 'border-stone-700/70 group-hover:border-stone-600'
+                  }`}>
+                    <img
+                      src={item.photo}
+                      alt={item.label}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className={`text-xs truncate transition-colors ${
+                      isActive ? 'font-bold text-white' : 'font-medium text-stone-300 group-hover:text-white'
+                    }`}>
+                      {item.label}
+                    </div>
+                    <div className={`text-[10px] truncate transition-colors ${
+                      isActive ? 'text-stone-300 font-medium' : 'text-stone-400 group-hover:text-stone-300'
+                    }`}>
+                      {item.sublabel}
+                    </div>
+                  </div>
                 </div>
                 {item.badge && (
                   <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                      isActive ? 'bg-emerald-800 text-emerald-100' : 'bg-emerald-900/60 text-emerald-300'
+                    className={`shrink-0 ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide ${
+                      item.badgeClass || (isActive ? 'bg-stone-700 text-white' : 'bg-stone-800 text-stone-400')
                     }`}
                   >
                     {item.badge}

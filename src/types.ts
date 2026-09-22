@@ -10,6 +10,7 @@ export interface GoatRecord {
   status?: 'Active' | 'Sold' | 'Quarantine' | 'Pregnant' | 'Dead';
   dam_tag?: string;
   sire_tag?: string;
+  photo_url?: string;
 }
 
 export interface BreedingRecord {

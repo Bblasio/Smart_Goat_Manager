@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { formatActiveDurationCompact } from '../utils/dateHelper';
+import { AppView } from '../types';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -18,8 +19,8 @@ import {
 } from 'lucide-react';
 
 interface NavbarProps {
-  activeTab: 'dashboard' | 'records' | 'reports';
-  setActiveTab: (tab: 'dashboard' | 'records' | 'reports') => void;
+  activeTab: AppView;
+  setActiveTab: (tab: AppView) => void;
   onOpenAddModal: () => void;
 }
 
@@ -61,8 +62,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16">
           {/* Logo & Farm Identity */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xl shadow-sm">
-              🐐
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-emerald-500/50 shadow-sm shrink-0 bg-stone-100">
+              <img
+                src="/jamunapari-goats.png"
+                alt={farmName}
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -108,45 +113,35 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex items-center gap-1 sm:gap-2">
-            <button
-              id="nav-tab-dashboard"
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'dashboard'
-                  ? 'bg-emerald-50 text-emerald-800 font-semibold'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>Dashboard</span>
-            </button>
-
-            <button
-              id="nav-tab-records"
-              onClick={() => setActiveTab('records')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'records'
-                  ? 'bg-emerald-50 text-emerald-800 font-semibold'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-              }`}
-            >
-              <ClipboardList className="w-4 h-4" />
-              <span>Records</span>
-            </button>
-
-            <button
-              id="nav-tab-reports"
-              onClick={() => setActiveTab('reports')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'reports'
-                  ? 'bg-emerald-50 text-emerald-800 font-semibold'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-              }`}
-            >
-              <TrendingUp className="w-4 h-4 text-emerald-600" />
-              <span>Farm Reports</span>
-            </button>
+          <nav className="hidden md:flex items-center gap-1.5 lg:gap-2">
+            {[
+              { id: 'dashboard' as const, label: 'Dashboard', photo: '/images/nav/dashboard.jpg' },
+              { id: 'tasks' as const, label: 'Tasks', photo: '/images/nav/tasks.jpg' },
+              { id: 'feed_supply' as const, label: 'Feed & Supply', photo: '/images/nav/feed_supply.jpg' },
+              { id: 'records' as const, label: 'Records', photo: '/images/nav/records.jpg' },
+              { id: 'reports' as const, label: 'Reports', photo: '/images/nav/reports.jpg' },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  id={`nav-tab-${tab.id}`}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs transition-all border ${
+                    isActive
+                      ? 'font-bold text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 shadow-2xs'
+                      : 'font-medium border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-800/60'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-md overflow-hidden shrink-0 border shadow-2xs ${
+                    isActive ? 'border-emerald-600 dark:border-emerald-400' : 'border-stone-200 dark:border-stone-700'
+                  }`}>
+                    <img src={tab.photo} alt={tab.label} className="w-full h-full object-cover" />
+                  </div>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </nav>
 
           {/* Actions & Profile */}

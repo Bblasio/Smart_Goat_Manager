@@ -5,12 +5,10 @@ import {
   Sparkles,
   Heart,
   Activity,
-  Baby,
   ShieldCheck,
   AlertTriangle,
   Clock,
   CheckCircle2,
-  Stethoscope,
   Info,
   ArrowRight,
   Plus,
@@ -249,9 +247,8 @@ export const BreedingEstimatorView: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
       <div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-2">
-          <Baby className="w-3.5 h-3.5" />
-          Breeding & Kidding Estimation Tool
+        <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-2">
+          Breeding &amp; Kidding Estimation Tool
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
           Gestation & Kidding Date Predictor
@@ -368,8 +365,7 @@ export const BreedingEstimatorView: React.FC = () => {
             {/* Mode 2: Health Record Sync */}
             {calculationMode === 'health_record' && (
               <div className="space-y-4 p-4 rounded-xl bg-emerald-50/60 border border-emerald-200">
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
-                  <Stethoscope className="w-4 h-4 text-emerald-700" />
+                <div className="flex items-center text-xs font-bold text-emerald-900">
                   <span>Observed Pregnancy from Health Records</span>
                 </div>
 
@@ -628,9 +624,8 @@ export const BreedingEstimatorView: React.FC = () => {
       <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-              <Baby className="w-4 h-4 text-emerald-600" />
-              <span>Active Herd Gestation & Kidding Watchlist</span>
+            <h3 className="text-base font-bold text-stone-900">
+              Active Herd Gestation &amp; Kidding Watchlist
             </h3>
             <p className="text-xs text-stone-500">
               Live tracking of all expectant does currently on the farm

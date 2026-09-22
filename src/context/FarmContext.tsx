@@ -1201,7 +1201,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/goats/${id}`);
-        await set(itemRef, {
+        const goatPayload: Record<string, any> = {
           tag_number: newGoat.tag_number,
           name: newGoat.name || '',
           breed: newGoat.breed,
@@ -1210,7 +1210,11 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           created_at: createdAt,
           weight_kg: newGoat.weight_kg || 45,
           status: newGoat.status || 'Active',
-        });
+        };
+        if (newGoat.photo_url) {
+          goatPayload.photo_url = newGoat.photo_url;
+        }
+        await set(itemRef, goatPayload);
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -1232,7 +1236,15 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/goats/${id}`);
-        await update(itemRef, updates);
+        const sanitizedUpdates: Record<string, any> = {};
+        Object.entries(updates).forEach(([k, v]) => {
+          if (v !== undefined) {
+            sanitizedUpdates[k] = v;
+          } else if (k === 'photo_url') {
+            sanitizedUpdates[k] = null;
+          }
+        });
+        await update(itemRef, sanitizedUpdates);
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {

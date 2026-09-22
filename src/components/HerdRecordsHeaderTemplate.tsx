@@ -125,13 +125,19 @@ export const HerdRecordsHeaderTemplate: React.FC<HerdRecordsHeaderTemplateProps>
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#1e293b] dark:text-stone-100 font-serif tracking-tight flex items-center gap-3">
-              <span>Herd &amp; Farm Records</span>
-              <span className="text-3xl sm:text-4xl select-none" role="img" aria-label="Goat">
-                🐐
-              </span>
-            </h1>
-            <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 mt-2 max-w-2xl font-sans">
+            <div className="flex items-center gap-3.5 mb-1.5">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden shrink-0 border border-stone-300 dark:border-stone-700 shadow-xs">
+                <img
+                  src="/images/nav/records.jpg"
+                  alt="Herd & Farm Records"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#1e293b] dark:text-stone-100 font-serif tracking-tight">
+                Herd &amp; Farm Records
+              </h1>
+            </div>
+            <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 mt-1 max-w-2xl font-sans">
               Comprehensive livestock pedigree registry, reproductive tracking, veterinary health certificates, and operational herd ledgers.
             </p>
           </div>

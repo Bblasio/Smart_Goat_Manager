@@ -195,11 +195,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {user?.logo_url ? (
                 <img
                   src={user.logo_url}
-                  alt={user.farm_name}
+                  alt={user?.farm_name || 'Farm Profile'}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span>🐐</span>
+                <img
+                  src="/images/nav/profile.jpg"
+                  alt={user?.farm_name || 'Farm Profile'}
+                  className="w-full h-full object-cover"
+                />
               )}
               <label
                 htmlFor="quick-logo-input"
@@ -490,7 +494,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-lg">🐐</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
                   <span className="text-xs font-semibold text-stone-700">Total Registered Herd</span>
                 </div>
                 <span className="text-base font-bold text-stone-900">{totalGoats}</span>
@@ -626,7 +630,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     {editLogoUrl ? (
                       <img src={editLogoUrl} alt="Farm Logo Preview" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-2xl text-stone-400">🐐</span>
+                      <img src="/images/nav/profile.jpg" alt="Default Farm Logo" className="w-full h-full object-cover opacity-60" />
                     )}
                   </div>
                   <div className="flex-1 space-y-2">

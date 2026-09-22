@@ -199,7 +199,11 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
               className="w-6 h-6 rounded-lg object-cover border border-stone-300 dark:border-stone-600 shrink-0"
             />
           ) : (
-            <span className="text-sm">🐐</span>
+            <img
+              src="/images/nav/profile.jpg"
+              alt={farmName}
+              className="w-6 h-6 rounded-lg object-cover border border-stone-300 dark:border-stone-600 shrink-0"
+            />
           )}
           <span className="text-xs font-bold text-stone-800 dark:text-stone-200 max-w-[100px] truncate">
             {farmName}

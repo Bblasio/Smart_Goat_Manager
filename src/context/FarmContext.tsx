@@ -341,6 +341,14 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, [firebaseUser]);
 
+  // Helper to safely execute async promises with a strict timeout to prevent indefinite hangs
+  const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms))
+    ]);
+  };
+
   // Auth State Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async fbUser => {
@@ -353,57 +361,79 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsFirebaseActive(true);
         setSyncStatus('connecting');
 
-        // Fetch user profile from RTDB users/{uid}/user_profile
+        // Immediately set an initial profile so the user is authenticated without waiting
+        const prefix = (fbUser.email || 'Farm').split('@')[0];
+        let defaultFarmName = fbUser.displayName || (prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm');
+        let initialCachedUser: FarmUser | null = null;
+        try {
+          const cached = localStorage.getItem('sgm_user');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed.uid === fbUser.uid) {
+              initialCachedUser = parsed;
+              defaultFarmName = parsed.farm_name || defaultFarmName;
+            }
+          }
+        } catch {
+          // ignore
+        }
+
+        const immediateUser: FarmUser = initialCachedUser || {
+          uid: fbUser.uid,
+          email: fbUser.email || '',
+          farm_name: defaultFarmName,
+          created_at: new Date().toISOString(),
+        };
+
+        setUser(immediateUser);
+        localStorage.setItem('sgm_user', JSON.stringify(immediateUser));
+
+        // Fetch user profile from RTDB with strict 2.5s timeout so it NEVER hangs
         try {
           const profileRef = ref(rtdb, `users/${fbUser.uid}/user_profile`);
-          const profileSnap = await get(profileRef);
+          const profileSnap = await withTimeout(get(profileRef), 2500, null);
 
-          let resolvedFarmName = fbUser.displayName || '';
+          let resolvedFarmName = fbUser.displayName || defaultFarmName;
 
-          const val = profileSnap.exists() ? profileSnap.val() : {};
-          if (profileSnap.exists()) {
+          const val = profileSnap && profileSnap.exists() ? profileSnap.val() : {};
+          if (profileSnap && profileSnap.exists()) {
             resolvedFarmName = val.farm_name || val.farmName || resolvedFarmName;
           }
 
           if (!resolvedFarmName) {
             // Check fallback path users/{uid}/profile
-            const altSnap = await get(ref(rtdb, `users/${fbUser.uid}/profile`));
-            if (altSnap.exists()) {
+            const altSnap = await withTimeout(get(ref(rtdb, `users/${fbUser.uid}/profile`)), 1500, null);
+            if (altSnap && altSnap.exists()) {
               const altVal = altSnap.val();
               resolvedFarmName = altVal.farm_name || altVal.farmName || resolvedFarmName;
             }
           }
 
-          if (!resolvedFarmName) {
-            // Clean fallback from email
-            const prefix = (fbUser.email || 'Farm').split('@')[0];
-            resolvedFarmName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm';
-          }
-
           const currentProfile: FarmUser = {
+            ...immediateUser,
             uid: fbUser.uid,
             email: fbUser.email || '',
             farm_name: resolvedFarmName,
-            owner_name: val?.owner_name || '',
-            location: val?.location || '',
-            farm_size: val?.farm_size || '',
-            primary_breed: val?.primary_breed || '',
-            phone: val?.phone || '',
-            bio: val?.bio || '',
-            production_focus: val?.production_focus || '',
-            grazing_system: val?.grazing_system || '',
-            founded_year: val?.founded_year || '',
-            logo_url: val?.logo_url || '',
-            created_at: val?.created_at || (profileSnap.exists() && profileSnap.val().created_at
+            owner_name: val?.owner_name || immediateUser.owner_name || '',
+            location: val?.location || immediateUser.location || '',
+            farm_size: val?.farm_size || immediateUser.farm_size || '',
+            primary_breed: val?.primary_breed || immediateUser.primary_breed || '',
+            phone: val?.phone || immediateUser.phone || '',
+            bio: val?.bio || immediateUser.bio || '',
+            production_focus: val?.production_focus || immediateUser.production_focus || '',
+            grazing_system: val?.grazing_system || immediateUser.grazing_system || '',
+            founded_year: val?.founded_year || immediateUser.founded_year || '',
+            logo_url: val?.logo_url || immediateUser.logo_url || '',
+            created_at: val?.created_at || (profileSnap && profileSnap.exists() && profileSnap.val().created_at
               ? profileSnap.val().created_at
-              : new Date().toISOString()),
+              : immediateUser.created_at),
           };
 
           setUser(currentProfile);
           localStorage.setItem('sgm_user', JSON.stringify(currentProfile));
 
           // Ensure profile is saved to RTDB if not present
-          if (!profileSnap.exists()) {
+          if (!profileSnap || !profileSnap.exists()) {
             set(profileRef, {
               farm_name: currentProfile.farm_name,
               email: currentProfile.email,
@@ -412,16 +442,6 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (err: any) {
           console.warn('Firebase profile fetch notice:', err.message);
-          // If profile read failed, construct fallback from Firebase Auth User
-          const prefix = (fbUser.email || 'My').split('@')[0];
-          const fallbackName = fbUser.displayName || (prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm');
-          const fallbackUser: FarmUser = {
-            uid: fbUser.uid,
-            email: fbUser.email || '',
-            farm_name: fallbackName,
-            created_at: new Date().toISOString(),
-          };
-          setUser(fallbackUser);
         }
       } else {
         // No Firebase user
@@ -758,21 +778,35 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsDemoMode(false);
       localStorage.removeItem('sgm_is_demo');
 
-      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      // Strict timeout on Firebase Auth to ensure it never hangs indefinitely
+      const userCredential = await withTimeout(
+        signInWithEmailAndPassword(auth, email.trim(), password),
+        10000,
+        null as any
+      );
+
+      if (!userCredential || !userCredential.user) {
+        throw new Error('Authentication request timed out. Please check your network connection.');
+      }
+
       const fbUser = userCredential.user;
       setFirebaseUser(fbUser);
       setIsFirebaseActive(true);
 
-      // Attempt to load profile immediately from RTDB
+      // Establish profile immediately so sign-in is instant
       let resolvedFarmName = fbUser.displayName || '';
+      let initialOwner = '';
       try {
-        const snap = await get(ref(rtdb, `users/${fbUser.uid}/user_profile`));
-        if (snap.exists()) {
-          const val = snap.val();
-          resolvedFarmName = val.farm_name || val.farmName || resolvedFarmName;
+        const cached = localStorage.getItem('sgm_user');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.uid === fbUser.uid) {
+            resolvedFarmName = parsed.farm_name || resolvedFarmName;
+            initialOwner = parsed.owner_name || '';
+          }
         }
-      } catch (e) {
-        console.warn('Could not read user_profile on login:', e);
+      } catch {
+        // ignore
       }
 
       if (!resolvedFarmName) {
@@ -780,15 +814,45 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resolvedFarmName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm';
       }
 
-      const currentProfile: FarmUser = {
+      const immediateProfile: FarmUser = {
         uid: fbUser.uid,
         email: fbUser.email || email,
         farm_name: resolvedFarmName,
+        owner_name: initialOwner,
         created_at: new Date().toISOString(),
       };
 
-      setUser(currentProfile);
-      localStorage.setItem('sgm_user', JSON.stringify(currentProfile));
+      setUser(immediateProfile);
+      localStorage.setItem('sgm_user', JSON.stringify(immediateProfile));
+
+      // Attempt to load profile from RTDB in background without blocking login
+      withTimeout(get(ref(rtdb, `users/${fbUser.uid}/user_profile`)), 2000, null)
+        .then(snap => {
+          if (snap && snap.exists()) {
+            const val = snap.val();
+            const cloudFarmName = val.farm_name || val.farmName || resolvedFarmName;
+            setUser(prev => {
+              const updated: FarmUser = {
+                ...(prev || immediateProfile),
+                farm_name: cloudFarmName,
+                owner_name: val.owner_name || prev?.owner_name || '',
+                location: val.location || prev?.location || '',
+                farm_size: val.farm_size || prev?.farm_size || '',
+                primary_breed: val.primary_breed || prev?.primary_breed || '',
+                phone: val.phone || prev?.phone || '',
+                bio: val.bio || prev?.bio || '',
+                production_focus: val.production_focus || prev?.production_focus || '',
+                grazing_system: val.grazing_system || prev?.grazing_system || '',
+                founded_year: val.founded_year || prev?.founded_year || '',
+                logo_url: val.logo_url || prev?.logo_url || '',
+                created_at: val.created_at || prev?.created_at || new Date().toISOString(),
+              };
+              localStorage.setItem('sgm_user', JSON.stringify(updated));
+              return updated;
+            });
+          }
+        })
+        .catch(e => console.warn('Background profile fetch notice:', e));
 
       return { success: true };
     } catch (err: any) {
@@ -808,13 +872,24 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ) {
         return {
           success: false,
-          error: 'Incorrect sign-in details',
+          error: 'Incorrect email or password. Please verify your credentials or click "Forgot password?" to reset.',
+        };
+      }
+      if (code === 'auth/too-many-requests' || msg.includes('too-many-requests')) {
+        return {
+          success: false,
+          error: 'Too many failed login attempts. Access is paused temporarily. Please reset your password or retry shortly.',
+        };
+      }
+      if (code === 'auth/network-request-failed' || msg.includes('network') || msg.includes('timed out')) {
+        return {
+          success: false,
+          error: 'Network connectivity issue. Please check your internet connection and try again.',
         };
       }
 
       console.warn('Login error:', err.message || err);
-      // For any sign-in failure, provide the clean user requested message
-      return { success: false, error: 'Incorrect sign-in details' };
+      return { success: false, error: err?.message || 'Incorrect sign-in details' };
     }
   };
 
@@ -841,7 +916,16 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cleanedFarmName = farmName.trim() || 'Smart Goat Farm';
 
       // 1. Create account in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const userCredential = await withTimeout(
+        createUserWithEmailAndPassword(auth, email.trim(), password),
+        10000,
+        null as any
+      );
+
+      if (!userCredential || !userCredential.user) {
+        throw new Error('Registration timed out. Please check your network connection.');
+      }
+
       const fbUser = userCredential.user;
 
       // 2. Set Firebase Auth displayName to the user's farm name
@@ -877,19 +961,23 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMilk([]);
       setRecordsLoaded(true);
 
-      // 4. Store user_profile in Firebase Realtime Database
-      await set(ref(rtdb, `users/${fbUser.uid}/user_profile`), {
-        ...newProfile,
-        email_verified: true,
-        is_activated: true,
-        updated_at: new Date().toISOString(),
-      });
-
-      // 5. Directly activate and log in the user
+      // 4. Directly activate and log in the user immediately
       setFirebaseUser(fbUser);
       setIsFirebaseActive(true);
       setUser(newProfile);
       localStorage.setItem('sgm_user', JSON.stringify(newProfile));
+
+      // 5. Store user_profile in Firebase Realtime Database in background
+      withTimeout(
+        set(ref(rtdb, `users/${fbUser.uid}/user_profile`), {
+          ...newProfile,
+          email_verified: true,
+          is_activated: true,
+          updated_at: new Date().toISOString(),
+        }),
+        2500,
+        null
+      ).catch(e => console.warn('Could not auto-write profile to RTDB:', e));
 
       return { success: true };
     } catch (err: any) {
@@ -2835,7 +2923,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     daysActive = Math.max(1, Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
   }
 
-  const isAuthenticated = !authLoading && ((!!firebaseUser && !!user) || isDemoMode);
+  const isAuthenticated = !authLoading && (!!firebaseUser || !!user || isDemoMode);
 
   return (
     <FarmContext.Provider

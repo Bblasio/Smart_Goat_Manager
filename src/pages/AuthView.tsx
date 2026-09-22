@@ -44,17 +44,21 @@ export const AuthView: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // Add brief delay so authentication transition is smooth
-      const [res] = await Promise.all([
+      const res = await Promise.race([
         login(email.trim(), password),
-        new Promise(resolve => setTimeout(resolve, 500))
+        new Promise<{ success: boolean; error?: string }>(resolve =>
+          setTimeout(() => resolve({ success: false, error: 'Sign-in request timed out. Please check your internet connection and retry.' }), 12000)
+        )
       ]);
+
       if (!res.success) {
-        setErrorMsg('Incorrect sign-in details');
+        setErrorMsg(res.error || 'Incorrect email or password. Please verify your sign-in details.');
+        setIsLoading(false);
+      } else {
+        setInfoMsg('Authentication verified! Loading your farm dashboard...');
       }
-    } catch {
-      setErrorMsg('Incorrect sign-in details');
-    } finally {
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Incorrect sign-in details. Please check your credentials.');
       setIsLoading(false);
     }
   };
@@ -224,17 +228,28 @@ export const AuthView: React.FC = () => {
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <span>{errorMsg}</span>
-                  {mode === 'login' && (errorMsg.includes('Incorrect') || errorMsg.includes('Invalid')) && (
-                    <div className="mt-2 pt-2 border-t border-rose-900/60 flex items-center gap-2">
+                  {mode === 'login' && (
+                    <div className="mt-2.5 pt-2 border-t border-rose-900/60 flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('reset');
+                          setErrorMsg('');
+                        }}
+                        className="text-amber-300 font-semibold hover:underline"
+                      >
+                        Forgot password? Reset it here →
+                      </button>
+                      <span className="text-stone-500">•</span>
                       <button
                         type="button"
                         onClick={() => {
                           setMode('signup');
                           setErrorMsg('');
                         }}
-                        className="text-emerald-400 font-bold hover:underline"
+                        className="text-emerald-400 font-semibold hover:underline"
                       >
-                        Create a new farm account with this email →
+                        Create a new farm account →
                       </button>
                     </div>
                   )}

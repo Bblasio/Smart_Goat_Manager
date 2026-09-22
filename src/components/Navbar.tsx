@@ -15,7 +15,9 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
-  UploadCloud
+  UploadCloud,
+  CheckSquare,
+  Package
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -115,29 +117,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-1.5 lg:gap-2">
             {[
-              { id: 'dashboard' as const, label: 'Dashboard', photo: '/images/nav/dashboard.jpg' },
-              { id: 'tasks' as const, label: 'Tasks', photo: '/images/nav/tasks.jpg' },
-              { id: 'feed_supply' as const, label: 'Feed & Supply', photo: '/images/nav/feed_supply.jpg' },
-              { id: 'records' as const, label: 'Records', photo: '/images/nav/records.jpg' },
-              { id: 'reports' as const, label: 'Reports', photo: '/images/nav/reports.jpg' },
+              { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
+              { id: 'tasks' as const, label: 'Tasks', icon: CheckSquare },
+              { id: 'feed_supply' as const, label: 'Feed & Supply', icon: Package },
+              { id: 'records' as const, label: 'Records', icon: ClipboardList },
+              { id: 'reports' as const, label: 'Reports', icon: TrendingUp },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   id={`nav-tab-${tab.id}`}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs transition-all border ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all border ${
                     isActive
                       ? 'font-bold text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 shadow-2xs'
                       : 'font-medium border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-800/60'
                   }`}
                 >
-                  <div className={`w-5 h-5 rounded-md overflow-hidden shrink-0 border shadow-2xs ${
-                    isActive ? 'border-emerald-600 dark:border-emerald-400' : 'border-stone-200 dark:border-stone-700'
-                  }`}>
-                    <img src={tab.photo} alt={tab.label} className="w-full h-full object-cover" />
-                  </div>
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-400'}`} />
                   <span>{tab.label}</span>
                 </button>
               );

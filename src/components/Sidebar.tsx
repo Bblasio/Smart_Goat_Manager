@@ -16,7 +16,6 @@ import {
   AlertCircle,
   UploadCloud,
   CheckCircle2,
-  Baby,
   Stethoscope,
   ChevronRight,
   Menu,
@@ -74,8 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   interface NavItemConfig {
     id: AppView;
     label: string;
-    sublabel: string;
-    photo: string;
+    icon: React.ComponentType<{ className?: string }>;
     badge?: string;
     badgeClass?: string;
   }
@@ -84,58 +82,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       id: 'dashboard',
       label: 'Dashboard',
-      sublabel: 'Overview & Herd KPIs',
-      photo: '/images/nav/dashboard.jpg',
+      icon: LayoutDashboard,
       badge: 'Live',
       badgeClass: 'bg-stone-800 text-stone-300 border border-stone-700',
     },
     {
       id: 'tasks',
       label: 'Tasks',
-      sublabel: 'Operations & Chores',
-      photo: '/images/nav/tasks.jpg',
+      icon: CheckSquare,
       badge: todayNotificationCount > 0 ? `${todayNotificationCount}` : undefined,
       badgeClass: todayNotificationCount > 0 ? 'bg-rose-500 text-white' : undefined,
     },
     {
       id: 'feed_supply',
       label: 'Feed & Supply',
-      sublabel: 'Rations, Hay & Meds',
-      photo: '/images/nav/feed_supply.jpg',
+      icon: Package,
       badge: lowStockCount > 0 ? `${lowStockCount} alert${lowStockCount > 1 ? 's' : ''}` : undefined,
       badgeClass: 'bg-amber-900/60 text-amber-200 border border-amber-700/60',
     },
     {
       id: 'breeding_estimator',
       label: 'Breeding Estimator',
-      sublabel: 'Gestation & Kidding',
-      photo: '/images/nav/breeding.jpg',
+      icon: Calendar,
       badge: 'Pipeline',
       badgeClass: 'bg-stone-800 text-stone-300 border border-stone-700',
     },
     {
       id: 'records',
       label: 'Herd & Farm Records',
-      sublabel: 'Pedigree & Tag Registry',
-      photo: '/images/nav/records.jpg',
+      icon: ClipboardList,
     },
     {
       id: 'health_vet',
       label: 'Veterinary & Health',
-      sublabel: 'Vaccines & Vitals',
-      photo: '/images/nav/health_vet.jpg',
+      icon: Stethoscope,
     },
     {
       id: 'reports',
       label: 'Reports & Forecasts',
-      sublabel: 'Analytics & Financials',
-      photo: '/images/nav/reports.jpg',
+      icon: TrendingUp,
     },
     {
       id: 'profile',
       label: 'Farm Profile',
-      sublabel: 'Settings & Identity',
-      photo: '/images/nav/profile.jpg',
+      icon: Building2,
     },
   ];
 
@@ -278,6 +268,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {navItems.map(item => {
             const isActive = activeTab === item.id;
+            const Icon = item.icon;
 
             return (
               <button
@@ -287,34 +278,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   setActiveTab(item.id);
                   setMobileOpen(false);
                 }}
-                className={`group w-full flex items-center justify-between p-2 rounded-xl text-left transition-all border ${
+                className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all border ${
                   isActive
                     ? 'bg-stone-800/80 border-stone-700/60 shadow-xs'
                     : 'bg-transparent hover:bg-stone-800/40 border-transparent text-stone-400 hover:text-stone-200'
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border transition-all ${
-                    isActive ? 'border-emerald-500/70 shadow-xs' : 'border-stone-700/70 group-hover:border-stone-600'
-                  }`}>
-                    <img
-                      src={item.photo}
-                      alt={item.label}
-                      className="w-full h-full object-cover"
-                    />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      isActive
+                        ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                        : 'text-stone-400 group-hover:text-stone-200'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
                   </div>
-                  <div className="min-w-0">
-                    <div className={`text-xs truncate transition-colors ${
+                  <span
+                    className={`text-xs truncate transition-colors ${
                       isActive ? 'font-bold text-white' : 'font-medium text-stone-300 group-hover:text-white'
-                    }`}>
-                      {item.label}
-                    </div>
-                    <div className={`text-[10px] truncate transition-colors ${
-                      isActive ? 'text-stone-300 font-medium' : 'text-stone-400 group-hover:text-stone-300'
-                    }`}>
-                      {item.sublabel}
-                    </div>
-                  </div>
+                    }`}
+                  >
+                    {item.label}
+                  </span>
                 </div>
                 {item.badge && (
                   <span

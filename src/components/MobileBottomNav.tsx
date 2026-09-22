@@ -1,6 +1,12 @@
 import React from 'react';
 import { AppView, RecordType } from '../types';
-import { Plus } from 'lucide-react';
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Stethoscope,
+  CheckSquare,
+  Plus
+} from 'lucide-react';
 
 interface MobileBottomNavProps {
   activeTab: AppView;
@@ -25,15 +31,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         onClick={() => setActiveTab('dashboard')}
         className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-colors min-w-[56px] min-h-[44px] ${
           activeTab === 'dashboard'
-            ? 'text-stone-900 dark:text-white font-bold'
+            ? 'text-emerald-600 dark:text-emerald-400 font-bold'
             : 'text-stone-500 dark:text-stone-400 font-medium hover:text-stone-900 dark:hover:text-stone-200'
         }`}
       >
-        <div className={`w-5 h-5 rounded-md overflow-hidden shrink-0 border mb-0.5 ${
-          activeTab === 'dashboard' ? 'border-emerald-600 dark:border-emerald-400 shadow-2xs' : 'border-stone-200 dark:border-stone-700'
-        }`}>
-          <img src="/images/nav/dashboard.jpg" alt="Dashboard" className="w-full h-full object-cover" />
-        </div>
+        <LayoutDashboard className="w-5 h-5 mb-0.5" />
         <span className="text-[10px] leading-tight">Dashboard</span>
       </button>
 
@@ -44,15 +46,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         onClick={() => setActiveTab('records')}
         className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-colors min-w-[56px] min-h-[44px] ${
           activeTab === 'records'
-            ? 'text-stone-900 dark:text-white font-bold'
+            ? 'text-emerald-600 dark:text-emerald-400 font-bold'
             : 'text-stone-500 dark:text-stone-400 font-medium hover:text-stone-900 dark:hover:text-stone-200'
         }`}
       >
-        <div className={`w-5 h-5 rounded-md overflow-hidden shrink-0 border mb-0.5 ${
-          activeTab === 'records' ? 'border-emerald-600 dark:border-emerald-400 shadow-2xs' : 'border-stone-200 dark:border-stone-700'
-        }`}>
-          <img src="/images/nav/records.jpg" alt="Herd" className="w-full h-full object-cover" />
-        </div>
+        <ClipboardList className="w-5 h-5 mb-0.5" />
         <span className="text-[10px] leading-tight">Herd</span>
       </button>
 
@@ -77,15 +75,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         onClick={() => setActiveTab('health_vet')}
         className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-colors min-w-[56px] min-h-[44px] ${
           activeTab === 'health_vet'
-            ? 'text-stone-900 dark:text-white font-bold'
+            ? 'text-emerald-600 dark:text-emerald-400 font-bold'
             : 'text-stone-500 dark:text-stone-400 font-medium hover:text-stone-900 dark:hover:text-stone-200'
         }`}
       >
-        <div className={`w-5 h-5 rounded-md overflow-hidden shrink-0 border mb-0.5 ${
-          activeTab === 'health_vet' ? 'border-emerald-600 dark:border-emerald-400 shadow-2xs' : 'border-stone-200 dark:border-stone-700'
-        }`}>
-          <img src="/images/nav/health_vet.jpg" alt="Health" className="w-full h-full object-cover" />
-        </div>
+        <Stethoscope className="w-5 h-5 mb-0.5" />
         <span className="text-[10px] leading-tight">Health</span>
       </button>
 
@@ -96,15 +90,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         onClick={() => setActiveTab('tasks')}
         className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-colors min-w-[56px] min-h-[44px] ${
           activeTab === 'tasks'
-            ? 'text-stone-900 dark:text-white font-bold'
+            ? 'text-emerald-600 dark:text-emerald-400 font-bold'
             : 'text-stone-500 dark:text-stone-400 font-medium hover:text-stone-900 dark:hover:text-stone-200'
         }`}
       >
-        <div className={`w-5 h-5 rounded-md overflow-hidden shrink-0 border mb-0.5 ${
-          activeTab === 'tasks' ? 'border-emerald-600 dark:border-emerald-400 shadow-2xs' : 'border-stone-200 dark:border-stone-700'
-        }`}>
-          <img src="/images/nav/tasks.jpg" alt="Tasks" className="w-full h-full object-cover" />
-        </div>
+        <CheckSquare className="w-5 h-5 mb-0.5" />
         <span className="text-[10px] leading-tight">Tasks</span>
       </button>
     </nav>

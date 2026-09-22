@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useToast } from '../context/ToastContext';
 import { FeedRecord, MedicationRecord, FeedCategory, MedicationCategory, FeedUnit, MedicationUnit } from '../types';
 import {
   Package,
@@ -45,6 +46,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
     restockMedication,
     goats,
   } = useFarm();
+  const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'feeds' | 'meds' | 'alerts'>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,60 +120,89 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
   // Handle Feed Submit
   const handleSaveFeed = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
 
-    const payload: Omit<FeedRecord, 'id'> = {
-      name: formData.get('name') as string,
-      category: formData.get('category') as FeedCategory,
-      quantity: Number(formData.get('quantity')) || 0,
-      unit: formData.get('unit') as FeedUnit,
-      min_threshold: Number(formData.get('min_threshold')) || 0,
-      cost_per_unit: formData.get('cost_per_unit') ? Number(formData.get('cost_per_unit')) : undefined,
-      supplier: (formData.get('supplier') as string) || undefined,
-      storage_location: (formData.get('storage_location') as string) || undefined,
-      expiry_date: (formData.get('expiry_date') as string) || undefined,
-      notes: (formData.get('notes') as string) || undefined,
-      last_restocked: editingFeed?.last_restocked || new Date().toISOString().split('T')[0],
-    };
+      const name = ((formData.get('name') as string) || '').trim();
+      if (!name) {
+        showToast('Please enter a feed name', 'error');
+        return;
+      }
 
-    if (editingFeed) {
-      await updateFeed(editingFeed.id, payload);
-      setEditingFeed(null);
-    } else {
-      await addFeed(payload);
+      const rawCost = formData.get('cost_per_unit') as string;
+      const numCost = rawCost ? parseFloat(rawCost) : undefined;
+
+      const payload: Omit<FeedRecord, 'id'> = {
+        name,
+        category: (formData.get('category') as FeedCategory) || 'Fodder & Hay',
+        quantity: Math.max(0, parseFloat(formData.get('quantity') as string) || 0),
+        unit: (formData.get('unit') as FeedUnit) || 'bales',
+        min_threshold: Math.max(0, parseFloat(formData.get('min_threshold') as string) || 0),
+        cost_per_unit: numCost !== undefined && !isNaN(numCost) ? numCost : undefined,
+        supplier: ((formData.get('supplier') as string) || '').trim() || undefined,
+        storage_location: ((formData.get('storage_location') as string) || '').trim() || undefined,
+        expiry_date: ((formData.get('expiry_date') as string) || '').trim() || undefined,
+        notes: ((formData.get('notes') as string) || '').trim() || undefined,
+        last_restocked: editingFeed?.last_restocked || new Date().toISOString().split('T')[0],
+      };
+
+      if (editingFeed) {
+        await updateFeed(editingFeed.id, payload);
+        showToast(`Feed "${name}" updated successfully`, 'success');
+        setEditingFeed(null);
+      } else {
+        await addFeed(payload);
+        showToast(`Feed "${name}" added to inventory`, 'success');
+      }
+      setIsAddFeedOpen(false);
+    } catch (err: any) {
+      console.error('Error saving feed:', err);
+      showToast(err?.message || 'Failed to save feed record', 'error');
     }
-    setIsAddFeedOpen(false);
   };
 
   // Handle Med Submit
   const handleSaveMed = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
 
-    const payload: Omit<MedicationRecord, 'id'> = {
-      name: formData.get('name') as string,
-      category: formData.get('category') as MedicationCategory,
-      quantity: Number(formData.get('quantity')) || 0,
-      unit: formData.get('unit') as MedicationUnit,
-      min_threshold: Number(formData.get('min_threshold')) || 0,
-      batch_number: (formData.get('batch_number') as string) || undefined,
-      expiry_date: formData.get('expiry_date') as string,
-      target_diseases: (formData.get('target_diseases') as string) || undefined,
-      storage_requirements: (formData.get('storage_requirements') as string) || undefined,
-      supplier: (formData.get('supplier') as string) || undefined,
-      notes: (formData.get('notes') as string) || undefined,
-      last_restocked: editingMed?.last_restocked || new Date().toISOString().split('T')[0],
-    };
+      const name = ((formData.get('name') as string) || '').trim();
+      if (!name) {
+        showToast('Please enter a medication name', 'error');
+        return;
+      }
 
-    if (editingMed) {
-      await updateMedication(editingMed.id, payload);
-      setEditingMed(null);
-    } else {
-      await addMedication(payload);
+      const payload: Omit<MedicationRecord, 'id'> = {
+        name,
+        category: (formData.get('category') as MedicationCategory) || 'Antibiotics',
+        quantity: Math.max(0, parseFloat(formData.get('quantity') as string) || 0),
+        unit: (formData.get('unit') as MedicationUnit) || 'ml',
+        min_threshold: Math.max(0, parseFloat(formData.get('min_threshold') as string) || 0),
+        batch_number: ((formData.get('batch_number') as string) || '').trim() || undefined,
+        expiry_date: (formData.get('expiry_date') as string) || '',
+        target_diseases: ((formData.get('target_diseases') as string) || '').trim() || undefined,
+        storage_requirements: ((formData.get('storage_requirements') as string) || '').trim() || undefined,
+        supplier: ((formData.get('supplier') as string) || '').trim() || undefined,
+        notes: ((formData.get('notes') as string) || '').trim() || undefined,
+        last_restocked: editingMed?.last_restocked || new Date().toISOString().split('T')[0],
+      };
+
+      if (editingMed) {
+        await updateMedication(editingMed.id, payload);
+        showToast(`Medication "${name}" updated successfully`, 'success');
+        setEditingMed(null);
+      } else {
+        await addMedication(payload);
+        showToast(`Medication "${name}" added to inventory`, 'success');
+      }
+      setIsAddMedOpen(false);
+    } catch (err: any) {
+      console.error('Error saving medication:', err);
+      showToast(err?.message || 'Failed to save medication record', 'error');
     }
-    setIsAddMedOpen(false);
   };
 
   // Usage confirmation

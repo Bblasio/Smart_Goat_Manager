@@ -213,42 +213,105 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
 
     let contentHtml = '';
 
+    // If Summary Report, prepend Executive Operations & Financial Performance Overview Table
+    if (reportCategory === 'summary') {
+      contentHtml += `
+        <h3 style="font-size:12px;text-transform:uppercase;margin:16px 0 8px;border-bottom:2px solid #0f172a;padding-bottom:4px;color:#0f172a;font-weight:800;letter-spacing:0.3px;">
+          Executive Operations & Financial Performance Overview
+        </h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:11px;">
+          <thead>
+            <tr style="background:#f1f5f9;text-align:left;">
+              <th style="padding:6px 10px;">Operational Ledger Department</th>
+              <th style="padding:6px 10px;text-align:center;">Activity Volume</th>
+              <th style="padding:6px 10px;text-align:right;">Cash Flow Inflow / Outflow</th>
+              <th style="padding:6px 10px;">Operational Status / Context</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:6px 10px;font-weight:bold;">Goat Sales & Commercial Offtake</td>
+              <td style="padding:6px 10px;text-align:center;">${filteredSales.length} Goats Sold</td>
+              <td style="padding:6px 10px;text-align:right;font-weight:bold;color:#15803d;">+KES ${totalSalesRevenue.toLocaleString()}</td>
+              <td style="padding:6px 10px;color:#475569;">Avg KES ${filteredSales.length > 0 ? Math.round(totalSalesRevenue / filteredSales.length).toLocaleString() : '0'} per goat</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;font-weight:bold;">Farm Operating Expenditures</td>
+              <td style="padding:6px 10px;text-align:center;">${filteredExpenses.length} Expense Logs</td>
+              <td style="padding:6px 10px;text-align:right;font-weight:bold;color:#b91c1c;">-KES ${totalExpenditure.toLocaleString()}</td>
+              <td style="padding:6px 10px;color:#475569;">Feed, veterinary care & supplies</td>
+            </tr>
+            <tr style="background:#f8fafc;font-weight:bold;border-top:1.5px solid #cbd5e1;">
+              <td style="padding:6px 10px;">Net Farm Operating Cash Position</td>
+              <td style="padding:6px 10px;text-align:center;">—</td>
+              <td style="padding:6px 10px;text-align:right;color:${netOperatingProfit >= 0 ? '#15803d' : '#b91c1c'};">${netOperatingProfit >= 0 ? '+' : ''}KES ${netOperatingProfit.toLocaleString()}</td>
+              <td style="padding:6px 10px;">${netOperatingProfit >= 0 ? 'Operating Surplus / Profitable' : 'Operating Deficit'}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;font-weight:bold;">Dairy Milk Production</td>
+              <td style="padding:6px 10px;text-align:center;">${filteredMilk.length} Milking Sessions</td>
+              <td style="padding:6px 10px;text-align:right;font-weight:bold;color:#0f766e;">${totalMilkLiters} Liters</td>
+              <td style="padding:6px 10px;color:#475569;">Total dairy yield harvested</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;font-weight:bold;">Active On-Farm Herd Inventory</td>
+              <td style="padding:6px 10px;text-align:center;font-weight:bold;">${statusCounts.active} Head Present</td>
+              <td style="padding:6px 10px;text-align:right;">—</td>
+              <td style="padding:6px 10px;color:#475569;">${statusCounts.pregnant} Pregnant • ${statusCounts.quarantine} Quarantined • ${statusCounts.sold} Sold</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+    }
+
     // If Sales Report or Summary
     if (reportCategory === 'sales' || reportCategory === 'summary') {
       contentHtml += `
-        <h3 style="font-size:14px;text-transform:uppercase;margin:20px 0 8px;border-bottom:2px solid #2e7d32;padding-bottom:4px;color:#1b5e20;">
-          Goat Sales & Revenue Transactions (${filteredSales.length} Records - Total: KES ${totalSalesRevenue.toLocaleString()})
+        <h3 style="font-size:12px;text-transform:uppercase;margin:18px 0 8px;border-bottom:2px solid #15803d;padding-bottom:4px;color:#15803d;font-weight:800;letter-spacing:0.3px;">
+          Goat Sales & Revenue Transactions (${filteredSales.length} Records)
         </h3>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:15px;font-size:12px;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:11px;">
           <thead>
-            <tr style="background:#f1f8e9;text-align:left;border-bottom:1px solid #c5e1a5;">
+            <tr style="background:#f0fdf4;text-align:left;border-bottom:1.5px solid #86efac;">
               <th style="padding:6px 8px;">Date</th>
-              <th style="padding:6px 8px;">Goat Tag</th>
+              <th style="padding:6px 8px;">Goat Tag ID</th>
               <th style="padding:6px 8px;">Goat Name & Breed</th>
               <th style="padding:6px 8px;">Buyer / Customer</th>
               <th style="padding:6px 8px;text-align:right;">Sale Price (KES)</th>
             </tr>
           </thead>
           <tbody>
-            ${filteredSales.length === 0 ? `<tr><td colspan="5" style="padding:10px;text-align:center;color:#777;">No goat sales recorded in this duration.</td></tr>` :
+            ${filteredSales.length === 0 ? `<tr><td colspan="5" style="padding:10px;text-align:center;color:#64748b;">No goat sales recorded in this duration.</td></tr>` :
               filteredSales.map(s => {
                 const g = goatMap.get(s.goat_id.toUpperCase());
                 return `
-                  <tr style="border-bottom:1px solid #eee;">
+                  <tr style="border-bottom:1px solid #cbd5e1;">
                     <td style="padding:6px 8px;font-family:monospace;">${s.sale_date}</td>
                     <td style="padding:6px 8px;font-weight:bold;font-family:monospace;">${s.goat_id}</td>
-                    <td style="padding:6px 8px;">${g?.name ? `${g.name} (${g.breed})` : (g?.breed || 'Herd Goat')}</td>
+                    <td style="padding:6px 8px;">${g?.name ? `${g.name} (${g.breed})` : (g?.breed || 'Herd Stock')}</td>
                     <td style="padding:6px 8px;">${s.buyer_name || 'Commercial Buyer'}</td>
-                    <td style="padding:6px 8px;text-align:right;font-weight:bold;color:#1b5e20;">KES ${Number(s.price).toLocaleString()}</td>
+                    <td style="padding:6px 8px;text-align:right;font-weight:bold;color:#15803d;">KES ${Number(s.price).toLocaleString()}</td>
                   </tr>
                 `;
               }).join('')
             }
           </tbody>
           <tfoot>
-            <tr style="background:#f1f8e9;font-weight:bold;">
-              <td colspan="4" style="padding:6px 8px;text-align:right;">Total Sales Revenue:</td>
-              <td style="padding:6px 8px;text-align:right;color:#1b5e20;">KES ${totalSalesRevenue.toLocaleString()}</td>
+            <tr style="background:#f8fafc;font-weight:bold;">
+              <td colspan="4" style="padding:6px 8px;text-align:right;color:#475569;">Total Animals Sold:</td>
+              <td style="padding:6px 8px;text-align:right;color:#0f172a;">${filteredSales.length} Goats</td>
+            </tr>
+            <tr style="background:#f8fafc;font-weight:bold;">
+              <td colspan="4" style="padding:6px 8px;text-align:right;color:#475569;">Average Price per Goat:</td>
+              <td style="padding:6px 8px;text-align:right;color:#0f172a;">KES ${filteredSales.length > 0 ? Math.round(totalSalesRevenue / filteredSales.length).toLocaleString() : '0'}</td>
+            </tr>
+            <tr style="background:#f8fafc;font-weight:bold;">
+              <td colspan="4" style="padding:6px 8px;text-align:right;color:#475569;">Active Herd Stock Remaining:</td>
+              <td style="padding:6px 8px;text-align:right;color:#15803d;">${statusCounts.active} Head</td>
+            </tr>
+            <tr style="background:#f0fdf4;font-weight:bold;font-size:11px;border-top:2px solid #15803d;">
+              <td colspan="4" style="padding:7px 8px;text-align:right;color:#14532d;text-transform:uppercase;">Total Period Sales Revenue:</td>
+              <td style="padding:7px 8px;text-align:right;color:#15803d;font-weight:900;">KES ${totalSalesRevenue.toLocaleString()}</td>
             </tr>
           </tfoot>
         </table>
@@ -258,12 +321,12 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
     // If Expenditure Report or Summary
     if (reportCategory === 'expenditure' || reportCategory === 'summary') {
       contentHtml += `
-        <h3 style="font-size:14px;text-transform:uppercase;margin:20px 0 8px;border-bottom:2px solid #c62828;padding-bottom:4px;color:#b71c1c;">
-          Farm Expenditures & Operating Outflows (${filteredExpenses.length} Records - Total: KES ${totalExpenditure.toLocaleString()})
+        <h3 style="font-size:12px;text-transform:uppercase;margin:18px 0 8px;border-bottom:2px solid #b91c1c;padding-bottom:4px;color:#b91c1c;font-weight:800;letter-spacing:0.3px;">
+          Farm Expenditures & Operating Outflows (${filteredExpenses.length} Records)
         </h3>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:15px;font-size:12px;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:11px;">
           <thead>
-            <tr style="background:#ffebee;text-align:left;border-bottom:1px solid #ffcdd2;">
+            <tr style="background:#fef2f2;text-align:left;border-bottom:1.5px solid #fecaca;">
               <th style="padding:6px 8px;">Date</th>
               <th style="padding:6px 8px;">Category</th>
               <th style="padding:6px 8px;">Description / Title</th>
@@ -272,22 +335,26 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
             </tr>
           </thead>
           <tbody>
-            ${filteredExpenses.length === 0 ? `<tr><td colspan="5" style="padding:10px;text-align:center;color:#777;">No expenditures recorded in this duration.</td></tr>` :
+            ${filteredExpenses.length === 0 ? `<tr><td colspan="5" style="padding:10px;text-align:center;color:#64748b;">No expenditures recorded in this duration.</td></tr>` :
               filteredExpenses.map(e => `
-                <tr style="border-bottom:1px solid #eee;">
+                <tr style="border-bottom:1px solid #cbd5e1;">
                   <td style="padding:6px 8px;font-family:monospace;">${e.date}</td>
                   <td style="padding:6px 8px;font-weight:bold;">${e.category}</td>
-                  <td style="padding:6px 8px;">${e.title}${e.notes ? ` <span style="color:#666;font-size:10px;">(${e.notes})</span>` : ''}</td>
+                  <td style="padding:6px 8px;">${e.title}${e.notes ? ` <span style="color:#64748b;font-size:10px;">(${e.notes})</span>` : ''}</td>
                   <td style="padding:6px 8px;font-family:monospace;">${e.receipt_number || '—'}</td>
-                  <td style="padding:6px 8px;text-align:right;font-weight:bold;color:#b71c1c;">KES ${Number(e.amount).toLocaleString()}</td>
+                  <td style="padding:6px 8px;text-align:right;font-weight:bold;color:#b91c1c;">KES ${Number(e.amount).toLocaleString()}</td>
                 </tr>
               `).join('')
             }
           </tbody>
           <tfoot>
-            <tr style="background:#ffebee;font-weight:bold;">
-              <td colspan="4" style="padding:6px 8px;text-align:right;">Total Operating Costs:</td>
-              <td style="padding:6px 8px;text-align:right;color:#b71c1c;">KES ${totalExpenditure.toLocaleString()}</td>
+            <tr style="background:#f8fafc;font-weight:bold;">
+              <td colspan="4" style="padding:6px 8px;text-align:right;color:#475569;">Total Expenditure Entries:</td>
+              <td style="padding:6px 8px;text-align:right;color:#0f172a;">${filteredExpenses.length} Records</td>
+            </tr>
+            <tr style="background:#fef2f2;font-weight:bold;font-size:11px;border-top:2px solid #b91c1c;">
+              <td colspan="4" style="padding:7px 8px;text-align:right;color:#991b1b;text-transform:uppercase;">Total Operating Costs:</td>
+              <td style="padding:7px 8px;text-align:right;color:#b91c1c;font-weight:900;">KES ${totalExpenditure.toLocaleString()}</td>
             </tr>
           </tfoot>
         </table>
@@ -297,36 +364,40 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
     // If Milk Report or Summary
     if (reportCategory === 'milk' || reportCategory === 'summary') {
       contentHtml += `
-        <h3 style="font-size:14px;text-transform:uppercase;margin:20px 0 8px;border-bottom:2px solid #00695c;padding-bottom:4px;color:#004d40;">
-          Milk Production & Dairy Yields (${filteredMilk.length} Sessions - Total: ${totalMilkLiters} L)
+        <h3 style="font-size:12px;text-transform:uppercase;margin:18px 0 8px;border-bottom:2px solid #0f766e;padding-bottom:4px;color:#0f766e;font-weight:800;letter-spacing:0.3px;">
+          Milk Production & Dairy Yields (${filteredMilk.length} Sessions)
         </h3>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:15px;font-size:12px;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:11px;">
           <thead>
-            <tr style="background:#e0f2f1;text-align:left;border-bottom:1px solid #b2dfdb;">
+            <tr style="background:#f0fdfa;text-align:left;border-bottom:1.5px solid #99f6e4;">
               <th style="padding:6px 8px;">Date</th>
-              <th style="padding:6px 8px;">Goat Tag</th>
+              <th style="padding:6px 8px;">Goat Tag ID</th>
               <th style="padding:6px 8px;">Morning (L)</th>
               <th style="padding:6px 8px;">Evening (L)</th>
               <th style="padding:6px 8px;text-align:right;">Daily Total (L)</th>
             </tr>
           </thead>
           <tbody>
-            ${filteredMilk.length === 0 ? `<tr><td colspan="5" style="padding:10px;text-align:center;color:#777;">No milk harvest logged in this duration.</td></tr>` :
+            ${filteredMilk.length === 0 ? `<tr><td colspan="5" style="padding:10px;text-align:center;color:#64748b;">No milk harvest logged in this duration.</td></tr>` :
               filteredMilk.map(m => `
-                <tr style="border-bottom:1px solid #eee;">
+                <tr style="border-bottom:1px solid #cbd5e1;">
                   <td style="padding:6px 8px;font-family:monospace;">${m.date}</td>
                   <td style="padding:6px 8px;font-weight:bold;font-family:monospace;">${m.goat_id}</td>
                   <td style="padding:6px 8px;">${m.morning_liters} L</td>
                   <td style="padding:6px 8px;">${m.evening_liters} L</td>
-                  <td style="padding:6px 8px;text-align:right;font-weight:bold;color:#004d40;">${m.total_liters} L</td>
+                  <td style="padding:6px 8px;text-align:right;font-weight:bold;color:#0f766e;">${m.total_liters} L</td>
                 </tr>
               `).join('')
             }
           </tbody>
           <tfoot>
-            <tr style="background:#e0f2f1;font-weight:bold;">
-              <td colspan="4" style="padding:6px 8px;text-align:right;">Total Period Harvest:</td>
-              <td style="padding:6px 8px;text-align:right;color:#004d40;">${totalMilkLiters} Liters</td>
+            <tr style="background:#f8fafc;font-weight:bold;">
+              <td colspan="4" style="padding:6px 8px;text-align:right;color:#475569;">Total Milking Sessions:</td>
+              <td style="padding:6px 8px;text-align:right;color:#0f172a;">${filteredMilk.length} Sessions</td>
+            </tr>
+            <tr style="background:#f0fdfa;font-weight:bold;font-size:11px;border-top:2px solid #0f766e;">
+              <td colspan="4" style="padding:7px 8px;text-align:right;color:#115e59;text-transform:uppercase;">Total Period Harvest:</td>
+              <td style="padding:7px 8px;text-align:right;color:#0f766e;font-weight:900;">${totalMilkLiters} Liters</td>
             </tr>
           </tfoot>
         </table>
@@ -336,14 +407,14 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
     // If Health Report or Summary
     if (reportCategory === 'health' || reportCategory === 'summary') {
       contentHtml += `
-        <h3 style="font-size:14px;text-transform:uppercase;margin:20px 0 8px;border-bottom:2px solid #1565c0;padding-bottom:4px;color:#0d47a1;">
+        <h3 style="font-size:12px;text-transform:uppercase;margin:18px 0 8px;border-bottom:2px solid #1d4ed8;padding-bottom:4px;color:#1d4ed8;font-weight:800;letter-spacing:0.3px;">
           Veterinary & Health Interventions (${filteredHealth.length} Records)
         </h3>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:15px;font-size:12px;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:11px;">
           <thead>
-            <tr style="background:#e3f2fd;text-align:left;border-bottom:1px solid #bbdefb;">
+            <tr style="background:#eff6ff;text-align:left;border-bottom:1.5px solid #bfdbfe;">
               <th style="padding:6px 8px;">Date</th>
-              <th style="padding:6px 8px;">Goat Tag</th>
+              <th style="padding:6px 8px;">Goat Tag ID</th>
               <th style="padding:6px 8px;">Condition Diagnosed</th>
               <th style="padding:6px 8px;">Treatment Given</th>
               <th style="padding:6px 8px;">Attending Vet</th>
@@ -351,9 +422,9 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
             </tr>
           </thead>
           <tbody>
-            ${filteredHealth.length === 0 ? `<tr><td colspan="6" style="padding:10px;text-align:center;color:#777;">No medical records in this duration.</td></tr>` :
+            ${filteredHealth.length === 0 ? `<tr><td colspan="6" style="padding:10px;text-align:center;color:#64748b;">No medical records in this duration.</td></tr>` :
               filteredHealth.map(h => `
-                <tr style="border-bottom:1px solid #eee;">
+                <tr style="border-bottom:1px solid #cbd5e1;">
                   <td style="padding:6px 8px;font-family:monospace;">${h.checkup_date}</td>
                   <td style="padding:6px 8px;font-weight:bold;font-family:monospace;">${h.goat_id}</td>
                   <td style="padding:6px 8px;">${h.condition}</td>
@@ -364,6 +435,12 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
               `).join('')
             }
           </tbody>
+          <tfoot>
+            <tr style="background:#eff6ff;font-weight:bold;">
+              <td colspan="5" style="padding:6px 8px;text-align:right;color:#1e40af;">Total Clinical Interventions:</td>
+              <td style="padding:6px 8px;color:#1d4ed8;">${filteredHealth.length} Interventions</td>
+            </tr>
+          </tfoot>
         </table>
       `;
     }
@@ -371,12 +448,12 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
     // If Breeding Report or Summary
     if (reportCategory === 'breeding' || reportCategory === 'summary') {
       contentHtml += `
-        <h3 style="font-size:14px;text-transform:uppercase;margin:20px 0 8px;border-bottom:2px solid #6a1b9a;padding-bottom:4px;color:#4a148c;">
+        <h3 style="font-size:12px;text-transform:uppercase;margin:18px 0 8px;border-bottom:2px solid #7e22ce;padding-bottom:4px;color:#7e22ce;font-weight:800;letter-spacing:0.3px;">
           Breeding & Gestation Schedules (${filteredBreeding.length} Records)
         </h3>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:15px;font-size:12px;">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:11px;">
           <thead>
-            <tr style="background:#f3e5f5;text-align:left;border-bottom:1px solid #e1bee7;">
+            <tr style="background:#faf5ff;text-align:left;border-bottom:1.5px solid #e9d5ff;">
               <th style="padding:6px 8px;">Mating Date</th>
               <th style="padding:6px 8px;">Dam (Female)</th>
               <th style="padding:6px 8px;">Sire (Male)</th>
@@ -385,11 +462,11 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
             </tr>
           </thead>
           <tbody>
-            ${filteredBreeding.length === 0 ? `<tr><td colspan="5" style="padding:10px;text-align:center;color:#777;">No breeding events in this duration.</td></tr>` :
+            ${filteredBreeding.length === 0 ? `<tr><td colspan="5" style="padding:10px;text-align:center;color:#64748b;">No breeding events in this duration.</td></tr>` :
               filteredBreeding.map(b => `
-                <tr style="border-bottom:1px solid #eee;">
+                <tr style="border-bottom:1px solid #cbd5e1;">
                   <td style="padding:6px 8px;font-family:monospace;">${b.mating_date}</td>
-                  <td style="padding:6px 8px;font-weight:bold;font-family:monospace;color:#6a1b9a;">${b.female_id}</td>
+                  <td style="padding:6px 8px;font-weight:bold;font-family:monospace;color:#7e22ce;">${b.female_id}</td>
                   <td style="padding:6px 8px;font-family:monospace;">${b.male_id}</td>
                   <td style="padding:6px 8px;font-family:monospace;">${b.expected_birth || '—'}</td>
                   <td style="padding:6px 8px;font-weight:bold;">${b.status || 'Active'}</td>
@@ -397,6 +474,65 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
               `).join('')
             }
           </tbody>
+          <tfoot>
+            <tr style="background:#faf5ff;font-weight:bold;">
+              <td colspan="4" style="padding:6px 8px;text-align:right;color:#6b21a8;">Total Mating & Gestation Logs:</td>
+              <td style="padding:6px 8px;color:#7e22ce;">${filteredBreeding.length} Logs</td>
+            </tr>
+          </tfoot>
+        </table>
+      `;
+    }
+
+    // If Summary Report, append Herd Census & Biological Classification Breakdown Table
+    if (reportCategory === 'summary') {
+      contentHtml += `
+        <h3 style="font-size:12px;text-transform:uppercase;margin:20px 0 8px;border-bottom:2px solid #0f172a;padding-bottom:4px;color:#0f172a;font-weight:800;letter-spacing:0.3px;">
+          Herd Census & Biological Classification Breakdown
+        </h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:11px;">
+          <thead>
+            <tr style="background:#f1f5f9;text-align:left;">
+              <th style="padding:6px 10px;">Classification Category</th>
+              <th style="padding:6px 10px;text-align:center;">Head Count</th>
+              <th style="padding:6px 10px;text-align:center;">% of Total Registered</th>
+              <th style="padding:6px 10px;">Management Protocol Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:6px 10px;font-weight:bold;color:#15803d;">Active Herd (On-Farm)</td>
+              <td style="padding:6px 10px;text-align:center;font-weight:bold;">${statusCounts.active}</td>
+              <td style="padding:6px 10px;text-align:center;">${statusCounts.total > 0 ? Math.round((statusCounts.active / statusCounts.total) * 100) : 0}%</td>
+              <td style="padding:6px 10px;color:#475569;">Active grazing, breeding & milk production herd</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;font-weight:bold;color:#7e22ce;">Pregnant Does</td>
+              <td style="padding:6px 10px;text-align:center;font-weight:bold;">${statusCounts.pregnant}</td>
+              <td style="padding:6px 10px;text-align:center;">${statusCounts.total > 0 ? Math.round((statusCounts.pregnant / statusCounts.total) * 100) : 0}%</td>
+              <td style="padding:6px 10px;color:#475569;">Confirmed gestation / expectant maternity pens</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;font-weight:bold;color:#b45309;">Quarantined Stock</td>
+              <td style="padding:6px 10px;text-align:center;font-weight:bold;">${statusCounts.quarantine}</td>
+              <td style="padding:6px 10px;text-align:center;">${statusCounts.total > 0 ? Math.round((statusCounts.quarantine / statusCounts.total) * 100) : 0}%</td>
+              <td style="padding:6px 10px;color:#475569;">Medical isolation / biosecurity protocol</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;font-weight:bold;color:#475569;">Sold / Commercial Offtake</td>
+              <td style="padding:6px 10px;text-align:center;font-weight:bold;">${statusCounts.sold}</td>
+              <td style="padding:6px 10px;text-align:center;">${statusCounts.total > 0 ? Math.round((statusCounts.sold / statusCounts.total) * 100) : 0}%</td>
+              <td style="padding:6px 10px;color:#475569;">Completed commercial livestock sales & transfers</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr style="background:#f1f5f9;font-weight:bold;border-top:1.5px solid #0f172a;">
+              <td style="padding:7px 10px;">Total Registered Herd History:</td>
+              <td style="padding:7px 10px;text-align:center;">${statusCounts.total} Goats</td>
+              <td style="padding:7px 10px;text-align:center;">100%</td>
+              <td style="padding:7px 10px;">Full historical registry</td>
+            </tr>
+          </tfoot>
         </table>
       `;
     }
@@ -409,16 +545,20 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
   <meta charset="UTF-8" />
   <title>${activeFarmName} - ${reportTitle}</title>
   <style>
-    @page { size: A4; margin: 12mm 14mm; }
+    @page { size: A4 portrait; margin: 10mm 12mm; }
     * { box-sizing: border-box; }
-    body {
+    html, body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       color: #1f2937;
       background: #fff;
-      margin: 0;
-      padding: 16px 20px;
+      margin: 0 auto;
+      padding: 14px 18px;
       line-height: 1.45;
-      font-size: 11.5px;
+      font-size: 11px;
+      width: 210mm;
+      max-width: 210mm;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     .print-btn-bar {
       margin-bottom: 20px;
@@ -440,10 +580,10 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
       margin-bottom: 18px;
     }
     .farm-brand { display: flex; align-items: center; gap: 14px; }
-    .farm-title { font-size: 24px; font-weight: 900; margin: 0; color: #111827; letter-spacing: -0.5px; }
-    .farm-email { font-size: 12.5px; font-weight: 600; color: #059669; margin-top: 3px; }
-    .farm-meta { font-size: 11px; color: #6b7280; margin-top: 3px; }
-    .doc-meta { text-align: right; font-size: 11px; color: #4b5563; }
+    .farm-title { font-size: 22px; font-weight: 900; margin: 0; color: #111827; letter-spacing: -0.5px; }
+    .farm-email { font-size: 12px; font-weight: 600; color: #059669; margin-top: 3px; }
+    .farm-meta { font-size: 10.5px; color: #6b7280; margin-top: 3px; }
+    .doc-meta { text-align: right; font-size: 10.5px; color: #4b5563; }
     .doc-meta strong { color: #111827; }
     .report-badge {
       display: inline-block;
@@ -458,67 +598,41 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
       margin-top: 6px;
       text-transform: uppercase;
     }
-    .kpi-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .kpi-card {
-      border: 1px solid #e5e7eb;
-      background: #f9fafb;
-      border-radius: 10px;
-      padding: 10px 14px;
-      position: relative;
-      overflow: hidden;
-    }
-    .kpi-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: #9ca3af;
-    }
-    .kpi-card.sales::before { background: #059669; }
-    .kpi-card.expenses::before { background: #dc2626; }
-    .kpi-card.balance::before { background: #2563eb; }
-    .kpi-card.milk::before { background: #0d9488; }
-    .kpi-title { font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.4px; }
-    .kpi-val { font-size: 17px; font-weight: 800; color: #111827; }
-    .kpi-sub { font-size: 10px; color: #6b7280; margin-top: 2px; }
 
     table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 24px;
-      font-size: 11px;
-      border: 1.5px solid #64748b;
+      width: 100% !important;
+      border-collapse: collapse !important;
+      margin-bottom: 20px !important;
+      font-size: 11px !important;
+      border: 1.5px solid #334155 !important;
     }
     th, td {
-      border: 1px solid #94a3b8;
-      padding: 8px 10px;
+      border: 1px solid #64748b !important;
+      padding: 6px 8px !important;
     }
     th {
-      background: #f1f5f9;
-      color: #0f172a;
-      font-weight: 700;
-      text-transform: uppercase;
-      font-size: 10px;
-      letter-spacing: 0.3px;
-      border-bottom: 2px solid #64748b;
+      background-color: #f1f5f9 !important;
+      color: #0f172a !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      font-size: 10px !important;
+      letter-spacing: 0.3px !important;
+      border-bottom: 1.5px solid #334155 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     tbody tr:nth-child(even) { background-color: #f8fafc; }
     tbody tr:hover { background-color: #f1f5f9; }
     tfoot td {
-      border-top: 2px solid #64748b;
+      border-top: 1.5px solid #334155 !important;
       font-weight: 700;
-      padding: 8px 10px;
-      background: #f1f5f9;
+      padding: 7px 8px;
+      background: #f1f5f9 !important;
     }
 
     .report-footer {
       border-top: 2px solid #cbd5e1;
-      margin-top: 36px;
+      margin-top: 28px;
       padding-top: 14px;
       display: flex;
       justify-content: space-between;
@@ -529,8 +643,14 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
 
     @media print {
       .print-btn-bar { display: none !important; }
-      body { padding: 0 !important; }
-      @page { margin: 12mm 14mm; }
+      body { padding: 0 !important; width: 100% !important; max-width: 100% !important; }
+      @page { size: A4 portrait; margin: 10mm 12mm; }
+      table { border: 1.5px solid #334155 !important; page-break-inside: auto; }
+      tr { page-break-inside: avoid; page-break-after: auto; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+      th { border: 1.5px solid #334155 !important; background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      td { border: 1px solid #64748b !important; }
     }
   </style>
 </head>
@@ -568,33 +688,21 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
     </div>
   </div>
 
-  <!-- Executive Highlights Bar -->
-  <div class="kpi-row">
-    <div class="kpi-card sales">
-      <div class="kpi-title">Sales Revenue</div>
-      <div class="kpi-val" style="color:#059669;">KES ${totalSalesRevenue.toLocaleString()}</div>
-      <div class="kpi-sub">${filteredSales.length} livestock transactions</div>
+  ${contentHtml}
+
+  <!-- Formal Authorization & Sign-Off Block -->
+  <div style="margin-top: 36px; padding-top: 18px; border-top: 1.5px solid #cbd5e1; display: flex; justify-content: space-between; font-size: 11px; page-break-inside: avoid;">
+    <div style="width: 44%;">
+      <div style="border-bottom: 1.5px solid #475569; height: 36px; margin-bottom: 6px;"></div>
+      <div style="font-weight: bold; color: #0f172a;">Farm Administrator / Manager Signature</div>
+      <div style="color: #64748b; font-size: 10px; margin-top: 2px;">Name: ${user?.owner_name || 'Farm Manager'} • Date: _________________</div>
     </div>
-    <div class="kpi-card expenses">
-      <div class="kpi-title">Expenditures</div>
-      <div class="kpi-val" style="color:#dc2626;">KES ${totalExpenditure.toLocaleString()}</div>
-      <div class="kpi-sub">${filteredExpenses.length} operating entries</div>
-    </div>
-    <div class="kpi-card balance">
-      <div class="kpi-title">Net Operating Balance</div>
-      <div class="kpi-val" style="color:${netOperatingProfit >= 0 ? '#059669' : '#dc2626'};">
-        ${netOperatingProfit >= 0 ? '+' : ''}KES ${netOperatingProfit.toLocaleString()}
-      </div>
-      <div class="kpi-sub">Net Cash Flow Position</div>
-    </div>
-    <div class="kpi-card milk">
-      <div class="kpi-title">Milk Production</div>
-      <div class="kpi-val" style="color:#0d9488;">${totalMilkLiters} Liters</div>
-      <div class="kpi-sub">${filteredMilk.length} dairy harvest logs</div>
+    <div style="width: 44%; text-align: right;">
+      <div style="border-bottom: 1.5px solid #475569; height: 36px; margin-bottom: 6px;"></div>
+      <div style="font-weight: bold; color: #0f172a;">Attending Veterinary Officer / Audit Stamp</div>
+      <div style="color: #64748b; font-size: 10px; margin-top: 2px;">License / Stamp: ______________________ • Date: _________________</div>
     </div>
   </div>
-
-  ${contentHtml}
 
   <!-- Report Footer -->
   <div class="report-footer">
@@ -781,10 +889,10 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
               id="btn-print-report"
               onClick={handlePrint}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
-              title="Print document directly or save as PDF via system print"
+              title="Print document directly or save as A4 PDF"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print / Save PDF</span>
+              <span>Print / Save PDF (A4)</span>
             </button>
 
             <button
@@ -792,10 +900,10 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
               id="btn-download-report-html"
               onClick={handleDownloadHTML}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-black text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
-              title="Download standalone printable HTML file"
+              title="Download standalone A4 printable HTML document"
             >
               <FileCode className="w-3.5 h-3.5" />
-              <span>Download Printable File</span>
+              <span>Download A4 Report (HTML)</span>
             </button>
 
             <button
@@ -1035,8 +1143,8 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
             </div>
           </div>
 
-          {/* Highlights KPI Grid tailored to category */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Highlights KPI Grid tailored to category (Screen only, hidden in print) */}
+          <div className="no-print print:hidden grid grid-cols-2 sm:grid-cols-4 gap-3">
             {reportCategory === 'sales' ? (
               <>
                 <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xs">
@@ -1228,10 +1336,34 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
                     </tbody>
                     <tfoot className="bg-stone-50 dark:bg-stone-800/60 font-bold border-t border-stone-200 dark:border-stone-700">
                       <tr>
-                        <td colSpan={4} className="px-3 py-2 text-right text-stone-600 dark:text-stone-300">
-                          Total Period Sales:
+                        <td colSpan={4} className="px-3 py-1.5 text-right text-stone-600 dark:text-stone-300">
+                          Animals Sold:
                         </td>
-                        <td className="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400 font-mono text-sm">
+                        <td className="px-3 py-1.5 text-right text-stone-900 dark:text-stone-100 font-mono">
+                          {filteredSales.length} Goats
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4} className="px-3 py-1.5 text-right text-stone-600 dark:text-stone-300">
+                          Average Price per Goat:
+                        </td>
+                        <td className="px-3 py-1.5 text-right text-stone-900 dark:text-stone-100 font-mono">
+                          KES {filteredSales.length > 0 ? Math.round(totalSalesRevenue / filteredSales.length).toLocaleString() : '0'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4} className="px-3 py-1.5 text-right text-stone-600 dark:text-stone-300">
+                          Active Herd Stock Remaining:
+                        </td>
+                        <td className="px-3 py-1.5 text-right text-emerald-700 dark:text-emerald-400 font-mono">
+                          {statusCounts.active} Head
+                        </td>
+                      </tr>
+                      <tr className="border-t border-emerald-300 dark:border-emerald-700/60 bg-emerald-50/50 dark:bg-emerald-950/20">
+                        <td colSpan={4} className="px-3 py-2 text-right text-emerald-950 dark:text-emerald-200 uppercase text-[11px]">
+                          Total Sales Revenue:
+                        </td>
+                        <td className="px-3 py-2 text-right text-emerald-700 dark:text-emerald-400 font-mono text-sm font-black">
                           KES {totalSalesRevenue.toLocaleString()}
                         </td>
                       </tr>
@@ -1468,7 +1600,8 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
               <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 mb-3 border-b border-stone-100 dark:border-stone-800 pb-2">
                 Herd Census & Current Classification
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+              {/* Screen: Card layout */}
+              <div className="no-print print:hidden grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
                 <div className="p-3 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl">
                   <div className="text-lg font-black text-emerald-800 dark:text-emerald-300">{statusCounts.active}</div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Active Goats</div>
@@ -1489,6 +1622,54 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
                   <div className="text-lg font-black text-emerald-400">{statusCounts.total}</div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-stone-300">Total Registered</div>
                 </div>
+              </div>
+
+              {/* Print: Formal Census Table with visible grid lines */}
+              <div className="hidden print:block overflow-x-auto">
+                <table className="w-full text-left text-xs record-table-grid">
+                  <thead className="bg-stone-100 font-bold uppercase">
+                    <tr>
+                      <th className="px-3 py-2">Classification</th>
+                      <th className="px-3 py-2 text-center">Headcount</th>
+                      <th className="px-3 py-2">Inventory Status</th>
+                      <th className="px-3 py-2 text-right">Percentage of Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="px-3 py-2 font-semibold text-emerald-800">Active Goats</td>
+                      <td className="px-3 py-2 text-center font-bold font-mono">{statusCounts.active}</td>
+                      <td className="px-3 py-2">Healthy & Productive Herd Stock</td>
+                      <td className="px-3 py-2 text-right font-mono">{statusCounts.total > 0 ? ((statusCounts.active / statusCounts.total) * 100).toFixed(1) : 0}%</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-semibold text-purple-800">Pregnant Does</td>
+                      <td className="px-3 py-2 text-center font-bold font-mono">{statusCounts.pregnant}</td>
+                      <td className="px-3 py-2">Confirmed Gestating Breeding Stock</td>
+                      <td className="px-3 py-2 text-right font-mono">{statusCounts.total > 0 ? ((statusCounts.pregnant / statusCounts.total) * 100).toFixed(1) : 0}%</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-semibold text-amber-800">Quarantined / Sick</td>
+                      <td className="px-3 py-2 text-center font-bold font-mono">{statusCounts.quarantine}</td>
+                      <td className="px-3 py-2">Under Medical Isolation / Observation</td>
+                      <td className="px-3 py-2 text-right font-mono">{statusCounts.total > 0 ? ((statusCounts.quarantine / statusCounts.total) * 100).toFixed(1) : 0}%</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-semibold text-stone-600">Sold / Transferred</td>
+                      <td className="px-3 py-2 text-center font-bold font-mono">{statusCounts.sold}</td>
+                      <td className="px-3 py-2">Commercially Disposed Stock</td>
+                      <td className="px-3 py-2 text-right font-mono">{statusCounts.total > 0 ? ((statusCounts.sold / statusCounts.total) * 100).toFixed(1) : 0}%</td>
+                    </tr>
+                  </tbody>
+                  <tfoot className="bg-stone-50 font-bold border-t-2 border-stone-800">
+                    <tr>
+                      <td className="px-3 py-2 font-black">Total Registered Herd Record</td>
+                      <td className="px-3 py-2 text-center font-black font-mono">{statusCounts.total}</td>
+                      <td className="px-3 py-2">Comprehensive Farm Audit</td>
+                      <td className="px-3 py-2 text-right font-mono">100.0%</td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
           )}

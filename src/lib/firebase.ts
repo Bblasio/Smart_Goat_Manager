@@ -22,14 +22,14 @@ import {
 } from 'firebase/database';
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyAWI-FKRzV8kZna2qEUUMX4ddiswGF_LWA",
-  authDomain: "goat-smart-farm.firebaseapp.com",
-  databaseURL: "https://goat-smart-farm-default-rtdb.firebaseio.com",
-  projectId: "goat-smart-farm",
-  storageBucket: "goat-smart-farm.firebasestorage.app",
-  messagingSenderId: "308912834329",
-  appId: "1:308912834329:web:b7b38370133b4fd346a788",
-  measurementId: "G-SWG0F5HFJP"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAWI-FKRzV8kZna2qEUUMX4ddiswGF_LWA",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "goat-smart-farm.firebaseapp.com",
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://goat-smart-farm-default-rtdb.firebaseio.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "goat-smart-farm",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "goat-smart-farm.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "308912834329",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:308912834329:web:b7b38370133b4fd346a788",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-SWG0F5HFJP"
 };
 
 // Initialize Firebase safely

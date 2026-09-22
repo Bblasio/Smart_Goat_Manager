@@ -109,24 +109,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const completionPercentage = Math.round((filledCount / profileFields.length) * 100);
   const missingFields = profileFields.filter(f => !f.filled);
 
-  const totalGoats = goats.length;
-  const males = goats.filter(g => g.gender.toLowerCase().startsWith('m')).length;
+  // Exclude sold and deceased goats from active on-farm herd metrics
+  const soldOrDeadIdentifiers = useMemo(() => {
+    return new Set(
+      goats
+        .filter(g => g.status === 'Sold' || g.status === 'Dead')
+        .flatMap(g => [g.id, g.tag_number.toUpperCase(), (g.name || '').toUpperCase()].filter(Boolean))
+    );
+  }, [goats]);
+
+  const presentGoats = useMemo(() => {
+    return goats.filter(g => g.status !== 'Sold' && g.status !== 'Dead');
+  }, [goats]);
+
+  const totalGoats = presentGoats.length;
+  const males = presentGoats.filter(g => g.gender.toLowerCase().startsWith('m')).length;
   const females = totalGoats - males;
-  const pregnantCount = breeding.filter(b => b.status === 'Active' || !b.status).length;
+  const pregnantCount = breeding.filter(b => {
+    if (b.status && b.status !== 'Active') return false;
+    const cleanDam = (b.female_id || '').trim().toUpperCase();
+    if (soldOrDeadIdentifiers.has(cleanDam)) return false;
+    return true;
+  }).length;
   const totalWorkers = workers.length;
 
-  // Farm Alerts & Dates
+  // Farm Alerts & Dates (strictly excluding sold goats)
   const today = new Date();
   const birthsDueSoon = breeding.filter(b => {
     if (!b.expected_birth) return false;
+    if (b.status && b.status !== 'Active') return false;
+    const cleanDam = (b.female_id || '').trim().toUpperCase();
+    if (soldOrDeadIdentifiers.has(cleanDam)) return false;
     const exp = new Date(b.expected_birth);
     const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     return diffDays >= 0 && diffDays <= 7;
   });
 
-  // Next expected kidding
+  // Next expected kidding (strictly excluding sold does)
   const sortedUpcomingBirths = [...breeding]
-    .filter(b => b.expected_birth && (b.status === 'Active' || !b.status))
+    .filter(b => {
+      if (!b.expected_birth) return false;
+      if (b.status && b.status !== 'Active') return false;
+      const cleanDam = (b.female_id || '').trim().toUpperCase();
+      return !soldOrDeadIdentifiers.has(cleanDam);
+    })
     .sort((a, b) => new Date(a.expected_birth).getTime() - new Date(b.expected_birth).getTime());
   const nextDelivery = sortedUpcomingBirths[0];
   const nextDeliveryDays = nextDelivery
@@ -134,13 +160,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     : null;
 
   const sickGoats = health.filter(
-    h =>
-      h.condition &&
-      (h.condition.toLowerCase().includes('sick') ||
+    h => {
+      if (!h.condition) return false;
+      const cleanGoat = (h.goat_id || '').trim().toUpperCase();
+      if (soldOrDeadIdentifiers.has(cleanGoat)) return false;
+      return (
+        h.condition.toLowerCase().includes('sick') ||
         h.condition.toLowerCase().includes('mastitis') ||
         h.condition.toLowerCase().includes('fever') ||
         h.condition.toLowerCase().includes('isolated') ||
-        h.condition.toLowerCase().includes('foot rot'))
+        h.condition.toLowerCase().includes('foot rot')
+      );
+    }
   );
 
   // Today's milk production
@@ -149,7 +180,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .filter(m => m.date === todayStr)
     .reduce((sum, m) => sum + (m.total_liters || 0), 0);
 
-  // Gender Chart Data
+  // Gender Chart Data (reflecting only active, unsold herd)
   const genderData = [
     { name: 'Female Goats', value: females, color: '#10b981' },
     { name: 'Male Goats', value: males, color: '#3b82f6' },
@@ -395,70 +426,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onOpenModal={() => onOpenNotificationModal?.()}
       />
 
-      {/* Top Banner / Welcome */}
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 sm:p-8 shadow-xs transition-colors">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 mb-2">
-              <Calendar className="w-3.5 h-3.5" />
-              Active for {formatActiveDuration(daysActive)}
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-white tracking-tight">
-              {farmName} Dashboard
-            </h2>
-            <p className="text-stone-500 dark:text-stone-400 text-sm mt-1">
-              Real-time herd monitoring, gestation tracking, milk production, and livestock records.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {onOpenNotificationModal && (
-              <button
-                type="button"
-                id="btn-dashboard-notifications"
-                onClick={onOpenNotificationModal}
-                className={`px-3.5 py-2.5 rounded-xl text-sm font-semibold border transition-all flex items-center gap-2 shadow-xs ${
-                  notifications.todayNotifications.length > 0
-                    ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 hover:bg-rose-100'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-200'
-                }`}
-              >
-                <div className="relative">
-                  <Bell className={`w-4 h-4 ${notifications.todayNotifications.length > 0 ? 'text-rose-500 animate-bounce' : 'text-stone-500'}`} />
-                  {notifications.todayNotifications.length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500" />
-                  )}
-                </div>
-                <span>
-                  {notifications.todayNotifications.length > 0
-                    ? `${notifications.todayNotifications.length} Scheduled Today`
-                    : 'Alerts'}
-                </span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              id="btn-quick-breeding-tool"
-              onClick={onNavigateToBreedingEstimator}
-              className="px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 rounded-xl text-sm font-semibold transition-colors shadow-xs flex items-center gap-1.5"
-            >
-              <Baby className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Breeding Estimator</span>
-            </button>
-            {onNavigateToTasks && (
-              <button
-                type="button"
-                id="btn-quick-tasks"
-                onClick={onNavigateToTasks}
-                className="px-4 py-2.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-sm font-semibold transition-colors shadow-xs flex items-center gap-1.5"
-              >
-                <span>Tasks</span>
-                <ChevronRight className="w-4 h-4 text-stone-500" />
-              </button>
-            )}
-          </div>
+      {/* Header and Summary Card (Restored Previous Version) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-white tracking-tight flex items-center gap-2">
+            <span>🐐 {farmName || 'Farm'} Dashboard</span>
+          </h2>
+          <p className="text-stone-500 dark:text-stone-400 text-sm mt-1">
+            Overview of your herd's performance, breeding pipeline, and daily operations.
+          </p>
         </div>
 
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            id="btn-customize-dashboard"
+            onClick={() => setIsCustomizerOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 text-xs font-semibold hover:bg-stone-50 dark:hover:bg-stone-700 shadow-2xs transition-colors"
+            title="Pin, unpin, and reorder dashboard widgets"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+            <span>Customize</span>
+          </button>
+
+          {onOpenAddModal && (
+            <button
+              id="btn-dashboard-add-goat"
+              onClick={onOpenAddModal}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+            >
+              <span>Add Record</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <DashboardSummaryCard
+        goats={goats}
+        breeding={breeding}
+        health={health}
+        milk={milk}
+        onNavigateToRecords={onNavigateToRecords}
+        onNavigateToBreedingEstimator={onNavigateToBreedingEstimator}
+        onNavigateToTasks={onNavigateToTasks}
+        onNavigateToHealth={onNavigateToHealth}
+      />
+
+      {/* Secondary Alerts & Profile Prompt if needed */}
+      <div>
         {/* Farmer Profile Completion Notification for Newly Created / Incomplete Accounts */}
         {isProfileIncomplete && (
           <div className="mt-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-amber-950/40 border border-amber-300 dark:border-amber-800/80 shadow-xs">
@@ -576,18 +591,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         )}
       </div>
-
-      {/* Summary Card Component: Key Metrics (Total Herd Count, Active Pregnancies, Recent Health Alerts, Daily Milk) */}
-      <DashboardSummaryCard
-        goats={goats}
-        breeding={breeding}
-        health={health}
-        milk={milk}
-        onNavigateToRecords={onNavigateToRecords}
-        onNavigateToBreedingEstimator={onNavigateToBreedingEstimator}
-        onNavigateToTasks={onNavigateToTasks}
-        onNavigateToHealth={onNavigateToHealth}
-      />
 
       {/* Customizable Pinned Widgets Section: Allows users to pin specific graphs or recent activity summaries to see first */}
       <div id="dashboard-customizable-widget-section" className="space-y-4">

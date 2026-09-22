@@ -1208,7 +1208,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               {previewTab === 'goats' && (
                 <div className="border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden bg-white dark:bg-stone-850 shadow-xs">
                   <div className="overflow-x-auto max-h-64">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-xs record-table-grid">
                       <thead className="bg-stone-50 dark:bg-stone-900/60 text-stone-600 dark:text-stone-300 uppercase font-mono text-[10px] tracking-wider border-b border-stone-200 dark:border-stone-800 sticky top-0">
                         <tr>
                           <th className="px-3 py-2">Tag No</th>
@@ -1309,7 +1309,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     </span>
                   </div>
                   <div className="overflow-x-auto max-h-64">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-xs record-table-grid">
                       <thead className="bg-stone-50 dark:bg-stone-900/60 text-stone-600 dark:text-stone-300 uppercase font-mono text-[10px] tracking-wider border-b border-stone-200 dark:border-stone-800 sticky top-0">
                         <tr>
                           <th className="px-3 py-2">Female Doe Tag</th>
@@ -1353,7 +1353,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     </span>
                   </div>
                   <div className="overflow-x-auto max-h-64">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-xs record-table-grid">
                       <thead className="bg-stone-50 dark:bg-stone-900/60 text-stone-600 dark:text-stone-300 uppercase font-mono text-[10px] tracking-wider border-b border-stone-200 dark:border-stone-800 sticky top-0">
                         <tr>
                           <th className="px-3 py-2">Goat Tag</th>
@@ -1442,7 +1442,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               {previewTab === 'raw' && (
                 <div className="border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden bg-white dark:bg-stone-850 shadow-xs">
                   <div className="overflow-x-auto max-h-64">
-                    <table className="w-full text-left text-xs whitespace-nowrap">
+                    <table className="w-full text-left text-xs whitespace-nowrap record-table-grid">
                       <thead className="bg-stone-100 dark:bg-stone-900/60 text-stone-700 dark:text-stone-300 uppercase font-mono text-[10px] tracking-wider border-b border-stone-200 dark:border-stone-800 sticky top-0">
                         <tr>
                           <th className="px-3 py-2 text-stone-500 w-10 text-center">#</th>

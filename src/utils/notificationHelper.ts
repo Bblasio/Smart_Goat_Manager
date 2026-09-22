@@ -69,6 +69,7 @@ export function getFarmNotifications(
   const goatMap = new Map<string, GoatRecord>();
   goats.forEach(g => {
     goatMap.set(g.tag_number, g);
+    goatMap.set(g.tag_number.toUpperCase(), g);
     goatMap.set(g.id, g);
   });
 
@@ -80,7 +81,10 @@ export function getFarmNotifications(
   breeding.forEach(b => {
     if (b.status === 'Delivered' || b.status === 'Failed') return;
 
-    const femaleGoat = goatMap.get(b.female_id);
+    const femaleGoat = goatMap.get(b.female_id) || goatMap.get((b.female_id || '').toUpperCase());
+    // Exclude sold or deceased does from active notifications
+    if (femaleGoat && (femaleGoat.status === 'Sold' || femaleGoat.status === 'Dead')) return;
+
     const femaleName = femaleGoat?.name ? `${femaleGoat.name} (${b.female_id})` : b.female_id;
 
     // Check Expected Kidding Date
@@ -168,7 +172,10 @@ export function getFarmNotifications(
   // 2. VACCINATION & HEALTH NOTIFICATIONS
   // =========================================================================
   health.forEach(h => {
-    const goat = goatMap.get(h.goat_id);
+    const goat = goatMap.get(h.goat_id) || goatMap.get((h.goat_id || '').toUpperCase());
+    // Exclude sold or dead goats from medical and vaccination reminders
+    if (goat && (goat.status === 'Sold' || goat.status === 'Dead')) return;
+
     const goatDisplayName = goat?.name ? `${goat.name} (${h.goat_id})` : h.goat_id;
     const isVaccine =
       h.checkup_type === 'Vaccination' ||

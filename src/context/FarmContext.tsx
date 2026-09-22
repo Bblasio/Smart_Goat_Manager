@@ -1875,7 +1875,23 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/feeds/${id}`);
-        await set(itemRef, newRecord);
+        // Ensure no undefined values are sent to Firebase Realtime Database
+        const payloadToSave: Record<string, any> = {
+          name: newRecord.name || '',
+          category: newRecord.category || 'Fodder & Hay',
+          quantity: Number(newRecord.quantity) || 0,
+          unit: newRecord.unit || 'bales',
+          min_threshold: Number(newRecord.min_threshold) || 0,
+          last_restocked: newRecord.last_restocked || new Date().toISOString().split('T')[0],
+          notes: newRecord.notes || '',
+          supplier: newRecord.supplier || '',
+          storage_location: newRecord.storage_location || '',
+          expiry_date: newRecord.expiry_date || '',
+        };
+        if (newRecord.cost_per_unit !== undefined && newRecord.cost_per_unit !== null && !isNaN(Number(newRecord.cost_per_unit))) {
+          payloadToSave.cost_per_unit = Number(newRecord.cost_per_unit);
+        }
+        await set(itemRef, payloadToSave);
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -1898,7 +1914,14 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/feeds/${id}`);
-        await update(itemRef, updates);
+        // Filter out undefined values to avoid RTDB crashes
+        const cleanUpdates: Record<string, any> = {};
+        for (const [k, v] of Object.entries(updates)) {
+          if (v !== undefined) {
+            cleanUpdates[k] = v;
+          }
+        }
+        await update(itemRef, cleanUpdates);
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -1954,7 +1977,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newQty = Math.max(0, target.quantity - amount);
     await updateFeed(id, {
       quantity: newQty,
-      notes: notes ? `${notes} (Used ${amount} ${target.unit})` : target.notes,
+      notes: notes ? `${notes} (Used ${amount} ${target.unit})` : target.notes || '',
     });
   };
 
@@ -1963,11 +1986,14 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!target) return;
     const newQty = target.quantity + amount;
     const now = new Date().toISOString().split('T')[0];
-    await updateFeed(id, {
+    const updatePayload: Partial<FeedRecord> = {
       quantity: newQty,
       last_restocked: now,
-      cost_per_unit: cost !== undefined ? cost : target.cost_per_unit,
-    });
+    };
+    if (cost !== undefined && cost !== null && !isNaN(cost)) {
+      updatePayload.cost_per_unit = cost;
+    }
+    await updateFeed(id, updatePayload);
 
     // Automatically record an expense if cost was provided
     if (cost && cost > 0) {
@@ -2010,7 +2036,21 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/medications/${id}`);
-        await set(itemRef, newRecord);
+        const payloadToSave: Record<string, any> = {
+          name: newRecord.name || '',
+          category: newRecord.category || 'Antibiotics',
+          quantity: Number(newRecord.quantity) || 0,
+          unit: newRecord.unit || 'ml',
+          min_threshold: Number(newRecord.min_threshold) || 0,
+          expiry_date: newRecord.expiry_date || '',
+          batch_number: newRecord.batch_number || '',
+          target_diseases: newRecord.target_diseases || '',
+          storage_requirements: newRecord.storage_requirements || '',
+          supplier: newRecord.supplier || '',
+          notes: newRecord.notes || '',
+          last_restocked: newRecord.last_restocked || new Date().toISOString().split('T')[0],
+        };
+        await set(itemRef, payloadToSave);
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -2033,7 +2073,13 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/medications/${id}`);
-        await update(itemRef, updates);
+        const cleanUpdates: Record<string, any> = {};
+        for (const [k, v] of Object.entries(updates)) {
+          if (v !== undefined) {
+            cleanUpdates[k] = v;
+          }
+        }
+        await update(itemRef, cleanUpdates);
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {

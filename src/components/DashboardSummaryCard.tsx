@@ -34,17 +34,30 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
   onNavigateToTasks,
   onNavigateToHealth,
 }) => {
-  const totalHerdCount = goats.length;
-  const activeGoats = goats.filter(g => g.status === 'Active' || !g.status).length;
-  const quarantineGoats = goats.filter(g => g.status === 'Quarantine').length;
+  // Filter out sold and deceased goats from active on-farm herd metrics
+  const soldOrDeadIdentifiers = new Set(
+    goats
+      .filter(g => g.status === 'Sold' || g.status === 'Dead')
+      .flatMap(g => [g.id, g.tag_number.toUpperCase(), (g.name || '').toUpperCase()].filter(Boolean))
+  );
+
+  // Present on-farm herd (strictly excluding sold and deceased goats)
+  const presentGoats = goats.filter(g => g.status !== 'Sold' && g.status !== 'Dead');
+  const totalHerdCount = presentGoats.length;
+  const activeGoats = presentGoats.filter(g => g.status === 'Active' || !g.status).length;
+  const quarantineGoats = presentGoats.filter(g => g.status === 'Quarantine').length;
   const soldGoats = goats.filter(g => g.status === 'Sold').length;
-  const males = goats.filter(g => g.gender?.toLowerCase().startsWith('m')).length;
+  const males = presentGoats.filter(g => g.gender?.toLowerCase().startsWith('m')).length;
   const females = totalHerdCount - males;
 
-  // Active pregnancies calculation
-  const activePregnancies = breeding.filter(
-    b => (b.status === 'Active' || !b.status) && b.expected_birth
-  );
+  // Active pregnancies calculation (strictly excludes sold does)
+  const activePregnancies = breeding.filter(b => {
+    if (b.status && b.status !== 'Active') return false;
+    if (!b.expected_birth) return false;
+    const cleanDam = (b.female_id || '').trim().toUpperCase();
+    if (soldOrDeadIdentifiers.has(cleanDam)) return false;
+    return true;
+  });
   const activePregnanciesCount = activePregnancies.length;
 
   const today = new Date();
@@ -62,9 +75,11 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
     return diffDays >= 0 && diffDays <= 7;
   }).length;
 
-  // Recent Health Alerts: Sick or quarantined or medical condition
+  // Recent Health Alerts: Sick or quarantined or medical condition (excluding sold goats)
   const sickConditions = ['sick', 'mastitis', 'fever', 'isolated', 'foot rot', 'respiratory', 'injury', 'bloat'];
   const activeHealthAlerts = health.filter(h => {
+    const cleanGoat = (h.goat_id || '').trim().toUpperCase();
+    if (soldOrDeadIdentifiers.has(cleanGoat)) return false;
     const cond = (h.condition || '').toLowerCase();
     const treat = (h.treatment || '').toLowerCase();
     return sickConditions.some(s => cond.includes(s) || treat.includes(s));

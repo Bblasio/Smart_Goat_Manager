@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useToast } from '../context/ToastContext';
 import { KidGrowthRecord } from '../types';
 import {
   Baby,
@@ -20,7 +21,8 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Award,
-  GitFork
+  GitFork,
+  UserCheck
 } from 'lucide-react';
 import { TagScannerModal } from './TagScannerModal';
 import { PedigreeTreeModal } from './PedigreeTreeModal';
@@ -36,8 +38,10 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
     addKidGrowthRecord,
     updateKidGrowthRecord,
     deleteKidGrowthRecord,
-    goats
+    goats,
+    addGoat
   } = useFarm();
+  const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Nursing' | 'Weaned' | 'Sold' | 'Retained'>('all');
@@ -226,6 +230,34 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
     await updateKidGrowthRecord(selectedKid.id, updates);
     setShowWeanModal(false);
     setSelectedKid(null);
+  };
+
+  // Graduate kid into main adult herd
+  const handleGraduateKidToAdult = async (kid: KidGrowthRecord) => {
+    const existing = goats.find(g => g.tag_number.toUpperCase() === kid.kid_tag.toUpperCase());
+    if (existing) {
+      showToast(`Goat with ear tag ${kid.kid_tag} is already in the main adult herd!`, 'info');
+      return;
+    }
+
+    await addGoat({
+      tag_number: kid.kid_tag.toUpperCase(),
+      name: kid.kid_name || undefined,
+      breed: kid.breed || 'Boer',
+      gender: kid.gender,
+      dob: kid.dob,
+      weight_kg: Number(kid.weaning_weight_kg || kid.thirty_day_weight_kg || kid.birth_weight_kg || 15),
+      status: 'Active',
+      dam_tag: kid.dam_tag || undefined,
+      sire_tag: kid.sire_tag || undefined,
+    });
+
+    await updateKidGrowthRecord(kid.id, {
+      status: 'Retained',
+      notes: (kid.notes ? `${kid.notes} | ` : '') + 'Graduated to Adult Herd',
+    });
+
+    showToast(`Enrolled kid ${kid.kid_tag} as an Active member in the Adult Herd registry!`, 'success');
   };
 
   return (
@@ -542,6 +574,18 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
                           >
                             Log Weight
                           </button>
+                          {kid.status !== 'Sold' && (
+                            <button
+                              type="button"
+                              id={`btn-graduate-kid-${kid.id}`}
+                              onClick={() => handleGraduateKidToAdult(kid)}
+                              className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs"
+                              title="Promote / Graduate Kid to Main Adult Goat Registry"
+                            >
+                              <UserCheck className="w-3.5 h-3.5" />
+                              <span className="hidden md:inline">To Herd</span>
+                            </button>
+                          )}
                           <button
                             type="button"
                             id={`btn-delete-kid-${kid.id}`}

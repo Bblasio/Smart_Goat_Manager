@@ -410,7 +410,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       case 'weather_advisory':
         return (
           <LocalFarmWeatherWidget
-            customLocation={farmName ? `${farmName} Station` : undefined}
+            customLocation={user?.location || farmName || undefined}
           />
         );
       default:
@@ -690,10 +690,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </div>
 
-      {/* Local Farm Weather & Micro-Climate Advisory Widget (Mocked Geolocation) */}
+      {/* Local Farm Weather & Micro-Climate Advisory Widget (Live Forecast) */}
       {!pinnedWidgetIds.includes('weather_advisory') && (
         <LocalFarmWeatherWidget
-          customLocation={farmName ? `${farmName} Station` : undefined}
+          customLocation={user?.location || farmName || undefined}
         />
       )}
 

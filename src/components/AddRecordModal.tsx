@@ -16,7 +16,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   onClose,
   defaultType = 'goat',
 }) => {
-  const { addGoat, addBreeding, addHealth, addSale, addExpense, addWorker, addMilk, goats } = useFarm();
+  const { addGoat, addBreeding, addHealth, addSale, addExpense, addWorker, addMilk, addKidGrowthRecord, goats } = useFarm();
   const { showToast } = useToast();
   const [recordType, setRecordType] = useState<RecordType>(defaultType);
   const [isExcelOpen, setIsExcelOpen] = useState(false);
@@ -51,6 +51,18 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   const [goatWeight, setGoatWeight] = useState('45');
   const [goatStatus, setGoatStatus] = useState<'Active' | 'Pregnant' | 'Quarantine' | 'Sold'>('Active');
   const [goatPhoto, setGoatPhoto] = useState<string | undefined>(undefined);
+
+  // Kid form state
+  const [kidTag, setKidTag] = useState('');
+  const [kidName, setKidName] = useState('');
+  const [kidBreed, setKidBreed] = useState('Boer');
+  const [kidGender, setKidGender] = useState<'Male' | 'Female'>('Male');
+  const [kidDob, setKidDob] = useState(todayStr);
+  const [kidDamTag, setKidDamTag] = useState('');
+  const [kidSireTag, setKidSireTag] = useState('');
+  const [kidBirthWeight, setKidBirthWeight] = useState('3.5');
+  const [kidStatus, setKidStatus] = useState<'Nursing' | 'Weaned'>('Nursing');
+  const [kidNotes, setKidNotes] = useState('');
 
   // Breeding form state
   const [breedFemale, setBreedFemale] = useState('');
@@ -124,6 +136,28 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
         setGoatTag('');
         setGoatName('');
         setGoatPhoto(undefined);
+      } else if (recordType === 'kid_growth') {
+        if (!kidTag.trim() || !kidBreed.trim()) {
+          setErrorMsg('Kid Ear Tag and Breed are required.');
+          return;
+        }
+        addKidGrowthRecord({
+          kid_tag: kidTag.trim().toUpperCase(),
+          kid_name: kidName.trim() || undefined,
+          gender: kidGender,
+          breed: kidBreed.trim(),
+          dob: kidDob,
+          dam_tag: kidDamTag.trim() || undefined,
+          sire_tag: kidSireTag.trim() || undefined,
+          birth_weight_kg: parseFloat(kidBirthWeight) || 3.5,
+          target_weaning_weight_kg: 15.0,
+          status: kidStatus,
+          notes: kidNotes.trim() || undefined,
+        });
+        setSuccessMsg(`Kid ${kidTag.trim().toUpperCase()}${kidName ? ` (${kidName})` : ''} enrolled in nursery successfully!`);
+        setKidTag('');
+        setKidName('');
+        setKidNotes('');
       } else if (recordType === 'breeding') {
         if (!breedFemale.trim() || !breedMale.trim()) {
           setErrorMsg('Both Female Tag and Male Tag are required.');
@@ -293,10 +327,11 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-2">
             Record Type
           </label>
-          <div className="grid grid-cols-7 gap-1 p-1 bg-stone-100 rounded-xl">
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-1 bg-stone-100 rounded-xl">
             {(
               [
                 { type: 'goat', label: 'Goat', icon: '📋' },
+                { type: 'kid_growth', label: 'Kid', icon: '🍼' },
                 { type: 'breeding', label: 'Breed', icon: '🧬' },
                 { type: 'health', label: 'Health', icon: '💊' },
                 { type: 'milk', label: 'Milk', icon: '🥛' },
@@ -463,6 +498,158 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                     type="number"
                     value={goatWeight}
                     onChange={e => setGoatWeight(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* TYPE: KID (YOUNG STOCK / NURSERY) */}
+          {recordType === 'kid_growth' && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Kid Ear Tag *
+                  </label>
+                  <input
+                    id="input-kid-tag"
+                    type="text"
+                    placeholder="e.g. KD-105"
+                    value={kidTag}
+                    onChange={e => setKidTag(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Kid Name (Optional)
+                  </label>
+                  <input
+                    id="input-kid-name"
+                    type="text"
+                    placeholder="e.g. Pip, Daisy"
+                    value={kidName}
+                    onChange={e => setKidName(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Breed *
+                  </label>
+                  <input
+                    id="input-kid-breed"
+                    type="text"
+                    placeholder="Boer, Galla..."
+                    value={kidBreed}
+                    onChange={e => setKidBreed(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Gender *
+                  </label>
+                  <select
+                    id="select-kid-gender"
+                    value={kidGender}
+                    onChange={e => setKidGender(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  >
+                    <option value="Male">Male (Buckling)</option>
+                    <option value="Female">Female (Doeling)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Nursery Status
+                  </label>
+                  <select
+                    id="select-kid-status"
+                    value={kidStatus}
+                    onChange={e => setKidStatus(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  >
+                    <option value="Nursing">Nursing (Creep / Milk)</option>
+                    <option value="Weaned">Weaned</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Date of Birth (DOB) *
+                  </label>
+                  <input
+                    id="input-kid-dob"
+                    type="date"
+                    value={kidDob}
+                    onChange={e => setKidDob(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Birth Weight (kg) *
+                  </label>
+                  <input
+                    id="input-kid-birth-weight"
+                    type="number"
+                    step="0.1"
+                    value={kidBirthWeight}
+                    onChange={e => setKidBirthWeight(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Dam (Mother) Tag
+                  </label>
+                  <input
+                    id="input-kid-dam"
+                    type="text"
+                    placeholder="e.g. GT-102"
+                    value={kidDamTag}
+                    onChange={e => setKidDamTag(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Sire (Father) Tag
+                  </label>
+                  <input
+                    id="input-kid-sire"
+                    type="text"
+                    placeholder="e.g. GT-101"
+                    value={kidSireTag}
+                    onChange={e => setKidSireTag(e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Notes
+                  </label>
+                  <input
+                    id="input-kid-notes"
+                    type="text"
+                    placeholder="Colostrum received, vigour, twin/single..."
+                    value={kidNotes}
+                    onChange={e => setKidNotes(e.target.value)}
                     className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>

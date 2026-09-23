@@ -15,22 +15,14 @@ import {
   FileSpreadsheet,
   Download,
   Users,
-  Milk,
-  DollarSign,
+  Upload,
   Award,
   X,
   Plus,
-  ShieldCheck,
   Sparkles,
   Camera,
-  Upload,
   Trash2,
-  Image as ImageIcon,
-  Database,
-  RefreshCw,
-  Cloud
 } from 'lucide-react';
-import { StatCard } from '../components/StatCard';
 
 interface ProfileViewProps {
   onNavigateToRecords?: () => void;
@@ -46,27 +38,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const {
     farmName,
     user,
-    firebaseUser,
-    goats,
-    breeding,
-    sales,
-    health,
-    workers,
-    milk,
     daysActive,
     updateFarmProfile,
-    syncStatus,
-    refreshFromFirebase,
-    syncAllCurrentRecordsToFirebase,
   } = useFarm();
 
   const [isEditing, setIsEditing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isFetchingDb, setIsFetchingDb] = useState(false);
-  const [isPushingDb, setIsPushingDb] = useState(false);
-  const [dbFeedback, setDbFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Edit Form Fields
   const [editFarmName, setEditFarmName] = useState(user?.farm_name || farmName);
@@ -97,15 +76,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       setEditLogoUrl(user.logo_url || '');
     }
   }, [user, farmName, isEditing]);
-
-  // Computed Farm Metrics
-  const totalGoats = goats.length;
-  const femaleBreedingStock = goats.filter(g => g.gender === 'Female').length;
-  const maleSires = goats.filter(g => g.gender === 'Male').length;
-  const activeBreeding = breeding.filter(b => b.status === 'Active').length;
-  const totalRevenue = sales.reduce((acc, s) => acc + (s.price || 0), 0);
-  const totalMilkLiters = milk.reduce((acc, m) => acc + (m.total_liters || 0), 0);
-  const totalStaff = workers.length;
 
   const profileChecklist = [
     { key: 'farm_name', label: 'Farm Name', done: !!(user?.farm_name || farmName) },
@@ -168,42 +138,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       }
     };
     reader.readAsDataURL(file);
-  };
-
-  const handleFetchFromDatabase = async () => {
-    setIsFetchingDb(true);
-    setDbFeedback(null);
-    try {
-      const res = await refreshFromFirebase();
-      if (res.success) {
-        setDbFeedback({ type: 'success', message: res.message || 'Database details successfully fetched and updated!' });
-      } else {
-        setDbFeedback({ type: 'error', message: res.message || 'Failed to fetch database details' });
-      }
-    } catch (e: any) {
-      setDbFeedback({ type: 'error', message: e.message || 'Error communicating with database' });
-    } finally {
-      setIsFetchingDb(false);
-      setTimeout(() => setDbFeedback(null), 5000);
-    }
-  };
-
-  const handlePushToDatabase = async () => {
-    setIsPushingDb(true);
-    setDbFeedback(null);
-    try {
-      const res = await syncAllCurrentRecordsToFirebase();
-      if (res.success) {
-        setDbFeedback({ type: 'success', message: res.message || 'Farm profile and records pushed to Realtime Database!' });
-      } else {
-        setDbFeedback({ type: 'error', message: res.message || 'Failed to push records to database' });
-      }
-    } catch (e: any) {
-      setDbFeedback({ type: 'error', message: e.message || 'Error communicating with database' });
-    } finally {
-      setIsPushingDb(false);
-      setTimeout(() => setDbFeedback(null), 5000);
-    }
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -397,11 +331,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
       )}
 
-      {/* Grid: 2 Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Farm Identity & Key Properties (2 Cols) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Farm Bio & Overview */}
+      {/* Farm Overview & Details Sections */}
+      <div className="space-y-6">
+        {/* Farm Bio & Overview */}
           <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs">
             <h2 className="text-base font-bold text-stone-900 flex items-center gap-2 mb-3">
               <Building2 className="w-4 h-4 text-emerald-700" />
@@ -534,207 +466,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Right Column: Live Herd Operational Summary (1 Col) */}
-        <div className="space-y-6">
-          <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-700" />
-                Live Herd Audit
-              </h2>
-              {onNavigateToRecords && (
-                <button
-                  type="button"
-                  onClick={onNavigateToRecords}
-                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
-                >
-                  View Herd →
-                </button>
-              )}
-            </div>
-
-            <div className="stat-grid">
-              <StatCard
-                id="audit-total-herd"
-                label="Total Registered Herd"
-                value={totalGoats}
-                unit="head"
-                icon={<Users className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />}
-                onClick={onNavigateToRecords}
-              />
-
-              <StatCard
-                id="audit-breeding-does"
-                variant="purple"
-                label="Breeding Does (Female)"
-                value={femaleBreedingStock}
-                unit="females"
-                icon={<span className="text-sm">🌸</span>}
-              />
-
-              <StatCard
-                id="audit-stud-sires"
-                variant="amber"
-                label="Stud Sires (Male Bucks)"
-                value={maleSires}
-                unit="bucks"
-                icon={<span className="text-sm">👑</span>}
-              />
-
-              <StatCard
-                id="audit-gestation-cycles"
-                variant="purple"
-                label="Active Gestation Cycles"
-                value={activeBreeding}
-                unit="expectant"
-                icon={<span className="text-sm">🧬</span>}
-              />
-
-              <StatCard
-                id="audit-milk-logged"
-                variant="blue"
-                label="Milk Logged to Date"
-                value={`${totalMilkLiters.toFixed(1)} L`}
-                unit="total yield"
-                icon={<Milk className="w-4 h-4" />}
-              />
-
-              <StatCard
-                id="audit-cumulative-revenue"
-                label="Cumulative Sales Revenue"
-                value={`Ksh ${totalRevenue.toLocaleString()}`}
-                icon={<DollarSign className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />}
-                onClick={onNavigateToReports}
-              />
-
-              <StatCard
-                id="audit-farm-workers"
-                label="Farm Workers / Attendants"
-                value={totalStaff}
-                unit="attendants"
-                icon={<span className="text-sm">👷</span>}
-              />
-            </div>
-          </div>
-
-          {/* Database Synchronization & Auth Persistence Card */}
-          <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-stone-900 uppercase tracking-wider flex items-center gap-2">
-                <Database className="w-4 h-4 text-emerald-600" />
-                <span>Database Sync & Storage</span>
-              </h2>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                syncStatus === 'connected'
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : 'bg-stone-100 text-stone-700 border border-stone-200'
-              }`}>
-                {syncStatus === 'connected' ? 'Connected' : 'Connecting / Ready'}
-              </span>
-            </div>
-
-            <div className="text-xs text-stone-600 space-y-1.5 bg-stone-50 p-3 rounded-xl border border-stone-200">
-              <div className="flex justify-between items-center">
-                <span className="text-stone-500 font-medium">Farm Account:</span>
-                <span className="font-semibold text-stone-800 truncate max-w-[190px]" title={firebaseUser?.email || user?.email || 'Farm User'}>
-                  {firebaseUser?.email || user?.email || 'Authenticated User'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-stone-500 font-medium">Realtime DB:</span>
-                <span className="font-mono text-[11px] text-emerald-700">goat-smart-farm-default-rtdb</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-stone-500 font-medium">Cloud Path:</span>
-                <span className="font-mono text-[11px] text-stone-700 truncate max-w-[180px]" title={`users/${firebaseUser?.uid || user?.uid || 'active'}/user_profile`}>
-                  users/{firebaseUser?.uid || user?.uid || 'active'}/user_profile
-                </span>
-              </div>
-            </div>
-
-            {dbFeedback && (
-              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
-                dbFeedback.type === 'success'
-                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
-                  : 'bg-rose-50 text-rose-800 border border-rose-300'
-              }`}>
-                {dbFeedback.type === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                )}
-                <span className="font-medium">{dbFeedback.message}</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-              <button
-                type="button"
-                id="btn-profile-fetch-db"
-                onClick={handleFetchFromDatabase}
-                disabled={isFetchingDb || isPushingDb}
-                className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 active:bg-stone-100 text-stone-800 text-xs font-semibold transition-colors disabled:opacity-50 shadow-2xs"
-                title="Fetch profile and records from Firebase Realtime Database"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${isFetchingDb ? 'animate-spin' : ''}`} />
-                <span>{isFetchingDb ? 'Fetching...' : 'Fetch from Database'}</span>
-              </button>
-
-              <button
-                type="button"
-                id="btn-profile-push-db"
-                onClick={handlePushToDatabase}
-                disabled={isFetchingDb || isPushingDb}
-                className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-colors disabled:opacity-50 shadow-2xs"
-                title="Push all farm records & profile to Firebase Realtime Database"
-              >
-                <Cloud className={`w-3.5 h-3.5 ${isPushingDb ? 'animate-bounce' : ''}`} />
-                <span>{isPushingDb ? 'Pushing...' : 'Push to Database'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Actions Card */}
-          <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-3">
-            <h2 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-              Management Actions
-            </h2>
-            {onNavigateToReports && (
-              <button
-                type="button"
-                id="btn-profile-to-reports"
-                onClick={onNavigateToReports}
-                className="w-full flex items-center justify-between p-3 rounded-xl border border-stone-200 hover:bg-stone-50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Download className="w-4 h-4 text-emerald-700" />
-                  <div>
-                    <div className="text-xs font-bold text-stone-900">Download Farm Reports (CSV)</div>
-                    <div className="text-[11px] text-stone-500">Export complete farm dossier</div>
-                  </div>
-                </div>
-                <span className="text-xs text-stone-400">→</span>
-              </button>
-            )}
-            <button
-              type="button"
-              id="btn-profile-edit-direct"
-              onClick={handleOpenEdit}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-stone-200 hover:bg-stone-50 transition-colors text-left"
-            >
-              <div className="flex items-center gap-2.5">
-                <Edit3 className="w-4 h-4 text-emerald-700" />
-                <div>
-                  <div className="text-xs font-bold text-stone-900">Update Farm Profile Data</div>
-                  <div className="text-[11px] text-stone-500">Edit size, location & breeds</div>
-                </div>
-              </div>
-              <span className="text-xs text-stone-400">→</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Edit Profile Modal */}
       {isEditing && (

@@ -605,6 +605,7 @@ export const initialMedications: MedicationRecord[] = [
     withdrawal_period_days: 14,
     storage_requirements: 'Store in cool, dry cabinet below 25°C',
     supplier: 'Norbrook Veterinary Pharmaceuticals',
+    cost_per_unit: 1450,
     last_restocked: '2026-01-10',
     notes: 'Dose at 1.5x sheep rate for goats due to faster rumen metabolism'
   },
@@ -621,6 +622,7 @@ export const initialMedications: MedicationRecord[] = [
     withdrawal_period_days: 28,
     storage_requirements: 'Store protected from direct sunlight, 15-25°C',
     supplier: 'Bayer Animal Health',
+    cost_per_unit: 850,
     last_restocked: '2025-12-05',
     notes: 'Deep intramuscular injection. Only 1 vial remaining!'
   },
@@ -637,6 +639,7 @@ export const initialMedications: MedicationRecord[] = [
     withdrawal_period_days: 21,
     storage_requirements: 'Refrigerate strictly at 2°C - 8°C (Do NOT freeze)',
     supplier: 'Boehringer Ingelheim Vet',
+    cost_per_unit: 1200,
     last_restocked: '2026-02-12',
     notes: 'Vital booster given to expectant does 4 weeks before kidding'
   },
@@ -653,6 +656,7 @@ export const initialMedications: MedicationRecord[] = [
     withdrawal_period_days: 0,
     storage_requirements: 'Keep upright in Milking Parlor Medicine Caddy',
     supplier: 'AgriCare Vet',
+    cost_per_unit: 450,
     last_restocked: '2025-11-18',
     notes: 'Prevents joint-ill in newborn kids and subclinical mastitis in does'
   },
@@ -669,6 +673,7 @@ export const initialMedications: MedicationRecord[] = [
     withdrawal_period_days: 0,
     storage_requirements: 'Cool dark room',
     supplier: 'Norbrook Vet',
+    cost_per_unit: 650,
     last_restocked: '2026-01-25',
     notes: 'Immediate supportive care during antibiotic or dewormer therapy'
   }

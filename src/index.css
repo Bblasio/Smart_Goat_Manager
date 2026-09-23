@@ -2,10 +2,101 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+:root {
+  /* Font Family - Pure Inter */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Fixed Type Scale Tokens */
+  --text-xs: 12px;    /* timestamps, tag metadata, captions */
+  --text-sm: 13px;    /* body text, table cells, descriptions */
+  --text-base: 14px;  /* default UI text, form inputs */
+  --text-md: 16px;    /* card titles, nav items */
+  --text-lg: 20px;    /* section headers */
+  --text-xl: 28px;    /* hero stat numbers — e.g. "500", "24°C" */
+  --text-2xl: 32px;   /* page titles */
+
+  /* Spacing Scale (4px base unit) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+}
+
 @layer base {
-  body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  html, body {
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+
+  /* Consistent Font Weight Standards: 400 (body), 500 (labels/nav), 600 (card titles), 700 (hero numbers, page titles) */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+  }
+}
+
+/* Single StatCard and stat grid utility */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 440px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+}
+
+/* Consistent Hero Stat Number token across entire app */
+.hero-stat-number {
+  font-size: var(--text-xl) !important;
+  line-height: 1.15 !important;
+  font-weight: 700 !important;
+  font-feature-settings: 'tnum' 1, 'cv05' 1 !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* Consistent Card Padding standard */
+.standard-card {
+  padding: var(--space-4);
+}
+@media (min-width: 640px) {
+  .standard-card {
+    padding: var(--space-5, 20px);
+  }
+}
+@media (min-width: 1024px) {
+  .standard-card-lg {
+    padding: var(--space-6);
+  }
+}
+
+/* Table row height: min 48px */
+.record-table-grid tr {
+  min-height: 48px;
+}
+.record-table-grid th,
+.record-table-grid td {
+  min-height: 48px;
+  font-size: var(--text-sm);
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
 }
 
 /* Clearly visible spreadsheet grid lines for all records tables */

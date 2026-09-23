@@ -22,7 +22,9 @@ import {
   Trash2,
   Calendar,
   Weight,
-  Layers
+  Layers,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface GoatRecordsTableTemplateProps {
@@ -57,7 +59,15 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
   onNavigateToHealthWithGoat,
 }) => {
   const [activeMenuGoatId, setActiveMenuGoatId] = useState<string | null>(null);
+  const [expandedMobileGoatIds, setExpandedMobileGoatIds] = useState<Record<string, boolean>>({});
   const [quickViewGoat, setQuickViewGoat] = useState<GoatRecord | null>(null);
+
+  const toggleMobileExpand = (goatId: string) => {
+    setExpandedMobileGoatIds(prev => ({
+      ...prev,
+      [goatId]: !prev[goatId],
+    }));
+  };
   const [quickEditGoat, setQuickEditGoat] = useState<GoatRecord | null>(null);
   const [sortField, setSortField] = useState<'tag' | 'status' | 'breed' | 'gender' | 'weight' | 'dob'>('tag');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -239,15 +249,207 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
 
   return (
     <div className="w-full">
-      {/* Table Container matching the template */}
-      <div className="bg-[#fbfbfa] dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-3xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
+      {/* Mobile Card-per-Row Fallback (visible on screens < 768px) */}
+      <div className="block md:hidden space-y-3 mb-4">
+        {sortedGoats.length > 0 ? (
+          sortedGoats.map(goat => {
+            const effectiveStatus = getGoatEffectiveStatus(goat);
+            const healthInfo = getGoatHealthInfo(goat);
+            const salePrice = effectiveStatus === 'Sold' ? getSaleInfo(goat) : null;
+            const isSelected = selectedGoatIds.includes(goat.id);
+            const isExpanded = !!expandedMobileGoatIds[goat.id];
+
+            return (
+              <div
+                key={`mobile-${goat.id}`}
+                className={`p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs transition-all ${
+                  isSelected ? 'ring-2 ring-amber-500/60' : ''
+                }`}
+              >
+                {/* Primary Card View: Tag & Name, Health Status, Breed */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    {isBulkMode && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => onToggleSelectGoat(goat.id)}
+                        className="rounded border-stone-300 dark:border-stone-600 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                        title={`Select ${goat.tag_number}`}
+                      />
+                    )}
+                    <div>
+                      <div className="font-extrabold text-stone-900 dark:text-stone-100 font-mono text-sm tracking-tight">
+                        {goat.tag_number}
+                      </div>
+                      <div className="mt-0.5">
+                        {goat.name && goat.name !== 'Unnamed Goat' ? (
+                          <span className="px-2 py-0.5 rounded-full border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-[11px] text-stone-700 dark:text-stone-300 font-medium inline-block">
+                            {goat.name}
+                          </span>
+                        ) : (
+                          <span className="italic text-[#b7bab2] text-xs">No name</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Health Status Pill (Primary Field) */}
+                  <div className="flex flex-col items-end gap-1">
+                    {healthInfo.status === 'Healthy' && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
+                        Healthy
+                      </span>
+                    )}
+                    {healthInfo.status === 'Pregnant' && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                        Pregnant
+                      </span>
+                    )}
+                    {healthInfo.status === 'Sick' && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#e11d48]" />
+                        Critical
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Primary Field: Breed */}
+                <div className="mt-2.5 flex items-center justify-between text-xs text-stone-600 dark:text-stone-300 pt-2 border-t border-stone-100 dark:border-stone-800">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-stone-400 text-[11px] uppercase tracking-wide">Breed:</span>
+                    <span className="font-semibold text-stone-800 dark:text-stone-200">
+                      {goat.breed || <span className="italic text-[#b7bab2] font-normal">—</span>}
+                    </span>
+                  </div>
+
+                  {/* Tap to expand/collapse remaining fields */}
+                  <button
+                    type="button"
+                    onClick={() => toggleMobileExpand(goat.id)}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 p-1 rounded-md"
+                  >
+                    <span>{isExpanded ? 'Less' : 'Details'}</span>
+                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                {/* Expanded Details Section */}
+                {isExpanded && (
+                  <div className="mt-2.5 pt-2.5 border-t border-dashed border-stone-200 dark:border-stone-800 space-y-2.5 text-xs animate-fade-in">
+                    <div className="grid grid-cols-2 gap-2 text-stone-600 dark:text-stone-300">
+                      <div>
+                        <span className="text-stone-400 text-[10px] uppercase block">Herd Status</span>
+                        <div className="mt-0.5">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                              effectiveStatus === 'Active'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300'
+                                : effectiveStatus === 'Pregnant'
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300'
+                                : effectiveStatus === 'Sold'
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300'
+                                : effectiveStatus === 'Quarantine'
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/80 dark:text-yellow-300 border border-yellow-300'
+                                : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300'
+                            }`}
+                          >
+                            {effectiveStatus}
+                          </span>
+                          {salePrice !== null && (
+                            <span className="block text-[11px] font-mono text-amber-700 dark:text-amber-400 font-bold mt-0.5">
+                              Ksh {salePrice.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-stone-400 text-[10px] uppercase block">Gender</span>
+                        <span className="font-medium text-stone-800 dark:text-stone-200 mt-0.5 block">
+                          {goat.gender === 'Female' ? '♀ Female' : '♂ Male'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-stone-400 text-[10px] uppercase block">Weight</span>
+                        <span className="font-mono font-medium text-stone-800 dark:text-stone-200 mt-0.5 block">
+                          {goat.weight_kg ? `${goat.weight_kg} kg` : <span className="italic text-[#b7bab2] font-normal">—</span>}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-stone-400 text-[10px] uppercase block">Date of Birth</span>
+                        <span className="font-mono text-stone-800 dark:text-stone-200 mt-0.5 block">
+                          {goat.dob ? formatDateDisplay(goat.dob) : <span className="italic text-[#b7bab2] font-normal">—</span>}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions Row */}
+                    <div className="flex items-center justify-between gap-1 pt-2 border-t border-stone-100 dark:border-stone-800">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setQuickViewGoat(goat)}
+                          className="px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold flex items-center gap-1"
+                          title="View"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(goat)}
+                          className="px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold flex items-center gap-1"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onViewPedigree(goat)}
+                          className="px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold flex items-center gap-1"
+                          title="Breeding record"
+                        >
+                          <GitFork className="w-3.5 h-3.5" />
+                          <span>Pedigree</span>
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => onDeleteGoat(goat.id)}
+                        className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs"
+                        title="Delete record"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          <div className="p-8 text-center bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl text-stone-500 text-sm">
+            No goat records found matching your filters.
+          </div>
+        )}
+      </div>
+
+      {/* Table Container (visible on md+ with sticky header & 56px zebra rows) */}
+      <div className="hidden md:block bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-3xl overflow-hidden shadow-xs">
+        <div className="overflow-x-auto max-h-[calc(100vh-230px)] overflow-y-auto">
           <table className="w-full text-left text-sm border-collapse record-table-grid">
-            {/* Table Header matching the template columns */}
-            <thead>
-              <tr className="border-b border-stone-200 dark:border-stone-800 bg-[#f7f6f3] dark:bg-stone-800/80 text-[11px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider select-none">
+            {/* Sticky Table Header (#f7f6f2 with 1px bottom border) */}
+            <thead className="sticky top-0 z-20 select-none">
+              <tr className="border-b border-[#e5e5dc] dark:border-stone-700 bg-[#f7f6f2] dark:bg-stone-800 text-[11px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 {isBulkMode && (
-                  <th className="px-4 py-4 w-12 text-center">
+                  <th className="px-4 py-3.5 w-12 text-center bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">
                     <input
                       type="checkbox"
                       checked={isAllSelected}
@@ -263,7 +465,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
 
                 <th
                   onClick={() => toggleSort('tag')}
-                  className="px-6 py-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  className="px-6 py-3.5 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700"
                 >
                   <div className="flex items-center gap-1.5">
                     <span>TAG & NAME</span>
@@ -271,11 +473,13 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                   </div>
                 </th>
 
-                <th className="px-6 py-4">CURRENT HEALTH</th>
+                <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">
+                  CURRENT HEALTH
+                </th>
 
                 <th
                   onClick={() => toggleSort('status')}
-                  className="px-6 py-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  className="px-6 py-3.5 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700"
                 >
                   <div className="flex items-center gap-1.5">
                     <span>HERD STATUS</span>
@@ -285,7 +489,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
 
                 <th
                   onClick={() => toggleSort('breed')}
-                  className="px-6 py-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  className="px-6 py-3.5 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700"
                 >
                   <div className="flex items-center gap-1.5">
                     <span>BREED</span>
@@ -295,7 +499,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
 
                 <th
                   onClick={() => toggleSort('gender')}
-                  className="px-6 py-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  className="px-6 py-3.5 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700"
                 >
                   <div className="flex items-center gap-1.5">
                     <span>GENDER</span>
@@ -305,7 +509,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
 
                 <th
                   onClick={() => toggleSort('weight')}
-                  className="px-6 py-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  className="px-6 py-3.5 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700"
                 >
                   <div className="flex items-center gap-1.5">
                     <span>WEIGHT (KG)</span>
@@ -313,9 +517,11 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                   </div>
                 </th>
 
-                <th className="px-6 py-4">DATE OF BIRTH</th>
+                <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">
+                  DATE OF BIRTH
+                </th>
 
-                <th className="px-6 py-4 text-right">
+                <th className="px-6 py-3.5 text-right bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">
                   <div className="flex items-center justify-end gap-2">
                     <span>ACTIONS</span>
                     <Settings className="w-3.5 h-3.5 text-stone-400" />
@@ -324,39 +530,29 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
               </tr>
             </thead>
 
-            {/* Table Body with Row-Tinting matching the template */}
-            <tbody className="divide-y divide-stone-200/70 dark:divide-stone-800/80">
+            {/* Table Body with 15px row padding, Zebra Striping (#fbfbf9), and #e7f3ec hover */}
+            <tbody className="divide-y divide-stone-200/50 dark:divide-stone-800/80">
               {sortedGoats.length > 0 ? (
-                sortedGoats.map(goat => {
+                sortedGoats.map((goat, index) => {
                   const effectiveStatus = getGoatEffectiveStatus(goat);
                   const healthInfo = getGoatHealthInfo(goat);
                   const salePrice = effectiveStatus === 'Sold' ? getSaleInfo(goat) : null;
                   const isSelected = selectedGoatIds.includes(goat.id);
 
-                  // Row background tint logic matching Image 2:
-                  // - Pregnant: soft lavender #f4eefb
-                  // - Sold: soft peach #fef4e8
-                  // - Quarantine: soft warm yellow #fefce8
-                  // - Active/Default: off-white
-                  let rowBgClass = 'bg-white dark:bg-stone-900 hover:bg-stone-50/80 dark:hover:bg-stone-800/60';
-                  if (effectiveStatus === 'Pregnant') {
-                    rowBgClass = 'bg-[#f4eefb] dark:bg-purple-950/25 hover:bg-[#ede4f8] dark:hover:bg-purple-950/40';
-                  } else if (effectiveStatus === 'Sold') {
-                    rowBgClass = 'bg-[#fef4e8] dark:bg-amber-950/25 hover:bg-[#fae8d4] dark:hover:bg-amber-950/40';
-                  } else if (effectiveStatus === 'Quarantine') {
-                    rowBgClass = 'bg-[#fefce8] dark:bg-yellow-950/25 hover:bg-[#fef9c3] dark:hover:bg-yellow-950/40';
-                  }
+                  // Zebra striping: Even rows #fbfbf9, odd rows pure white
+                  const isEvenRow = index % 2 === 1;
+                  const zebraBgClass = isEvenRow ? 'bg-[#fbfbf9] dark:bg-stone-900/60' : 'bg-white dark:bg-stone-900';
 
                   return (
                     <tr
                       key={goat.id}
-                      className={`transition-colors ${rowBgClass} ${
+                      className={`transition-colors ${zebraBgClass} hover:bg-[#e7f3ec] dark:hover:bg-emerald-950/35 ${
                         isSelected ? 'ring-2 ring-amber-500/60 ring-inset' : ''
                       }`}
                     >
-                      {/* Column 1: Checkbox (conditional on isBulkMode) */}
+                      {/* Column 1: Checkbox */}
                       {isBulkMode && (
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-4 py-[15px] text-center">
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -368,21 +564,25 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                       )}
 
                       {/* Column 2: Tag & Name */}
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-[15px]">
                         <div>
                           <div className="font-extrabold text-stone-900 dark:text-stone-100 font-mono text-sm tracking-tight flex items-center gap-1.5">
                             <span>{goat.tag_number}</span>
                           </div>
                           <div className="mt-1">
-                            <span className="px-2.5 py-0.5 rounded-full border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800 text-[11px] text-stone-600 dark:text-stone-300 font-medium inline-block shadow-2xs">
-                              {goat.name || 'Unnamed Goat'}
-                            </span>
+                            {goat.name && goat.name !== 'Unnamed Goat' ? (
+                              <span className="px-2.5 py-0.5 rounded-full border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800 text-[11px] text-stone-700 dark:text-stone-300 font-medium inline-block shadow-2xs">
+                                {goat.name}
+                              </span>
+                            ) : (
+                              <span className="italic text-[#b7bab2] text-xs">No name</span>
+                            )}
                           </div>
                         </div>
                       </td>
 
                       {/* Column 3: Current Health */}
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-[15px]">
                         <div className="flex flex-col gap-1 items-start">
                           {healthInfo.status === 'Healthy' && (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#dcfce7] text-[#15803d] border border-[#bbf7d0] dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800">
@@ -400,20 +600,20 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                           {healthInfo.status === 'Sick' && (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#ffe4e6] text-[#be123c] border border-[#fecdd3] dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800">
                               <span className="w-2 h-2 rounded-full bg-[#e11d48]" />
-                              Sick
+                              Critical
                             </span>
                           )}
 
-                          {healthInfo.subtitle && (
+                          {healthInfo.subtitle ? (
                             <span className="text-[11px] text-stone-500 dark:text-stone-400 max-w-[200px] truncate" title={healthInfo.subtitle}>
                               {healthInfo.subtitle}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </td>
 
                       {/* Column 4: Herd Status (Static Badge + Price if Sold) */}
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-[15px]">
                         <div className="flex flex-col gap-1 items-start">
                           {effectiveStatus === 'Active' && (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs">
@@ -456,12 +656,12 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                       </td>
 
                       {/* Column 5: Breed */}
-                      <td className="px-6 py-4 text-stone-700 dark:text-stone-300 font-medium">
-                        {goat.breed}
+                      <td className="px-6 py-[15px] text-stone-700 dark:text-stone-300 font-medium">
+                        {goat.breed || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
                       </td>
 
                       {/* Column 6: Gender */}
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-[15px]">
                         {goat.gender === 'Female' ? (
                           <span className="text-fuchsia-600 dark:text-fuchsia-400 font-semibold text-xs flex items-center gap-1">
                             <span>♀</span>
@@ -476,24 +676,24 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                       </td>
 
                       {/* Column 7: Weight (kg) */}
-                      <td className="px-6 py-4 font-extrabold text-stone-900 dark:text-stone-100 font-mono text-xs">
-                        {goat.weight_kg ? `${goat.weight_kg} kg` : '45 kg'}
+                      <td className="px-6 py-[15px] font-extrabold text-stone-900 dark:text-stone-100 font-mono text-xs">
+                        {goat.weight_kg ? `${goat.weight_kg} kg` : <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
                       </td>
 
                       {/* Column 8: Date of Birth */}
-                      <td className="px-6 py-4 text-stone-600 dark:text-stone-400 font-mono text-xs whitespace-nowrap">
-                        {formatDateDisplay(goat.dob)}
+                      <td className="px-6 py-[15px] text-stone-600 dark:text-stone-400 font-mono text-xs whitespace-nowrap">
+                        {goat.dob ? formatDateDisplay(goat.dob) : <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
                       </td>
 
-                      {/* Column 9: 4 Action Buttons matching Image 2 */}
-                      <td className="px-6 py-4 text-right">
+                      {/* Column 9: 4 Action Buttons with Clear Plain-Word Tooltips */}
+                      <td className="px-6 py-[15px] text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           {/* 1. Eye Button: Quick Inspect */}
                           <button
                             type="button"
                             onClick={() => setQuickViewGoat(goat)}
                             className="w-8 h-8 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-100/90 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 flex items-center justify-center text-stone-700 dark:text-stone-300 transition-colors shadow-2xs"
-                            title="Inspect Goat Profile"
+                            title="View"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -503,7 +703,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                             type="button"
                             onClick={() => handleOpenEdit(goat)}
                             className="w-8 h-8 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-100/90 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 flex items-center justify-center text-stone-700 dark:text-stone-300 transition-colors shadow-2xs"
-                            title="Edit Goat Details"
+                            title="Edit"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -513,7 +713,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                             type="button"
                             onClick={() => onViewPedigree(goat)}
                             className="w-8 h-8 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-100/90 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 flex items-center justify-center text-stone-700 dark:text-stone-300 transition-colors shadow-2xs"
-                            title="View Pedigree Tree"
+                            title="Breeding record"
                           >
                             <GitFork className="w-4 h-4" />
                           </button>
@@ -524,7 +724,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                               type="button"
                               onClick={() => setActiveMenuGoatId(activeMenuGoatId === goat.id ? null : goat.id)}
                               className="w-8 h-8 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-100/90 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 flex items-center justify-center text-stone-700 dark:text-stone-300 transition-colors shadow-2xs"
-                              title="More Options"
+                              title="More actions"
                             >
                               <MoreHorizontal className="w-4 h-4" />
                             </button>
@@ -613,7 +813,12 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                   {quickViewGoat.tag_number}
                 </h3>
                 <p className="text-xs text-stone-500 dark:text-stone-400">
-                  {quickViewGoat.name || 'Unnamed Goat'} • {quickViewGoat.breed}
+                  {quickViewGoat.name && quickViewGoat.name !== 'Unnamed Goat' ? (
+                    quickViewGoat.name
+                  ) : (
+                    <span className="italic text-[#b7bab2]">No name</span>
+                  )}{' '}
+                  • {quickViewGoat.breed || <span className="italic text-[#b7bab2]">—</span>}
                 </p>
               </div>
               <button

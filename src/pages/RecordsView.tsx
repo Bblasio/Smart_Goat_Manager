@@ -1196,57 +1196,70 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {/* TAB 2: BREEDING */}
       {activeTab === 'breeding' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm record-table-grid">
-              <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
+          <div className="overflow-x-auto max-h-[calc(100vh-250px)] overflow-y-auto">
+            <table className="w-full text-left text-sm border-collapse record-table-grid">
+              <thead className="sticky top-0 z-20 select-none bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3.5">Female Tag (Dam)</th>
-                  <th className="px-6 py-3.5">Male Tag (Sire)</th>
-                  <th className="px-6 py-3.5">Mating Date</th>
-                  <th className="px-6 py-3.5">Gestation Period</th>
-                  <th className="px-6 py-3.5">Expected Delivery</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Female Tag (Dam)</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Male Tag (Sire)</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Mating Date</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Gestation Period</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Expected Delivery</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-stone-900">
+              <tbody className="divide-y divide-stone-200/50 dark:divide-stone-800/80">
                 {filteredBreeding.length > 0 ? (
-                  filteredBreeding.map(item => {
+                  filteredBreeding.map((item, index) => {
                     const exp = new Date(item.expected_birth);
                     const diffDays = Math.ceil(
                       (exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
                     );
                     const isDueSoon = diffDays >= 0 && diffDays <= 7;
+                    const isEven = index % 2 === 1;
 
                     return (
-                      <tr key={item.id} className="hover:bg-stone-50/75 dark:hover:bg-stone-800/50 transition-colors">
-                        <td className="px-6 py-4 font-bold text-stone-900 dark:text-stone-100">
-                          {item.female_id}
+                      <tr
+                        key={item.id}
+                        className={`transition-colors ${
+                          isEven ? 'bg-[#fbfbf9] dark:bg-stone-900/60' : 'bg-white dark:bg-stone-900'
+                        } hover:bg-[#e7f3ec] dark:hover:bg-emerald-950/35`}
+                      >
+                        <td className="px-6 py-[15px] font-bold text-stone-900 dark:text-stone-100">
+                          {item.female_id || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
                         </td>
-                        <td className="px-6 py-4 text-stone-700 dark:text-stone-300">{item.male_id}</td>
-                        <td className="px-6 py-4 text-stone-600 dark:text-stone-400 font-mono text-xs">
-                          {item.mating_date || '—'}
+                        <td className="px-6 py-[15px] text-stone-700 dark:text-stone-300">
+                          {item.male_id || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
                         </td>
-                        <td className="px-6 py-4 font-mono text-xs text-stone-600 dark:text-stone-400">
-                          {item.gestation_days || 150} days
+                        <td className="px-6 py-[15px] text-stone-600 dark:text-stone-400 font-mono text-xs">
+                          {item.mating_date || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
                         </td>
-                        <td className="px-6 py-4 font-mono text-xs">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium ${
-                              isDueSoon
-                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-bold'
-                                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
-                            }`}
-                          >
-                            {isDueSoon && <span>Due soon ({diffDays}d)!</span>}
-                            <span>{item.expected_birth || '—'}</span>
-                          </span>
+                        <td className="px-6 py-[15px] font-mono text-xs text-stone-600 dark:text-stone-400">
+                          {item.gestation_days ? `${item.gestation_days} days` : '150 days'}
                         </td>
-                        <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                        <td className="px-6 py-[15px] font-mono text-xs">
+                          {item.expected_birth ? (
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium ${
+                                isDueSoon
+                                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-bold'
+                                  : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                              }`}
+                            >
+                              {isDueSoon && <span>Due soon ({diffDays}d)!</span>}
+                              <span>{item.expected_birth}</span>
+                            </span>
+                          ) : (
+                            <span className="italic text-[#b7bab2] text-xs font-normal">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-[15px] text-right flex items-center justify-end gap-2">
                           {onNavigate && (
                             <button
                               type="button"
                               onClick={() => onNavigate('breeding_estimator')}
                               className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                              title="Predict kidding date"
                             >
                               <span>Predict</span>
                               <ChevronRight className="w-3 h-3" />
@@ -1256,7 +1269,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                             id={`btn-del-breed-${item.id}`}
                             onClick={() => deleteBreeding(item.id)}
                             className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
-                            title="Delete Breeding Record"
+                            title="Delete record"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1303,23 +1316,23 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {/* TAB 3: HEALTH */}
       {activeTab === 'health' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm record-table-grid">
-              <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
+          <div className="overflow-x-auto max-h-[calc(100vh-250px)] overflow-y-auto">
+            <table className="w-full text-left text-sm border-collapse record-table-grid">
+              <thead className="sticky top-0 z-20 select-none bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3.5">Goat Tag & Name</th>
-                  <th className="px-6 py-3.5">Health Status</th>
-                  <th className="px-6 py-3.5">Checkup Date</th>
-                  <th className="px-6 py-3.5">Condition & Type</th>
-                  <th className="px-6 py-3.5">Treatment / Medication</th>
-                  <th className="px-6 py-3.5">Gestation / Ultrasound</th>
-                  <th className="px-6 py-3.5">Attending Vet</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Goat Tag & Name</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Health Status</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Checkup Date</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Condition & Type</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Treatment / Medication</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Gestation / Ultrasound</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Attending Vet</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-stone-900">
+              <tbody className="divide-y divide-stone-200/50 dark:divide-stone-800/80">
                 {filteredHealth.length > 0 ? (
-                  filteredHealth.map(item => {
+                  filteredHealth.map((item, index) => {
                     const matchedGoat = goatMap.get(item.goat_id.toUpperCase());
                     const isUnderTreatment =
                       item.status === 'Under Treatment' ||
@@ -1329,21 +1342,27 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                     const isCritical = item.status === 'Critical' || item.condition.toLowerCase().includes('critical');
                     const isHealthy =
                       !isUnderTreatment && !isCritical && (item.status === 'Healthy' || item.condition.toLowerCase().includes('healthy') || item.condition.toLowerCase().includes('good'));
+                    const isEven = index % 2 === 1;
 
                     return (
-                      <tr key={item.id} className="hover:bg-stone-50/75 dark:hover:bg-stone-800/50 transition-colors">
-                        <td className="px-6 py-4">
+                      <tr
+                        key={item.id}
+                        className={`transition-colors ${
+                          isEven ? 'bg-[#fbfbf9] dark:bg-stone-900/60' : 'bg-white dark:bg-stone-900'
+                        } hover:bg-[#e7f3ec] dark:hover:bg-emerald-950/35`}
+                      >
+                        <td className="px-6 py-[15px]">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{item.goat_id}</span>
-                            {matchedGoat?.name && (
+                            {matchedGoat?.name ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                 <Tag className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
                                 {matchedGoat.name}
                               </span>
-                            )}
+                            ) : null}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-[15px]">
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
                               isCritical
@@ -1356,13 +1375,13 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                             {item.status || (isCritical ? 'Critical' : isUnderTreatment ? 'Under Treatment' : 'Healthy')}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-stone-600 dark:text-stone-400 font-mono text-xs">
-                          {item.checkup_date || '—'}
+                        <td className="px-6 py-[15px] text-stone-600 dark:text-stone-400 font-mono text-xs">
+                          {item.checkup_date || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-[15px]">
                           <div className="flex flex-col gap-1">
                             <span className="text-stone-800 dark:text-stone-200 font-medium text-xs">
-                              {item.condition}
+                              {item.condition || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
                             </span>
                             {item.checkup_type && (
                               <span className="text-[10px] text-stone-500 dark:text-stone-400 font-mono">
@@ -1371,8 +1390,10 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-stone-700 dark:text-stone-300 text-xs max-w-xs">{item.treatment}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-[15px] text-stone-700 dark:text-stone-300 text-xs max-w-xs">
+                          {item.treatment || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
+                        </td>
+                        <td className="px-6 py-[15px]">
                           {item.fetal_age_days ? (
                             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                               {item.fetal_age_days}d fetal age
@@ -1382,18 +1403,18 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                               Pregnant
                             </span>
                           ) : (
-                            <span className="text-stone-400 dark:text-stone-500 text-xs">—</span>
+                            <span className="italic text-[#b7bab2] text-xs font-normal">—</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-stone-600 dark:text-stone-400 text-xs font-medium">
+                        <td className="px-6 py-[15px] text-stone-600 dark:text-stone-400 text-xs font-medium">
                           {item.vet_name || 'Staff Attendant'}
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-6 py-[15px] text-right">
                           <button
                             id={`btn-del-health-${item.id}`}
                             onClick={() => deleteHealth(item.id)}
                             className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
-                            title="Delete Health Record"
+                            title="Delete record"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1449,42 +1470,50 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {/* TAB 4: MILK YIELD */}
       {activeTab === 'milk' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm record-table-grid">
-              <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
+          <div className="overflow-x-auto max-h-[calc(100vh-250px)] overflow-y-auto">
+            <table className="w-full text-left text-sm border-collapse record-table-grid">
+              <thead className="sticky top-0 z-20 select-none bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3.5">Doe Tag</th>
-                  <th className="px-6 py-3.5">Log Date</th>
-                  <th className="px-6 py-3.5">Morning Yield</th>
-                  <th className="px-6 py-3.5">Evening Yield</th>
-                  <th className="px-6 py-3.5">Total Daily Yield</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Doe Tag</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Log Date</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Morning Yield</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Evening Yield</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Total Daily Yield</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-stone-900">
+              <tbody className="divide-y divide-stone-200/50 dark:divide-stone-800/80">
                 {filteredMilk.length > 0 ? (
-                  filteredMilk.map(m => (
-                    <tr key={m.id} className="hover:bg-stone-50/75 dark:hover:bg-stone-800/50 transition-colors">
-                      <td className="px-6 py-4 font-bold text-stone-900 dark:text-stone-100">{m.goat_id}</td>
-                      <td className="px-6 py-4 text-stone-600 dark:text-stone-400 font-mono text-xs">{m.date}</td>
-                      <td className="px-6 py-4 font-mono text-xs text-stone-700 dark:text-stone-300">{m.morning_liters} L</td>
-                      <td className="px-6 py-4 font-mono text-xs text-stone-700 dark:text-stone-300">{m.evening_liters} L</td>
-                      <td className="px-6 py-4">
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-mono">
-                          {m.total_liters} Liters
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => deleteMilk(m.id)}
-                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
-                          title="Delete Milk Record"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  filteredMilk.map((m, index) => {
+                    const isEven = index % 2 === 1;
+                    return (
+                      <tr
+                        key={m.id}
+                        className={`transition-colors ${
+                          isEven ? 'bg-[#fbfbf9] dark:bg-stone-900/60' : 'bg-white dark:bg-stone-900'
+                        } hover:bg-[#e7f3ec] dark:hover:bg-emerald-950/35`}
+                      >
+                        <td className="px-6 py-[15px] font-bold text-stone-900 dark:text-stone-100">{m.goat_id}</td>
+                        <td className="px-6 py-[15px] text-stone-600 dark:text-stone-400 font-mono text-xs">{m.date}</td>
+                        <td className="px-6 py-[15px] font-mono text-xs text-stone-700 dark:text-stone-300">{m.morning_liters} L</td>
+                        <td className="px-6 py-[15px] font-mono text-xs text-stone-700 dark:text-stone-300">{m.evening_liters} L</td>
+                        <td className="px-6 py-[15px]">
+                          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-mono">
+                            {m.total_liters} Liters
+                          </span>
+                        </td>
+                        <td className="px-6 py-[15px] text-right">
+                          <button
+                            onClick={() => deleteMilk(m.id)}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                            title="Delete record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center">
@@ -1524,41 +1553,51 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {/* TAB 5: SALES */}
       {activeTab === 'sales' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm record-table-grid">
-              <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
+          <div className="overflow-x-auto max-h-[calc(100vh-250px)] overflow-y-auto">
+            <table className="w-full text-left text-sm border-collapse record-table-grid">
+              <thead className="sticky top-0 z-20 select-none bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3.5">Goat Tag</th>
-                  <th className="px-6 py-3.5">Buyer Name</th>
-                  <th className="px-6 py-3.5">Sale Date</th>
-                  <th className="px-6 py-3.5 text-right">Price (Ksh)</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Goat Tag</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Buyer Name</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Sale Date</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Price (Ksh)</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-stone-900">
+              <tbody className="divide-y divide-stone-200/50 dark:divide-stone-800/80">
                 {filteredSales.length > 0 ? (
-                  filteredSales.map(item => (
-                    <tr key={item.id} className="hover:bg-stone-50/75 dark:hover:bg-stone-800/50 transition-colors">
-                      <td className="px-6 py-4 font-bold text-stone-900 dark:text-stone-100">{item.goat_id}</td>
-                      <td className="px-6 py-4 text-stone-700 dark:text-stone-300">{item.buyer_name}</td>
-                      <td className="px-6 py-4 text-stone-600 dark:text-stone-400 font-mono text-xs">
-                        {item.sale_date || '—'}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-emerald-700 dark:text-emerald-400 font-mono text-right">
-                        Ksh {Number(item.price).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          id={`btn-del-sale-${item.id}`}
-                          onClick={() => deleteSale(item.id)}
-                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
-                          title="Delete Sale Record"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  filteredSales.map((item, index) => {
+                    const isEven = index % 2 === 1;
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`transition-colors ${
+                          isEven ? 'bg-[#fbfbf9] dark:bg-stone-900/60' : 'bg-white dark:bg-stone-900'
+                        } hover:bg-[#e7f3ec] dark:hover:bg-emerald-950/35`}
+                      >
+                        <td className="px-6 py-[15px] font-bold text-stone-900 dark:text-stone-100">{item.goat_id}</td>
+                        <td className="px-6 py-[15px] text-stone-700 dark:text-stone-300">
+                          {item.buyer_name || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
+                        </td>
+                        <td className="px-6 py-[15px] text-stone-600 dark:text-stone-400 font-mono text-xs">
+                          {item.sale_date || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
+                        </td>
+                        <td className="px-6 py-[15px] font-bold text-emerald-700 dark:text-emerald-400 font-mono text-right">
+                          Ksh {Number(item.price).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-[15px] text-right">
+                          <button
+                            id={`btn-del-sale-${item.id}`}
+                            onClick={() => deleteSale(item.id)}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                            title="Delete record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-stone-400 dark:text-stone-500">
@@ -1575,37 +1614,47 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       {/* TAB 6: WORKERS */}
       {activeTab === 'workers' && (
         <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm record-table-grid">
-              <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
+          <div className="overflow-x-auto max-h-[calc(100vh-250px)] overflow-y-auto">
+            <table className="w-full text-left text-sm border-collapse record-table-grid">
+              <thead className="sticky top-0 z-20 select-none bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3.5">Full Name</th>
-                  <th className="px-6 py-3.5">Phone Contact</th>
-                  <th className="px-6 py-3.5">Assigned Facility / Area</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Full Name</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Phone Contact</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Assigned Facility / Area</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-stone-900">
+              <tbody className="divide-y divide-stone-200/50 dark:divide-stone-800/80">
                 {filteredWorkers.length > 0 ? (
-                  filteredWorkers.map(item => (
-                    <tr key={item.id} className="hover:bg-stone-50/75 dark:hover:bg-stone-800/50 transition-colors">
-                      <td className="px-6 py-4 font-bold text-stone-900 dark:text-stone-100">{item.full_name}</td>
-                      <td className="px-6 py-4 text-stone-600 dark:text-stone-400 font-mono text-xs">
-                        {item.phone || '—'}
-                      </td>
-                      <td className="px-6 py-4 text-stone-700 dark:text-stone-300">{item.location || '—'}</td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          id={`btn-del-worker-${item.id}`}
-                          onClick={() => deleteWorker(item.id)}
-                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
-                          title="Delete Staff Record"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  filteredWorkers.map((item, index) => {
+                    const isEven = index % 2 === 1;
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`transition-colors ${
+                          isEven ? 'bg-[#fbfbf9] dark:bg-stone-900/60' : 'bg-white dark:bg-stone-900'
+                        } hover:bg-[#e7f3ec] dark:hover:bg-emerald-950/35`}
+                      >
+                        <td className="px-6 py-[15px] font-bold text-stone-900 dark:text-stone-100">{item.full_name}</td>
+                        <td className="px-6 py-[15px] text-stone-600 dark:text-stone-400 font-mono text-xs">
+                          {item.phone || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
+                        </td>
+                        <td className="px-6 py-[15px] text-stone-700 dark:text-stone-300">
+                          {item.location || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
+                        </td>
+                        <td className="px-6 py-[15px] text-right">
+                          <button
+                            id={`btn-del-worker-${item.id}`}
+                            onClick={() => deleteWorker(item.id)}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                            title="Delete record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={4} className="px-6 py-12 text-center text-stone-400 dark:text-stone-500">

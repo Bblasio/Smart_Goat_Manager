@@ -156,6 +156,7 @@ export interface MedicationRecord {
   withdrawal_period_days?: number;
   storage_requirements?: string;
   supplier?: string;
+  cost_per_unit?: number;
   last_restocked?: string;
   notes?: string;
 }

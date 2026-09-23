@@ -157,7 +157,7 @@ export const AuthView: React.FC = () => {
           <div className="relative z-10 space-y-6 max-w-sm">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl overflow-hidden border border-white/20 shadow-inner shrink-0">
-                <img src="/jamunapari-goats.png" alt="Smart Goat Management" className="w-full h-full object-cover" />
+                <img src="/app.png" alt="Smart Goat Management" className="w-full h-full object-cover" />
               </div>
               <div>
                 <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">

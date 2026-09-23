@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { FinancialTrackingModule } from '../components/FinancialTrackingModule';
 import { FarmReportModal } from '../components/FarmReportModal';
+import { StatCard } from '../components/StatCard';
 import {
   Sparkles,
   ChevronDown,
@@ -19,7 +20,8 @@ import {
   FileText,
   DollarSign,
   Stethoscope,
-  Printer
+  Printer,
+  ClipboardList
 } from 'lucide-react';
 import {
   LineChart,
@@ -637,66 +639,6 @@ export const ReportsView: React.FC = () => {
         </div>
       </div>
 
-      {/* HERD & HEALTH CSV EXPORT CARD */}
-      <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-            <FileSpreadsheet className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-stone-900">
-                Herd & Health Records Export
-              </h3>
-              <span className="px-2 py-0.5 text-[11px] font-bold bg-emerald-100 text-emerald-800 rounded-full">
-                CSV Export
-              </span>
-            </div>
-            <p className="text-xs text-stone-500 mt-1 max-w-2xl">
-              Export comprehensive reports of your {goats.length} registered herd livestock (ear tag IDs, breeds, weights, statuses) and {health.length} veterinary checkups (diagnoses, treatments, clinical statuses) to standard spreadsheet CSV files.
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-lg">
-                ● {goats.length} Herd Goats
-              </span>
-              <span className="inline-flex items-center gap-1 font-semibold text-sky-900 bg-sky-50 border border-sky-200/80 px-2.5 py-1 rounded-lg">
-                🩺 {health.length} Health Records
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <button
-            type="button"
-            id="btn-quick-export-herd-health"
-            onClick={() => handleDownloadReport('herd_health')}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export Herd & Health CSV</span>
-          </button>
-          <button
-            type="button"
-            id="btn-quick-export-herd"
-            onClick={() => handleDownloadReport('herd')}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl border border-stone-200 transition-colors"
-            title="Export Herd Inventory Only"
-          >
-            <span>Herd Only</span>
-          </button>
-          <button
-            type="button"
-            id="btn-quick-export-health"
-            onClick={() => handleDownloadReport('health')}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl border border-stone-200 transition-colors"
-            title="Export Health Logs Only"
-          >
-            <span>Health Only</span>
-          </button>
-        </div>
-      </div>
-
       {downloadSuccess && (
         <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-emerald-800 text-xs font-semibold animate-fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -969,17 +911,13 @@ export const ReportsView: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {forecastRows.map((f, i) => (
-                    <div key={i} className="p-4 rounded-xl bg-stone-50 border border-stone-200">
-                      <div className="text-xs text-stone-500 uppercase tracking-wider font-semibold">
-                        {f.month}
-                      </div>
-                      <div className="text-xl font-extrabold text-stone-900 mt-1">
-                        Ksh {f.predictedRevenue.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-emerald-600 font-medium mt-1">
-                        Predicted Yield
-                      </div>
-                    </div>
+                    <StatCard
+                      key={i}
+                      label={f.month}
+                      value={`Ksh ${f.predictedRevenue.toLocaleString()}`}
+                      subtext="Predicted Yield"
+                      icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
+                    />
                   ))}
                 </div>
 
@@ -1088,28 +1026,42 @@ export const ReportsView: React.FC = () => {
         </button>
 
         {expandFarmSummary && (
-          <div className="p-6 pt-2 border-t border-stone-100">
+          <div className="p-6 pt-2 border-t border-stone-100 dark:border-stone-800">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
-                <span className="text-xs font-semibold text-stone-500 uppercase">Total Goats</span>
-                <div className="text-2xl font-bold text-stone-900 mt-1">{goats.length}</div>
-              </div>
-              <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
-                <span className="text-xs font-semibold text-stone-500 uppercase">Breeding Records</span>
-                <div className="text-2xl font-bold text-stone-900 mt-1">{breeding.length}</div>
-              </div>
-              <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
-                <span className="text-xs font-semibold text-stone-500 uppercase">Sales</span>
-                <div className="text-2xl font-bold text-stone-900 mt-1">{sales.length}</div>
-              </div>
-              <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
-                <span className="text-xs font-semibold text-stone-500 uppercase">Expenses</span>
-                <div className="text-2xl font-bold text-stone-900 mt-1">{expenses.length}</div>
-              </div>
-              <div className="p-4 bg-stone-50 rounded-xl border border-stone-200">
-                <span className="text-xs font-semibold text-stone-500 uppercase">Health Records</span>
-                <div className="text-2xl font-bold text-stone-900 mt-1">{health.length}</div>
-              </div>
+              <StatCard
+                label="Total Goats"
+                value={goats.length}
+                icon={<ClipboardList className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+                subtext="Registered herd"
+              />
+              <StatCard
+                label="Breeding Records"
+                value={breeding.length}
+                icon={<Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
+                variant="purple"
+                subtext="Matings & gestations"
+              />
+              <StatCard
+                label="Sales"
+                value={sales.length}
+                icon={<TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
+                variant="blue"
+                subtext="Transactions"
+              />
+              <StatCard
+                label="Expenses"
+                value={expenses.length}
+                icon={<DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+                variant="amber"
+                subtext="Disbursements"
+              />
+              <StatCard
+                label="Health Records"
+                value={health.length}
+                icon={<Stethoscope className="w-5 h-5 text-rose-600 dark:text-rose-400" />}
+                variant="rose"
+                subtext="Vet checkups"
+              />
             </div>
           </div>
         )}

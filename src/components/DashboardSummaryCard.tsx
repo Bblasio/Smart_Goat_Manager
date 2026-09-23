@@ -12,6 +12,7 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { GoatRecord, BreedingRecord, HealthRecord, MilkRecord } from '../types';
+import { StatCard } from './StatCard';
 
 interface DashboardSummaryCardProps {
   goats: GoatRecord[];
@@ -125,165 +126,84 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
         </div>
       </div>
 
-      {/* 3 Core Metric Panels + 1 Production Companion */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-4">
+      {/* 3 Core Metric Panels + 1 Production Companion using unified StatCard */}
+      <div className="stat-grid pt-4">
         {/* Metric 1: Total Herd Count */}
-        <div
+        <StatCard
           id="summary-total-herd-count"
           onClick={onNavigateToRecords}
-          className="group relative p-4 sm:p-5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 hover:border-emerald-500/80 dark:hover:border-emerald-500/80 transition-all cursor-pointer flex flex-col justify-between shadow-2xs hover:shadow-xs"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-                Total Herd Count
-              </span>
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
-                <Users className="w-4 h-4" />
+          label="Total Herd Count"
+          value={totalHerdCount}
+          unit={`${activeGoats} active`}
+          icon={<Users className="w-4 h-4" />}
+          iconBgColor="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+          footer={
+            <>
+              <div className="flex items-center justify-between text-stone-600 dark:text-stone-300 font-medium">
+                <span>{females} Does • {males} Bucks</span>
+                <span className="text-stone-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center">
+                  Records <ArrowUpRight className="w-3 h-3 ml-0.5" />
+                </span>
               </div>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight">
-                {totalHerdCount}
-              </span>
-              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                {activeGoats} active
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-stone-200/60 dark:border-stone-700/60">
-            <div className="flex items-center justify-between text-xs text-stone-600 dark:text-stone-300 font-medium">
-              <span>{females} Does • {males} Bucks</span>
-              <span className="text-stone-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center">
-                Records <ArrowUpRight className="w-3 h-3 ml-0.5" />
-              </span>
-            </div>
-            {quarantineGoats > 0 && (
-              <div className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                ⚠️ {quarantineGoats} in quarantine bay
-              </div>
-            )}
-          </div>
-        </div>
+              {quarantineGoats > 0 && (
+                <div className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                  ⚠️ {quarantineGoats} in quarantine bay
+                </div>
+              )}
+            </>
+          }
+        />
 
         {/* Metric 2: Active Pregnancies */}
-        <div
+        <StatCard
           id="summary-active-pregnancies"
           onClick={onNavigateToBreedingEstimator}
-          className="group relative p-4 sm:p-5 rounded-xl bg-purple-50/50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/70 hover:border-purple-500/80 dark:hover:border-purple-500/80 transition-all cursor-pointer flex flex-col justify-between shadow-2xs hover:shadow-xs"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-purple-800 dark:text-purple-300">
-                Active Pregnancies
-              </span>
-              <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 flex items-center justify-center">
-                <Baby className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight">
-                {activePregnanciesCount}
-              </span>
-              <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
-                expectant does
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-purple-200/60 dark:border-purple-800/60">
-            {nextExpectedKid ? (
-              <div className="text-xs text-purple-900 dark:text-purple-200 font-medium flex items-center justify-between">
-                <span className="truncate">
-                  Doe {nextExpectedKid.female_id}:{' '}
-                  {nextDeliveryDays !== null && nextDeliveryDays >= 0
-                    ? `Due in ${nextDeliveryDays}d`
-                    : 'Due now'}
-                </span>
-                <span className="text-purple-600 dark:text-purple-400 group-hover:underline shrink-0 ml-1">
-                  Predictor →
-                </span>
-              </div>
-            ) : (
-              <div className="text-xs text-stone-500 dark:text-stone-400">
-                No active gestations logged
-              </div>
-            )}
-            {birthsDueWithin7Days > 0 && (
-              <div className="mt-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                ⚡ {birthsDueWithin7Days} kidding(s) due within 7 days
-              </div>
-            )}
-          </div>
-        </div>
+          variant="purple"
+          label="Active Pregnancies"
+          value={activePregnanciesCount}
+          unit="expectant does"
+          icon={<Baby className="w-4 h-4" />}
+          footer={
+            <>
+              {nextExpectedKid ? (
+                <div className="text-purple-900 dark:text-purple-200 font-medium flex items-center justify-between">
+                  <span className="truncate">
+                    Doe {nextExpectedKid.female_id}:{' '}
+                    {nextDeliveryDays !== null && nextDeliveryDays >= 0
+                      ? `Due in ${nextDeliveryDays}d`
+                      : 'Due now'}
+                  </span>
+                  <span className="text-purple-600 dark:text-purple-400 group-hover:underline shrink-0 ml-1">
+                    Predictor →
+                  </span>
+                </div>
+              ) : (
+                <div className="text-stone-500 dark:text-stone-400">
+                  No active gestations logged
+                </div>
+              )}
+              {birthsDueWithin7Days > 0 && (
+                <div className="mt-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                  ⚡ {birthsDueWithin7Days} kidding(s) due within 7 days
+                </div>
+              )}
+            </>
+          }
+        />
 
         {/* Metric 3: Recent Health Alerts */}
-        <div
+        <StatCard
           id="summary-recent-health-alerts"
           onClick={onNavigateToTasks || onNavigateToHealth}
-          className={`group relative p-4 sm:p-5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between shadow-2xs hover:shadow-xs ${
-            totalHealthAlertsCount > 0
-              ? 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/80 hover:border-rose-500/80'
-              : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 hover:border-emerald-500/80'
-          }`}
-        >
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span
-                className={`text-xs font-bold uppercase tracking-wider ${
-                  totalHealthAlertsCount > 0
-                    ? 'text-rose-800 dark:text-rose-300'
-                    : 'text-emerald-800 dark:text-emerald-300'
-                }`}
-              >
-                Recent Health Alerts
-              </span>
-              <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  totalHealthAlertsCount > 0
-                    ? 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300'
-                    : 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300'
-                }`}
-              >
-                {totalHealthAlertsCount > 0 ? (
-                  <AlertTriangle className="w-4 h-4" />
-                ) : (
-                  <ShieldCheck className="w-4 h-4" />
-                )}
-              </div>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span
-                className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
-                  totalHealthAlertsCount > 0
-                    ? 'text-stone-900 dark:text-stone-100'
-                    : 'text-stone-900 dark:text-stone-100'
-                }`}
-              >
-                {totalHealthAlertsCount}
-              </span>
-              <span
-                className={`text-xs font-semibold ${
-                  totalHealthAlertsCount > 0
-                    ? 'text-rose-700 dark:text-rose-400'
-                    : 'text-emerald-700 dark:text-emerald-400'
-                }`}
-              >
-                {totalHealthAlertsCount > 0 ? 'active flags' : 'all healthy'}
-              </span>
-            </div>
-          </div>
-
-          <div
-            className={`mt-4 pt-3 border-t ${
-              totalHealthAlertsCount > 0
-                ? 'border-rose-200/60 dark:border-rose-800/60'
-                : 'border-emerald-200/60 dark:border-emerald-800/60'
-            }`}
-          >
-            {totalHealthAlertsCount > 0 ? (
-              <div className="text-xs text-rose-900 dark:text-rose-200 font-medium flex items-center justify-between">
+          variant={totalHealthAlertsCount > 0 ? 'rose' : 'default'}
+          label="Recent Health Alerts"
+          value={totalHealthAlertsCount}
+          unit={totalHealthAlertsCount > 0 ? 'active flags' : 'all healthy'}
+          icon={totalHealthAlertsCount > 0 ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+          iconBgColor={totalHealthAlertsCount > 0 ? 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300' : 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300'}
+          footer={
+            totalHealthAlertsCount > 0 ? (
+              <div className="text-rose-900 dark:text-rose-200 font-medium flex items-center justify-between">
                 <span className="truncate">
                   {quarantineGoats > 0 ? `${quarantineGoats} quarantined • ` : ''}
                   {activeHealthAlerts.length > 0 ? `${activeHealthAlerts.length} medical issues` : 'Isolation active'}
@@ -293,47 +213,33 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
                 </span>
               </div>
             ) : (
-              <div className="text-xs text-emerald-800 dark:text-emerald-300 font-medium flex items-center justify-between">
+              <div className="text-emerald-800 dark:text-emerald-300 font-medium flex items-center justify-between">
                 <span>100% Herd bio-security clear</span>
                 <span className="text-emerald-600 dark:text-emerald-400 group-hover:underline">
                   Tasks →
                 </span>
               </div>
-            )}
-          </div>
-        </div>
+            )
+          }
+        />
 
-        {/* Metric 4: Daily Milk Yield & Production (Companion) */}
-        <div
+        {/* Metric 4: Daily Milk Yield & Production */}
+        <StatCard
           id="summary-milk-yield-companion"
-          className="group relative p-4 sm:p-5 rounded-xl bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/70 hover:border-teal-500/80 dark:hover:border-teal-500/80 transition-all flex flex-col justify-between shadow-2xs hover:shadow-xs"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-teal-800 dark:text-teal-300">
-                Daily Milk Yield
-              </span>
-              <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 flex items-center justify-center">
-                <Milk className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight font-mono">
-                {todayMilkYield > 0 ? `${todayMilkYield.toFixed(1)}L` : '0.0L'}
-              </span>
-              <span className="text-xs font-semibold text-teal-700 dark:text-teal-300">
-                today
+          variant="blue"
+          label="Daily Milk Yield"
+          value={todayMilkYield > 0 ? `${todayMilkYield.toFixed(1)}L` : '0.0L'}
+          unit="today"
+          icon={<Milk className="w-4 h-4" />}
+          footer={
+            <div className="text-sky-900 dark:text-sky-200 font-medium flex items-center justify-between">
+              <span>Dairy Doe Group</span>
+              <span className="text-sky-600 dark:text-sky-400 font-semibold">
+                {females > 0 ? `${females} potential does` : '—'}
               </span>
             </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-teal-200/60 dark:border-teal-800/60 text-xs text-teal-900 dark:text-teal-200 font-medium flex items-center justify-between">
-            <span>Dairy Doe Group</span>
-            <span className="text-teal-600 dark:text-teal-400 font-semibold">
-              {females > 0 ? `${females} potential does` : '—'}
-            </span>
-          </div>
-        </div>
+          }
+        />
       </div>
     </div>
   );

@@ -30,6 +30,7 @@ import {
   RefreshCw,
   Cloud
 } from 'lucide-react';
+import { StatCard } from '../components/StatCard';
 
 interface ProfileViewProps {
   onNavigateToRecords?: () => void;
@@ -262,7 +263,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               ) : (
                 <img
-                  src="/jamunapari-goats.png"
+                  src="/app.png"
                   alt={user?.farm_name || 'Farm Profile'}
                   className="w-full h-full object-cover"
                 />
@@ -553,64 +554,67 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               )}
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="text-xs font-semibold text-stone-700">Total Registered Herd</span>
-                </div>
-                <span className="text-base font-bold text-stone-900">{totalGoats}</span>
-              </div>
+            <div className="stat-grid">
+              <StatCard
+                id="audit-total-herd"
+                label="Total Registered Herd"
+                value={totalGoats}
+                unit="head"
+                icon={<Users className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />}
+                onClick={onNavigateToRecords}
+              />
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-lg">🌸</span>
-                  <span className="text-xs font-semibold text-stone-700">Breeding Does (Female)</span>
-                </div>
-                <span className="text-base font-bold text-stone-900">{femaleBreedingStock}</span>
-              </div>
+              <StatCard
+                id="audit-breeding-does"
+                variant="purple"
+                label="Breeding Does (Female)"
+                value={femaleBreedingStock}
+                unit="females"
+                icon={<span className="text-sm">🌸</span>}
+              />
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-lg">👑</span>
-                  <span className="text-xs font-semibold text-stone-700">Stud Sires (Male Bucks)</span>
-                </div>
-                <span className="text-base font-bold text-stone-900">{maleSires}</span>
-              </div>
+              <StatCard
+                id="audit-stud-sires"
+                variant="amber"
+                label="Stud Sires (Male Bucks)"
+                value={maleSires}
+                unit="bucks"
+                icon={<span className="text-sm">👑</span>}
+              />
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-lg">🧬</span>
-                  <span className="text-xs font-semibold text-stone-700">Active Gestation Cycles</span>
-                </div>
-                <span className="text-base font-bold text-stone-900">{activeBreeding}</span>
-              </div>
+              <StatCard
+                id="audit-gestation-cycles"
+                variant="purple"
+                label="Active Gestation Cycles"
+                value={activeBreeding}
+                unit="expectant"
+                icon={<span className="text-sm">🧬</span>}
+              />
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-lg">🥛</span>
-                  <span className="text-xs font-semibold text-stone-700">Milk Logged to Date</span>
-                </div>
-                <span className="text-base font-bold text-stone-900">{totalMilkLiters.toFixed(1)} L</span>
-              </div>
+              <StatCard
+                id="audit-milk-logged"
+                variant="blue"
+                label="Milk Logged to Date"
+                value={`${totalMilkLiters.toFixed(1)} L`}
+                unit="total yield"
+                icon={<Milk className="w-4 h-4" />}
+              />
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-lg">💰</span>
-                  <span className="text-xs font-semibold text-stone-700">Cumulative Sales Revenue</span>
-                </div>
-                <span className="text-base font-bold text-emerald-700">
-                  Ksh {totalRevenue.toLocaleString()}
-                </span>
-              </div>
+              <StatCard
+                id="audit-cumulative-revenue"
+                label="Cumulative Sales Revenue"
+                value={`Ksh ${totalRevenue.toLocaleString()}`}
+                icon={<DollarSign className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />}
+                onClick={onNavigateToReports}
+              />
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-lg">👷</span>
-                  <span className="text-xs font-semibold text-stone-700">Farm Workers / Attendants</span>
-                </div>
-                <span className="text-base font-bold text-stone-900">{totalStaff}</span>
-              </div>
+              <StatCard
+                id="audit-farm-workers"
+                label="Farm Workers / Attendants"
+                value={totalStaff}
+                unit="attendants"
+                icon={<span className="text-sm">👷</span>}
+              />
             </div>
           </div>
 

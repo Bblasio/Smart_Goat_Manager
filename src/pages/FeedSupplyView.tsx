@@ -23,6 +23,7 @@ import {
   HelpCircle,
   Truck
 } from 'lucide-react';
+import { StatCard } from '../components/StatCard';
 
 interface FeedSupplyViewProps {
   initialTab?: 'feeds' | 'meds' | 'alerts';
@@ -175,12 +176,16 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
         return;
       }
 
+      const rawCost = formData.get('cost_per_unit') as string;
+      const numCost = rawCost ? parseFloat(rawCost) : undefined;
+
       const payload: Omit<MedicationRecord, 'id'> = {
         name,
-        category: (formData.get('category') as MedicationCategory) || 'Antibiotics',
+        category: (formData.get('category') as MedicationCategory) || 'Antibiotic',
         quantity: Math.max(0, parseFloat(formData.get('quantity') as string) || 0),
         unit: (formData.get('unit') as MedicationUnit) || 'ml',
         min_threshold: Math.max(0, parseFloat(formData.get('min_threshold') as string) || 0),
+        cost_per_unit: numCost !== undefined && !isNaN(numCost) && numCost > 0 ? numCost : undefined,
         batch_number: ((formData.get('batch_number') as string) || '').trim() || undefined,
         expiry_date: (formData.get('expiry_date') as string) || '',
         target_diseases: ((formData.get('target_diseases') as string) || '').trim() || undefined,
@@ -226,12 +231,28 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
     e.preventDefault();
     if (!restockItem || restockAmount <= 0) return;
 
+    const cost =
+      restockCost && !isNaN(Number(restockCost)) && Number(restockCost) > 0
+        ? Number(restockCost)
+        : restockItem.item.cost_per_unit && Number(restockItem.item.cost_per_unit) > 0
+        ? Number(restockItem.item.cost_per_unit)
+        : undefined;
+
     if (restockItem.type === 'feed') {
-      const cost = restockCost ? Number(restockCost) : undefined;
       await restockFeed(restockItem.item.id, restockAmount, cost);
     } else {
-      await restockMedication(restockItem.item.id, restockAmount);
+      await restockMedication(restockItem.item.id, restockAmount, cost);
     }
+    showToast(
+      `Restocked ${restockAmount} ${restockItem.item.unit} of ${restockItem.item.name}${
+        cost && cost > 0
+          ? ` (Added Ksh ${Math.round(restockAmount * cost).toLocaleString()} to ${
+              restockItem.type === 'feed' ? 'Feed' : 'Vet'
+            } expenses)`
+          : ''
+      }`,
+      'success'
+    );
     setRestockItem(null);
     setRestockAmount(10);
     setRestockCost('');
@@ -290,105 +311,59 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              Feed Inventory
-            </span>
-            <span className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
-              <Layers className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-stone-900 dark:text-stone-100">
-              {feeds.length}
-            </span>
-            <span className="text-xs text-stone-500">items stocked</span>
-          </div>
-          <div className="mt-2 text-xs text-stone-500">
-            {lowStockFeeds.length > 0 ? (
+      {/* Metrics Row using unified StatCard */}
+      <div className="stat-grid">
+        <StatCard
+          label="Feed Inventory"
+          value={feeds.length}
+          unit="items stocked"
+          icon={<Layers className="w-4 h-4" />}
+          iconBgColor="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400"
+          subtext={
+            lowStockFeeds.length > 0 ? (
               <span className="text-amber-600 dark:text-amber-400 font-medium">
                 {lowStockFeeds.length} items below safety threshold
               </span>
             ) : (
               <span className="text-emerald-600 dark:text-emerald-400 font-medium">All feed reserves safe</span>
-            )}
-          </div>
-        </div>
+            )
+          }
+        />
 
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              Veterinary Medicine
-            </span>
-            <span className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
-              <Pill className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-stone-900 dark:text-stone-100">
-              {medications.length}
-            </span>
-            <span className="text-xs text-stone-500">pharmaceuticals</span>
-          </div>
-          <div className="mt-2 text-xs text-stone-500">
-            {lowStockMeds.length > 0 ? (
+        <StatCard
+          label="Veterinary Medicine"
+          value={medications.length}
+          unit="pharmaceuticals"
+          icon={<Pill className="w-4 h-4" />}
+          variant="blue"
+          subtext={
+            lowStockMeds.length > 0 ? (
               <span className="text-amber-600 dark:text-amber-400 font-medium">
                 {lowStockMeds.length} vials/packs low in cabinet
               </span>
             ) : (
               <span className="text-emerald-600 dark:text-emerald-400 font-medium">Vet cabinet well-provisioned</span>
-            )}
-          </div>
-        </div>
+            )
+          }
+        />
 
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              Low Stock Warnings
-            </span>
-            <span className={`p-2 rounded-lg ${
-              totalAlertsCount > 0
-                ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
-                : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600'
-            }`}>
-              <AlertTriangle className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className={`text-2xl font-bold ${
-              totalAlertsCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-stone-900 dark:text-stone-100'
-            }`}>
-              {lowStockFeeds.length + lowStockMeds.length}
-            </span>
-            <span className="text-xs text-stone-500">items need reordering</span>
-          </div>
-          <div className="mt-2 text-xs text-stone-500">
-            Click alerts tab for direct purchase links
-          </div>
-        </div>
+        <StatCard
+          label="Low Stock Warnings"
+          value={lowStockFeeds.length + lowStockMeds.length}
+          unit="items need reordering"
+          icon={<AlertTriangle className="w-4 h-4" />}
+          variant={totalAlertsCount > 0 ? 'amber' : 'default'}
+          subtext="Click alerts tab for direct purchase links"
+        />
 
-        <div className="bg-white dark:bg-stone-900 p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              Expiring Supplies
-            </span>
-            <span className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
-              <Clock className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-stone-900 dark:text-stone-100">
-              {expiringMeds.length}
-            </span>
-            <span className="text-xs text-stone-500">within 60 days</span>
-          </div>
-          <div className="mt-2 text-xs text-stone-500">
-            {expiringMeds.length > 0 ? 'Prioritize before shelf expiry' : 'Zero expired medications'}
-          </div>
-        </div>
+        <StatCard
+          label="Expiring Supplies"
+          value={expiringMeds.length}
+          unit="within 60 days"
+          icon={<Clock className="w-4 h-4" />}
+          variant="purple"
+          subtext={expiringMeds.length > 0 ? 'Prioritize before shelf expiry' : 'Zero expired medications'}
+        />
       </div>
 
       {/* Tabs & Search */}
@@ -794,6 +769,14 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                         </span>
                       </div>
                     )}
+                    {med.cost_per_unit !== undefined && med.cost_per_unit > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-stone-400">Unit Cost:</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          Ksh {med.cost_per_unit.toLocaleString()} / {med.unit}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <span className="text-stone-400">Expiry Date:</span>
                       <span className={`font-semibold ${isExpired ? 'text-rose-600' : isExpiringSoon ? 'text-amber-600' : 'text-stone-700 dark:text-stone-300'}`}>
@@ -831,9 +814,12 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                     </button>
                     <button
                       id={`btn-med-restock-${med.id}`}
-                      onClick={() => setRestockItem({ type: 'med', item: med })}
+                      onClick={() => {
+                        setRestockItem({ type: 'med', item: med });
+                        setRestockCost(med.cost_per_unit ? String(med.cost_per_unit) : '');
+                      }}
                       className="px-2.5 py-1.5 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-lg flex items-center gap-1 transition-colors"
-                      title="Restock vials"
+                      title="Restock medication stock"
                     >
                       <ArrowUpRight className="w-3.5 h-3.5" />
                       <span>Restock</span>
@@ -984,7 +970,10 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                         </div>
 
                         <button
-                          onClick={() => setRestockItem({ type: 'med', item: med })}
+                          onClick={() => {
+                            setRestockItem({ type: 'med', item: med });
+                            setRestockCost(med.cost_per_unit ? String(med.cost_per_unit) : '');
+                          }}
                           className="self-start sm:self-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5"
                         >
                           <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1337,17 +1326,34 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Storage Requirement
-                </label>
-                <input
-                  type="text"
-                  name="storage_requirements"
-                  defaultValue={editingMed?.storage_requirements || ''}
-                  placeholder="e.g. Refrigerate 2-8°C, Cool Dark Cabinet"
-                  className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Cost per Unit (Optional, Ksh)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    name="cost_per_unit"
+                    defaultValue={editingMed?.cost_per_unit || ''}
+                    placeholder="e.g. 450"
+                    className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Storage Requirement
+                  </label>
+                  <input
+                    type="text"
+                    name="storage_requirements"
+                    defaultValue={editingMed?.storage_requirements || ''}
+                    placeholder="e.g. Refrigerate 2-8°C, Cool Dark Cabinet"
+                    className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1513,26 +1519,39 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                 />
               </div>
 
-              {restockItem.type === 'feed' && (
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Cost per Unit (Ksh) - Auto-records Farm Expense
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={restockCost}
-                    onChange={e => setRestockCost(e.target.value)}
-                    placeholder="e.g. 850"
-                    className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
-                  />
-                  {restockCost && Number(restockCost) > 0 && (
-                    <p className="mt-1 text-xs text-emerald-600 font-medium">
-                      Will add Ksh {Math.round(restockAmount * Number(restockCost)).toLocaleString()} to farm financial expenses.
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  Cost per Unit (Ksh) — Auto-records Farm Expense
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={restockCost}
+                  onChange={e => setRestockCost(e.target.value)}
+                  placeholder={
+                    restockItem.item.cost_per_unit
+                      ? String(restockItem.item.cost_per_unit)
+                      : restockItem.type === 'feed'
+                      ? 'e.g. 850'
+                      : 'e.g. 450'
+                  }
+                  className="w-full px-3 py-2 text-sm bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl"
+                />
+                {(() => {
+                  const effective =
+                    restockCost && !isNaN(Number(restockCost)) && Number(restockCost) > 0
+                      ? Number(restockCost)
+                      : restockItem.item.cost_per_unit && Number(restockItem.item.cost_per_unit) > 0
+                      ? Number(restockItem.item.cost_per_unit)
+                      : 0;
+                  return effective > 0 ? (
+                    <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                      Will add Ksh {Math.round(restockAmount * effective).toLocaleString()} to farm expenses ({restockItem.type === 'feed' ? 'Feed' : 'Vet & Medication'}).
                     </p>
-                  )}
-                </div>
-              )}
+                  ) : null;
+                })()}
+              </div>
 
               <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-end gap-2">
                 <button

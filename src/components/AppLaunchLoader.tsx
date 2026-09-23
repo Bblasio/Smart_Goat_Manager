@@ -134,7 +134,7 @@ export const AppLaunchLoader: React.FC<AppLaunchLoaderProps> = ({
             className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-400/80 flex items-center justify-center shadow-lg bg-stone-900"
           >
             <img
-              src={logoUrl || "/jamunapari-goats.png"}
+              src={logoUrl || "/app.png"}
               alt="Smart Goat Management"
               className="w-full h-full object-cover"
             />

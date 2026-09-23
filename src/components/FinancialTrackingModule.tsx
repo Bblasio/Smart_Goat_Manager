@@ -23,6 +23,7 @@ import {
   Wheat,
   Briefcase
 } from 'lucide-react';
+import { StatCard } from './StatCard';
 
 export const FinancialTrackingModule: React.FC = () => {
   const { sales, expenses, addExpense, deleteExpense, addSale, deleteSale, goats, farmName } = useFarm();
@@ -404,56 +405,43 @@ export const FinancialTrackingModule: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards: Revenue, Expenses, Net Profit */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* KPI Cards: Revenue, Expenses, Net Profit using unified StatCard */}
+      <div className="stat-grid">
         {/* Total Revenue */}
-        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-              Total Revenue (Sales)
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
+        <StatCard
+          label="Total Revenue (Sales)"
+          value={`Ksh ${totalRevenue.toLocaleString()}`}
+          icon={<TrendingUp className="w-4 h-4 text-emerald-600" />}
+          iconBgColor="bg-emerald-50 text-emerald-600"
+          subtext={
+            <div className="text-emerald-700 font-medium flex items-center gap-1">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>{sales.length} commercial sale transaction(s)</span>
             </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight font-mono">
-              Ksh {totalRevenue.toLocaleString()}
-            </span>
-          </div>
-          <div className="mt-2 text-xs text-emerald-700 font-medium flex items-center gap-1">
-            <ArrowUpRight className="w-3.5 h-3.5" />
-            <span>{sales.length} commercial sale transaction(s)</span>
-          </div>
-        </div>
+          }
+        />
 
         {/* Total Expenses */}
-        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-              Total Operating Expenses
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-              <TrendingDown className="w-4 h-4" />
+        <StatCard
+          label="Total Operating Expenses"
+          value={`Ksh ${totalExpenses.toLocaleString()}`}
+          icon={<TrendingDown className="w-4 h-4 text-rose-600" />}
+          iconBgColor="bg-rose-50 text-rose-600"
+          variant="rose"
+          subtext={
+            <div className="text-rose-700 font-medium flex items-center gap-1">
+              <ArrowDownRight className="w-3.5 h-3.5" />
+              <span>{expenses.length} expense log(s) across operations</span>
             </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight font-mono">
-              Ksh {totalExpenses.toLocaleString()}
-            </span>
-          </div>
-          <div className="mt-2 text-xs text-rose-700 font-medium flex items-center gap-1">
-            <ArrowDownRight className="w-3.5 h-3.5" />
-            <span>{expenses.length} expense log(s) across operations</span>
-          </div>
-        </div>
+          }
+        />
 
         {/* Net Profit / Margin */}
-        <div className="p-5 rounded-2xl bg-white border border-stone-200 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-              Net Farm Cash Flow
-            </span>
+        <StatCard
+          label="Net Farm Cash Flow"
+          value={`${netProfit >= 0 ? '+' : ''}Ksh ${netProfit.toLocaleString()}`}
+          variant={netProfit >= 0 ? 'emerald' : 'rose'}
+          badge={
             <span
               className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                 netProfit >= 0
@@ -463,20 +451,9 @@ export const FinancialTrackingModule: React.FC = () => {
             >
               {profitMargin}% Margin
             </span>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span
-              className={`text-2xl sm:text-3xl font-extrabold tracking-tight font-mono ${
-                netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'
-              }`}
-            >
-              {netProfit >= 0 ? '+' : ''}Ksh {netProfit.toLocaleString()}
-            </span>
-          </div>
-          <div className="mt-2 text-xs text-stone-500">
-            {netProfit >= 0 ? 'Profitable commercial return' : 'Operating investment deficit'}
-          </div>
-        </div>
+          }
+          subtext={netProfit >= 0 ? 'Profitable commercial return' : 'Operating investment deficit'}
+        />
       </div>
 
       {/* Operating Expense Breakdown by Category */}

@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
+import { StatCard } from './StatCard';
 
 interface WeatherData {
   temperatureC: number;
@@ -207,7 +208,10 @@ export const LocalFarmWeatherWidget: React.FC<LocalFarmWeatherWidgetProps> = ({
               </div>
               <div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black text-stone-900 dark:text-white tracking-tight font-mono">
+                  <span
+                    className="hero-stat-number text-stone-900 dark:text-white"
+                    style={{ fontSize: 'var(--text-xl, 28px)' }}
+                  >
                     {displayTemp}
                   </span>
                   <span className="text-xs text-stone-500 dark:text-stone-400 font-medium">
@@ -240,66 +244,39 @@ export const LocalFarmWeatherWidget: React.FC<LocalFarmWeatherWidgetProps> = ({
           </div>
 
           {/* Core Caprine Environmental Metrics Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-100 dark:border-stone-800">
-              <div className="flex items-center justify-between text-stone-500 dark:text-stone-400 text-xs mb-1">
-                <span className="flex items-center gap-1">
-                  <Droplets className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                  Humidity
-                </span>
-              </div>
-              <div className="text-base font-bold text-stone-900 dark:text-white font-mono">
-                {weatherData.humidity}%
-              </div>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                Pneumonia risk: Low
-              </span>
-            </div>
+          <div className="stat-grid">
+            <StatCard
+              label="Humidity"
+              value={`${weatherData.humidity}%`}
+              icon={<Droplets className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
+              iconBgColor="bg-teal-50 dark:bg-teal-950/50"
+              subtext={<span className="text-emerald-600 dark:text-emerald-400 font-medium">Pneumonia risk: Low</span>}
+            />
 
-            <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-100 dark:border-stone-800">
-              <div className="flex items-center justify-between text-stone-500 dark:text-stone-400 text-xs mb-1">
-                <span className="flex items-center gap-1">
-                  <Wind className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                  Wind
-                </span>
-              </div>
-              <div className="text-base font-bold text-stone-900 dark:text-white font-mono">
-                {weatherData.windSpeedKmH} km/h
-              </div>
-              <span className="text-[10px] text-stone-500 dark:text-stone-400">
-                Natural ventilation ok
-              </span>
-            </div>
+            <StatCard
+              label="Wind"
+              value={`${weatherData.windSpeedKmH} km/h`}
+              icon={<Wind className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
+              iconBgColor="bg-sky-50 dark:bg-sky-950/50"
+              subtext="Natural ventilation ok"
+            />
 
-            <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-100 dark:border-stone-800">
-              <div className="flex items-center justify-between text-stone-500 dark:text-stone-400 text-xs mb-1">
-                <span className="flex items-center gap-1">
-                  <CloudRain className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                  Precipitation
-                </span>
-              </div>
-              <div className="text-base font-bold text-stone-900 dark:text-white font-mono">
-                {weatherData.rainProbability}%
-              </div>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                Dry fleece foraging
-              </span>
-            </div>
+            <StatCard
+              label="Precipitation"
+              value={`${weatherData.rainProbability}%`}
+              icon={<CloudRain className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+              iconBgColor="bg-blue-50 dark:bg-blue-950/50"
+              subtext={<span className="text-emerald-600 dark:text-emerald-400 font-medium">Dry fleece foraging</span>}
+            />
 
-            <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-100 dark:border-stone-800">
-              <div className="flex items-center justify-between text-stone-500 dark:text-stone-400 text-xs mb-1">
-                <span className="flex items-center gap-1">
-                  <Thermometer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  Solar / UV
-                </span>
-              </div>
-              <div className="text-base font-bold text-stone-900 dark:text-white font-mono">
-                Index {weatherData.uvIndex}
-              </div>
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                Moderate shade needed
-              </span>
-            </div>
+            <StatCard
+              label="Solar / UV"
+              value={`Index ${weatherData.uvIndex}`}
+              icon={<Thermometer className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+              iconBgColor="bg-amber-50 dark:bg-amber-950/50"
+              variant="amber"
+              subtext={<span className="text-amber-600 dark:text-amber-400 font-medium">Moderate shade needed</span>}
+            />
           </div>
 
           {/* Daily Goat Welfare & Pasture Advisory Notice */}

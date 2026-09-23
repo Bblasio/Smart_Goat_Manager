@@ -66,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl overflow-hidden border border-emerald-500/50 shadow-sm shrink-0 bg-stone-100">
               <img
-                src="/jamunapari-goats.png"
+                src="/app.png"
                 alt={farmName}
                 className="w-full h-full object-cover"
               />
@@ -86,7 +86,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {syncStatus === 'connected' && (
                   <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    Live Synced
+                    <span>Connected</span>
                   </span>
                 )}
                 {syncStatus === 'connecting' && (

@@ -122,7 +122,7 @@ interface FarmContextType {
   deleteMedication: (id: string) => Promise<void>;
   clearAllMedications: () => Promise<void>;
   consumeMedication: (id: string, amount: number, goatId?: string, notes?: string) => Promise<void>;
-  restockMedication: (id: string, amount: number) => Promise<void>;
+  restockMedication: (id: string, amount: number, cost?: number) => Promise<void>;
   addKidGrowthRecord: (record: Omit<KidGrowthRecord, 'id' | 'created_at'>) => Promise<void>;
   updateKidGrowthRecord: (id: string, updates: Partial<KidGrowthRecord>) => Promise<void>;
   deleteKidGrowthRecord: (id: string) => Promise<void>;
@@ -369,15 +369,19 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsFirebaseActive(true);
         setSyncStatus('connecting');
 
-        // Retrieve cached profile for this user UID first so profile details are never lost on reload
+        // Retrieve cached profile for this user UID or email first so profile details are never lost on reload or re-login
         const prefix = (fbUser.email || 'Farm').split('@')[0];
         let defaultFarmName = fbUser.displayName || (prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm');
         let initialCachedUser: FarmUser | null = null;
         try {
-          const cached = localStorage.getItem(`sgm_profile_${fbUser.uid}`) || localStorage.getItem('sgm_user');
+          const userEmail = (fbUser.email || '').trim().toLowerCase();
+          const cached =
+            localStorage.getItem(`sgm_profile_${fbUser.uid}`) ||
+            (userEmail ? localStorage.getItem(`sgm_profile_email_${userEmail}`) : null) ||
+            localStorage.getItem('sgm_user');
           if (cached) {
             const parsed = JSON.parse(cached);
-            if (parsed.uid === fbUser.uid) {
+            if (parsed && (parsed.uid === fbUser.uid || (userEmail && parsed.email?.toLowerCase() === userEmail))) {
               initialCachedUser = parsed;
               defaultFarmName = parsed.farm_name || defaultFarmName;
             }
@@ -386,16 +390,29 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // ignore
         }
 
-        const immediateUser: FarmUser = initialCachedUser || {
+        const immediateUser: FarmUser = {
           uid: fbUser.uid,
-          email: fbUser.email || '',
-          farm_name: defaultFarmName,
-          created_at: new Date().toISOString(),
+          email: fbUser.email || initialCachedUser?.email || '',
+          farm_name: initialCachedUser?.farm_name || defaultFarmName,
+          owner_name: initialCachedUser?.owner_name || '',
+          location: initialCachedUser?.location || '',
+          farm_size: initialCachedUser?.farm_size || '',
+          primary_breed: initialCachedUser?.primary_breed || '',
+          phone: initialCachedUser?.phone || '',
+          bio: initialCachedUser?.bio || '',
+          production_focus: initialCachedUser?.production_focus || '',
+          grazing_system: initialCachedUser?.grazing_system || '',
+          founded_year: initialCachedUser?.founded_year || '',
+          logo_url: initialCachedUser?.logo_url || '',
+          created_at: initialCachedUser?.created_at || new Date().toISOString(),
         };
 
         setUser(immediateUser);
         localStorage.setItem('sgm_user', JSON.stringify(immediateUser));
         localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(immediateUser));
+        if (fbUser.email) {
+          localStorage.setItem(`sgm_profile_email_${fbUser.email.toLowerCase()}`, JSON.stringify(immediateUser));
+        }
 
         // Fetch user profile from RTDB (read-only; never overwrite with blanks if fetch is slow)
         try {
@@ -435,6 +452,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(currentProfile);
             localStorage.setItem('sgm_user', JSON.stringify(currentProfile));
             localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(currentProfile));
+            if (currentProfile.email) {
+              localStorage.setItem(`sgm_profile_email_${currentProfile.email.toLowerCase()}`, JSON.stringify(currentProfile));
+            }
           }
         } catch (err: any) {
           console.warn('Firebase profile fetch notice:', err.message);
@@ -517,6 +537,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         localStorage.setItem('sgm_user', JSON.stringify(updated));
         localStorage.setItem(`sgm_profile_${uid}`, JSON.stringify(updated));
+        if (updated.email) {
+          localStorage.setItem(`sgm_profile_email_${updated.email.toLowerCase()}`, JSON.stringify(updated));
+        }
         return updated;
       });
     }
@@ -685,6 +708,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         withdrawal_period_days: val.withdrawal_period_days !== undefined ? Number(val.withdrawal_period_days) : undefined,
         storage_requirements: val.storage_requirements || '',
         supplier: val.supplier || '',
+        cost_per_unit: val.cost_per_unit !== undefined ? Number(val.cost_per_unit) : undefined,
         last_restocked: val.last_restocked || '',
         notes: val.notes || '',
       }));
@@ -799,18 +823,20 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsFirebaseActive(true);
       setSyncStatus('connecting');
 
-      // Establish profile immediately from local cache so sign-in is instant
-      let resolvedFarmName = fbUser.displayName || '';
-      let initialOwner = '';
-      let cachedProfile: FarmUser | null = null;
+      // Establish profile immediately from local cache so sign-in is instant and full details are retained
+      const userEmail = email.trim().toLowerCase();
+      let resolvedFarmName = farmName?.trim() || fbUser.displayName || '';
+      let cachedProfile: Partial<FarmUser> = {};
       try {
-        const cached = localStorage.getItem(`sgm_profile_${fbUser.uid}`) || localStorage.getItem('sgm_user');
+        const cached =
+          localStorage.getItem(`sgm_profile_${fbUser.uid}`) ||
+          localStorage.getItem(`sgm_profile_email_${userEmail}`) ||
+          localStorage.getItem('sgm_user');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (parsed.uid === fbUser.uid) {
+          if (parsed && (parsed.uid === fbUser.uid || parsed.email?.toLowerCase() === userEmail)) {
             cachedProfile = parsed;
             resolvedFarmName = parsed.farm_name || resolvedFarmName;
-            initialOwner = parsed.owner_name || '';
           }
         }
       } catch {
@@ -818,21 +844,31 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (!resolvedFarmName) {
-        const prefix = email.split('@')[0];
+        const prefix = userEmail.split('@')[0];
         resolvedFarmName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm';
       }
 
-      const immediateProfile: FarmUser = cachedProfile || {
+      const immediateProfile: FarmUser = {
         uid: fbUser.uid,
         email: fbUser.email || email,
-        farm_name: resolvedFarmName,
-        owner_name: initialOwner,
-        created_at: new Date().toISOString(),
+        farm_name: cachedProfile.farm_name || resolvedFarmName,
+        owner_name: cachedProfile.owner_name || '',
+        location: cachedProfile.location || '',
+        farm_size: cachedProfile.farm_size || '',
+        primary_breed: cachedProfile.primary_breed || '',
+        phone: cachedProfile.phone || '',
+        bio: cachedProfile.bio || '',
+        production_focus: cachedProfile.production_focus || '',
+        grazing_system: cachedProfile.grazing_system || '',
+        founded_year: cachedProfile.founded_year || '',
+        logo_url: cachedProfile.logo_url || '',
+        created_at: cachedProfile.created_at || new Date().toISOString(),
       };
 
       setUser(immediateProfile);
       localStorage.setItem('sgm_user', JSON.stringify(immediateProfile));
       localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(immediateProfile));
+      localStorage.setItem(`sgm_profile_email_${userEmail}`, JSON.stringify(immediateProfile));
 
       // Attempt to load profile from RTDB in background without blocking login
       withTimeout(get(ref(rtdb, `users/${fbUser.uid}/user_profile`)), 3500, null)
@@ -852,20 +888,21 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const updated: FarmUser = {
                 ...(prev || immediateProfile),
                 farm_name: cloudFarmName,
-                owner_name: val.owner_name || val.ownerName || prev?.owner_name || '',
-                location: val.location || val.county || prev?.location || '',
-                farm_size: val.farm_size || val.farmSize || prev?.farm_size || '',
-                primary_breed: val.primary_breed || val.primaryBreed || prev?.primary_breed || '',
-                phone: val.phone || val.phoneNumber || prev?.phone || '',
-                bio: val.bio || prev?.bio || '',
-                production_focus: val.production_focus || val.productionFocus || prev?.production_focus || '',
-                grazing_system: val.grazing_system || val.grazingSystem || prev?.grazing_system || '',
-                founded_year: val.founded_year || val.foundedYear || prev?.founded_year || '',
-                logo_url: val.logo_url || val.logoUrl || prev?.logo_url || '',
-                created_at: val.created_at || prev?.created_at || new Date().toISOString(),
+                owner_name: val.owner_name || val.ownerName || prev?.owner_name || immediateProfile.owner_name,
+                location: val.location || val.county || prev?.location || immediateProfile.location,
+                farm_size: val.farm_size || val.farmSize || prev?.farm_size || immediateProfile.farm_size,
+                primary_breed: val.primary_breed || val.primaryBreed || prev?.primary_breed || immediateProfile.primary_breed,
+                phone: val.phone || val.phoneNumber || prev?.phone || immediateProfile.phone,
+                bio: val.bio || prev?.bio || immediateProfile.bio,
+                production_focus: val.production_focus || val.productionFocus || prev?.production_focus || immediateProfile.production_focus,
+                grazing_system: val.grazing_system || val.grazingSystem || prev?.grazing_system || immediateProfile.grazing_system,
+                founded_year: val.founded_year || val.foundedYear || prev?.founded_year || immediateProfile.founded_year,
+                logo_url: val.logo_url || val.logoUrl || prev?.logo_url || immediateProfile.logo_url,
+                created_at: val.created_at || prev?.created_at || immediateProfile.created_at,
               };
               localStorage.setItem('sgm_user', JSON.stringify(updated));
               localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(updated));
+              localStorage.setItem(`sgm_profile_email_${userEmail}`, JSON.stringify(updated));
               return updated;
             });
           }
@@ -984,7 +1021,10 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFirebaseUser(fbUser);
       setIsFirebaseActive(true);
       setUser(newProfile);
+      setAuthLoading(false);
       localStorage.setItem('sgm_user', JSON.stringify(newProfile));
+      localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(newProfile));
+      localStorage.setItem(`sgm_profile_email_${email.trim().toLowerCase()}`, JSON.stringify(newProfile));
 
       // 5. Store user_profile in Firebase Realtime Database in background
       withTimeout(
@@ -1135,11 +1175,15 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (activeUid) {
         localStorage.setItem(`sgm_profile_${activeUid}`, JSON.stringify(merged));
       }
+      const userEmail = (merged.email || firebaseUser?.email || '').trim().toLowerCase();
+      if (userEmail) {
+        localStorage.setItem(`sgm_profile_email_${userEmail}`, JSON.stringify(merged));
+      }
 
       if (activeUid) {
         const payload = {
           farm_name: merged.farm_name,
-          email: merged.email,
+          email: merged.email || firebaseUser?.email || '',
           owner_name: merged.owner_name || '',
           location: merged.location || '',
           farm_size: merged.farm_size || '',
@@ -1156,10 +1200,19 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email_verified: true,
         };
 
-        await Promise.all([
-          set(ref(rtdb, `users/${activeUid}/user_profile`), payload),
-          set(ref(rtdb, `users/${activeUid}/profile`), payload)
-        ]);
+        try {
+          // Push to Firebase RTDB with safe timeout; don't fail profile save if network is slow or rules reject
+          await withTimeout(
+            Promise.all([
+              set(ref(rtdb, `users/${activeUid}/user_profile`), payload),
+              set(ref(rtdb, `users/${activeUid}/profile`), payload)
+            ]),
+            3500,
+            null
+          );
+        } catch (dbErr: any) {
+          console.warn('Realtime database write warning (profile is securely cached locally):', dbErr?.message);
+        }
 
         if (firebaseUser && updates.farm_name) {
           try {
@@ -2131,17 +2184,24 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       quantity: newQty,
       last_restocked: now,
     };
-    if (cost !== undefined && cost !== null && !isNaN(cost)) {
+    if (cost !== undefined && cost !== null && !isNaN(cost) && cost > 0) {
       updatePayload.cost_per_unit = cost;
     }
     await updateFeed(id, updatePayload);
 
-    // Automatically record an expense if cost was provided
-    if (cost && cost > 0) {
+    // Automatically record an expense if cost was provided or if item has a unit cost
+    const effectiveCost =
+      cost !== undefined && cost !== null && !isNaN(cost) && cost > 0
+        ? cost
+        : target.cost_per_unit && target.cost_per_unit > 0
+        ? target.cost_per_unit
+        : 0;
+
+    if (effectiveCost > 0 && amount > 0) {
       await addExpense({
         category: 'Feed',
         title: `Restock: ${target.name} (${amount} ${target.unit})`,
-        amount: Math.round(amount * cost),
+        amount: Math.round(amount * effectiveCost),
         date: now,
         notes: `Automated inventory restock ledger. Supplier: ${target.supplier || 'N/A'}`
       });
@@ -2188,6 +2248,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           target_diseases: newRecord.target_diseases || '',
           storage_requirements: newRecord.storage_requirements || '',
           supplier: newRecord.supplier || '',
+          cost_per_unit: newRecord.cost_per_unit !== undefined ? Number(newRecord.cost_per_unit) : null,
           notes: newRecord.notes || '',
           last_restocked: newRecord.last_restocked || new Date().toISOString().split('T')[0],
         };
@@ -2280,15 +2341,37 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const restockMedication = async (id: string, amount: number) => {
+  const restockMedication = async (id: string, amount: number, cost?: number) => {
     const target = medications.find(m => m.id === id);
     if (!target) return;
     const newQty = target.quantity + amount;
     const now = new Date().toISOString().split('T')[0];
-    await updateMedication(id, {
+    const updatePayload: Partial<MedicationRecord> = {
       quantity: newQty,
       last_restocked: now,
-    });
+    };
+    if (cost !== undefined && cost !== null && !isNaN(cost) && cost > 0) {
+      updatePayload.cost_per_unit = cost;
+    }
+    await updateMedication(id, updatePayload);
+
+    // Automatically record an expense if cost was provided or if medication has a unit cost
+    const effectiveCost =
+      cost !== undefined && cost !== null && !isNaN(cost) && cost > 0
+        ? cost
+        : target.cost_per_unit && target.cost_per_unit > 0
+        ? target.cost_per_unit
+        : 0;
+
+    if (effectiveCost > 0 && amount > 0) {
+      await addExpense({
+        category: 'Vet',
+        title: `Restock Medication: ${target.name} (${amount} ${target.unit})`,
+        amount: Math.round(amount * effectiveCost),
+        date: now,
+        notes: `Automated inventory restock ledger. Category: ${target.category}. Supplier: ${target.supplier || 'N/A'}`
+      });
+    }
   };
 
   // KID GROWTH & WEANING ACTIONS

@@ -195,8 +195,8 @@ const MainLayout: React.FC = () => {
         todayNotificationCount={activeTodayCount}
       />
 
-      {/* Main Content Area (offset by left sidebar on desktop) */}
-      <div className="flex-1 lg:pl-64 print:pl-0 flex flex-col min-w-0">
+      {/* Main Content Area (offset by left sidebar: 0 on mobile, 64px on tablet rail, 240px on desktop) */}
+      <div className="flex-1 md:pl-16 xl:pl-[240px] print:pl-0 flex flex-col min-w-0">
         {/* Desktop Sticky Header Bar */}
         <DesktopHeader
           activeTab={activeTab}
@@ -274,8 +274,8 @@ const MainLayout: React.FC = () => {
           </div>
         )}
 
-        {/* Mobile Header Bar */}
-        <header className="no-print lg:hidden sticky top-0 z-30 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 px-4 py-3 flex items-center justify-between">
+        {/* Mobile / Tablet Header Bar (< 1280px) */}
+        <header className="no-print xl:hidden sticky top-0 z-30 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -337,7 +337,7 @@ const MainLayout: React.FC = () => {
         </header>
 
         {/* Dynamic Main Views */}
-        <main className="flex-1 pb-24 lg:pb-12">
+        <main className="flex-1 pb-24 md:pb-12">
           {activeTab === 'dashboard' && (
             <DashboardView
               onNavigateToRecords={() => handleNavigate('records')}

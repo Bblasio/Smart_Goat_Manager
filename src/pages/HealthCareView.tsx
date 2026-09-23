@@ -9,7 +9,9 @@ import {
   HeartPulse,
   ShieldCheck,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { HealthRecord, AppView } from '../types';
 
@@ -22,6 +24,14 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
   const { health, goats, deleteHealth } = useFarm();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [expandedMobileIds, setExpandedMobileIds] = useState<Record<string, boolean>>({});
+
+  const toggleMobileExpand = (id: string) => {
+    setExpandedMobileIds(prev => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   const pregnancyChecks = health.filter(
     h => h.is_pregnant || h.checkup_type === 'Pregnancy Check' || h.condition.toLowerCase().includes('pregnant')
@@ -182,75 +192,232 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
         </div>
       </div>
 
-      {/* Health Records Table */}
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm record-table-grid">
-            <thead className="bg-stone-50 dark:bg-stone-800/80 text-xs font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
-              <tr>
-                <th className="px-6 py-3.5">Goat Tag</th>
-                <th className="px-6 py-3.5">Checkup Date</th>
-                <th className="px-6 py-3.5">Condition / Diagnosis</th>
-                <th className="px-6 py-3.5">Treatment & Protocol</th>
-                <th className="px-6 py-3.5">Gestation / Fetal Age</th>
-                <th className="px-6 py-3.5">Attending Vet</th>
-                <th className="px-6 py-3.5 text-right">Actions</th>
+      {/* Mobile Card-per-Row Fallback (< 768px) */}
+      <div className="block md:hidden space-y-3 mb-4">
+        {filteredRecords.length === 0 ? (
+          <div className="p-8 text-center bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl text-stone-500 text-xs">
+            No matching veterinary records found.
+          </div>
+        ) : (
+          filteredRecords.map(item => {
+            const isExpanded = !!expandedMobileIds[item.id];
+            const isCritical = item.condition.toLowerCase().includes('sick') || item.condition.toLowerCase().includes('mastitis') || item.condition.toLowerCase().includes('pneumonia') || item.condition.toLowerCase().includes('fever');
+            const isObservation = item.condition.toLowerCase().includes('monitor') || item.condition.toLowerCase().includes('limp') || item.condition.toLowerCase().includes('wound') || item.condition.toLowerCase().includes('treatment');
+
+            return (
+              <div
+                key={`mobile-health-${item.id}`}
+                className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs transition-all"
+              >
+                {/* Primary Card View: Tag, Condition Status Pill, Date */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-extrabold text-stone-900 dark:text-stone-100 font-mono text-sm tracking-tight">
+                      {item.goat_id}
+                    </div>
+                    <div className="text-[11px] font-mono text-stone-500 dark:text-stone-400 mt-0.5">
+                      {item.checkup_date}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1">
+                    {item.is_pregnant || item.fetal_age_days ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                        Pregnant
+                      </span>
+                    ) : isCritical ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#e11d48]" />
+                        Critical
+                      </span>
+                    ) : isObservation ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        Observation
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
+                        Healthy
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Primary Field: Condition / Diagnosis */}
+                <div className="mt-2.5 flex items-center justify-between text-xs text-stone-600 dark:text-stone-300 pt-2 border-t border-stone-100 dark:border-stone-800">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="text-stone-400 text-[11px] uppercase tracking-wide">Diagnosis:</span>
+                    <span className="font-semibold text-stone-800 dark:text-stone-200 truncate">
+                      {item.condition || <span className="italic text-[#b7bab2] font-normal">—</span>}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleMobileExpand(item.id)}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 p-1 rounded-md shrink-0"
+                  >
+                    <span>{isExpanded ? 'Less' : 'Details'}</span>
+                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                {/* Expandable Details */}
+                {isExpanded && (
+                  <div className="mt-2.5 pt-2.5 border-t border-dashed border-stone-200 dark:border-stone-800 space-y-2 text-xs animate-fade-in">
+                    <div>
+                      <span className="text-stone-400 text-[10px] uppercase block">Treatment & Protocol</span>
+                      <span className="font-medium text-stone-800 dark:text-stone-200 mt-0.5 block">
+                        {item.treatment || <span className="italic text-[#b7bab2] font-normal">—</span>}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-stone-600 dark:text-stone-300">
+                      <div>
+                        <span className="text-stone-400 text-[10px] uppercase block">Gestation / Fetal Age</span>
+                        {item.fetal_age_days ? (
+                          <div className="mt-0.5">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                              {item.fetal_age_days}d gestation
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="italic text-[#b7bab2] text-xs font-normal mt-0.5 block">—</span>
+                        )}
+                      </div>
+
+                      <div>
+                        <span className="text-stone-400 text-[10px] uppercase block">Attending Vet</span>
+                        <span className="font-medium text-stone-800 dark:text-stone-200 mt-0.5 block">
+                          {item.vet_name || <span className="italic text-[#b7bab2] font-normal">—</span>}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end pt-2 border-t border-stone-100 dark:border-stone-800">
+                      <button
+                        type="button"
+                        onClick={() => deleteHealth(item.id)}
+                        className="px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold flex items-center gap-1"
+                        title="Delete record"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Health Records Desktop Table (Sticky Header, 56px Zebra Rows, Hover Tint) */}
+      <div className="hidden md:block bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xs overflow-hidden">
+        <div className="overflow-x-auto max-h-[calc(100vh-230px)] overflow-y-auto">
+          <table className="w-full text-left text-sm record-table-grid border-collapse">
+            <thead className="sticky top-0 z-20 select-none">
+              <tr className="bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-[11px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
+                <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Goat Tag</th>
+                <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Checkup Date</th>
+                <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Condition / Diagnosis</th>
+                <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Treatment & Protocol</th>
+                <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Gestation / Fetal Age</th>
+                <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Attending Vet</th>
+                <th className="px-6 py-3.5 text-right bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-stone-900">
+            <tbody className="divide-y divide-stone-200/50 dark:divide-stone-800/80">
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-stone-400 text-xs">
+                  <td colSpan={7} className="px-6 py-12 text-center text-stone-400 text-xs">
                     No matching veterinary records found.
                   </td>
                 </tr>
               ) : (
-                filteredRecords.map(item => (
-                  <tr key={item.id} className="hover:bg-stone-50/50">
-                    <td className="px-6 py-3.5 font-bold text-stone-900">{item.goat_id}</td>
-                    <td className="px-6 py-3.5 font-mono text-xs text-stone-500">{item.checkup_date}</td>
-                    <td className="px-6 py-3.5">
-                      <div className="font-semibold text-stone-800 text-xs">{item.condition}</div>
-                      {item.checkup_type && (
-                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-600">
-                          {item.checkup_type}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-3.5 text-xs text-stone-600 max-w-xs">{item.treatment}</td>
-                    <td className="px-6 py-3.5">
-                      {item.fetal_age_days ? (
-                        <div className="space-y-1">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                            {item.fetal_age_days}d gestation
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => onNavigate('breeding_estimator')}
-                            className="block text-[10px] font-semibold text-emerald-700 hover:underline"
-                          >
-                            Predict kidding date →
-                          </button>
+                filteredRecords.map((item, index) => {
+                  const isEvenRow = index % 2 === 1;
+                  const zebraBgClass = isEvenRow ? 'bg-[#fbfbf9] dark:bg-stone-900/60' : 'bg-white dark:bg-stone-900';
+                  const isCritical = item.condition.toLowerCase().includes('sick') || item.condition.toLowerCase().includes('mastitis') || item.condition.toLowerCase().includes('pneumonia') || item.condition.toLowerCase().includes('fever');
+                  const isObservation = item.condition.toLowerCase().includes('monitor') || item.condition.toLowerCase().includes('limp') || item.condition.toLowerCase().includes('wound') || item.condition.toLowerCase().includes('treatment');
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`transition-colors ${zebraBgClass} hover:bg-[#e7f3ec] dark:hover:bg-emerald-950/35`}
+                    >
+                      <td className="px-6 py-[15px] font-extrabold text-stone-900 dark:text-stone-100 font-mono text-sm tracking-tight">
+                        {item.goat_id}
+                      </td>
+                      <td className="px-6 py-[15px] font-mono text-xs text-stone-500 dark:text-stone-400">
+                        {item.checkup_date}
+                      </td>
+                      <td className="px-6 py-[15px]">
+                        <div className="flex flex-col gap-1 items-start">
+                          <div className="font-semibold text-stone-800 dark:text-stone-200 text-xs">
+                            {item.condition || <span className="italic text-[#b7bab2] font-normal">—</span>}
+                          </div>
+                          {item.is_pregnant || item.fetal_age_days ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-200">
+                              Pregnant
+                            </span>
+                          ) : isCritical ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#e11d48]" />
+                              Critical
+                            </span>
+                          ) : isObservation ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                              Observation
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
+                              Healthy
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <span className="text-stone-300 text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-3.5 text-xs text-stone-500 font-medium">
-                      {item.vet_name || 'Dr. Mutua'}
-                    </td>
-                    <td className="px-6 py-3.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => deleteHealth(item.id)}
-                        className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                        title="Delete record"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-6 py-[15px] text-xs text-stone-600 dark:text-stone-300 max-w-xs">
+                        {item.treatment || <span className="italic text-[#b7bab2] font-normal">—</span>}
+                      </td>
+                      <td className="px-6 py-[15px]">
+                        {item.fetal_age_days ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200">
+                              {item.fetal_age_days}d gestation
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => onNavigate('breeding_estimator')}
+                              className="block text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
+                            >
+                              Predict kidding date →
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="italic text-[#b7bab2] text-xs font-normal">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-[15px] text-xs text-stone-600 dark:text-stone-400 font-medium">
+                        {item.vet_name || <span className="italic text-[#b7bab2] font-normal">—</span>}
+                      </td>
+                      <td className="px-6 py-[15px] text-right">
+                        <button
+                          type="button"
+                          onClick={() => deleteHealth(item.id)}
+                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                          title="Delete record"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

@@ -86,7 +86,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   ];
 
   return (
-    <header className="no-print hidden lg:flex sticky top-0 z-30 h-16 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800/80 px-6 items-center justify-between transition-colors duration-200">
+    <header className="no-print hidden xl:flex sticky top-0 z-30 h-16 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800/80 px-6 items-center justify-between transition-colors duration-200">
       {/* Left: Breadcrumb Navigation */}
       <div className="flex items-center gap-2.5 min-w-0">
         <button
@@ -200,7 +200,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
             />
           ) : (
             <img
-              src="/jamunapari-goats.png"
+              src="/app.png"
               alt={farmName}
               className="w-6 h-6 rounded-lg object-cover border border-stone-300 dark:border-stone-600 shrink-0"
             />

@@ -13,6 +13,8 @@ interface AppLaunchLoaderProps {
 export const AppLaunchLoader: React.FC<AppLaunchLoaderProps> = ({
   statusMessage,
   isNavigation = false,
+  logoUrl,
+  farmName,
 }) => {
   const [progress, setProgress] = useState(isNavigation ? 40 : 15);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -125,13 +127,17 @@ export const AppLaunchLoader: React.FC<AppLaunchLoaderProps> = ({
             className="absolute inset-2 rounded-full border-2 border-t-emerald-400 border-r-teal-400 border-b-transparent border-l-transparent shadow-lg"
           />
 
-          {/* Inner Glowing Core */}
+          {/* Inner Glowing Core with Jamunapari System Emblem */}
           <motion.div
-            animate={{ scale: [0.92, 1.08, 0.92] }}
-            transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
-            className="w-10 h-10 rounded-full bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center shadow-inner"
+            animate={{ scale: [0.92, 1.06, 0.92] }}
+            transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+            className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-400/80 flex items-center justify-center shadow-lg bg-stone-900"
           >
-            <div className="w-3.5 h-3.5 rounded-full bg-emerald-400 animate-ping" />
+            <img
+              src={logoUrl || "/jamunapari-goats.png"}
+              alt="Smart Goat Management"
+              className="w-full h-full object-cover"
+            />
           </motion.div>
         </div>
 

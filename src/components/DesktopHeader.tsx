@@ -200,7 +200,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
             />
           ) : (
             <img
-              src="/images/nav/profile.jpg"
+              src="/jamunapari-goats.png"
               alt={farmName}
               className="w-6 h-6 rounded-lg object-cover border border-stone-300 dark:border-stone-600 shrink-0"
             />

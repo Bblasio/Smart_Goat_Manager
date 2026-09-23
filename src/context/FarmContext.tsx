@@ -139,7 +139,7 @@ interface FarmContextType {
   pushSeedDataToFirebase: () => Promise<{ success: boolean; message: string }>;
   syncAllCurrentRecordsToFirebase: () => Promise<{ success: boolean; message: string }>;
   resetToSampleData: () => void;
-  refreshFromFirebase: () => Promise<void>;
+  refreshFromFirebase: () => Promise<{ success: boolean; message: string }>;
   confirmActivation: (email?: string) => Promise<{ success: boolean; error?: string }>;
   checkActivationStatus: (email?: string) => Promise<{ activated: boolean; emailVerified: boolean }>;
   resendVerificationEmail: () => Promise<{ success: boolean; error?: string }>;
@@ -349,6 +349,14 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ]);
   };
 
+  // Hard safety fallback: guarantee authLoading never lingers indefinitely on initial load
+  useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      setAuthLoading(false);
+    }, 800);
+    return () => clearTimeout(safetyTimer);
+  }, []);
+
   // Auth State Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async fbUser => {
@@ -361,12 +369,12 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsFirebaseActive(true);
         setSyncStatus('connecting');
 
-        // Immediately set an initial profile so the user is authenticated without waiting
+        // Retrieve cached profile for this user UID first so profile details are never lost on reload
         const prefix = (fbUser.email || 'Farm').split('@')[0];
         let defaultFarmName = fbUser.displayName || (prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm');
         let initialCachedUser: FarmUser | null = null;
         try {
-          const cached = localStorage.getItem('sgm_user');
+          const cached = localStorage.getItem(`sgm_profile_${fbUser.uid}`) || localStorage.getItem('sgm_user');
           if (cached) {
             const parsed = JSON.parse(cached);
             if (parsed.uid === fbUser.uid) {
@@ -387,58 +395,46 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setUser(immediateUser);
         localStorage.setItem('sgm_user', JSON.stringify(immediateUser));
+        localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(immediateUser));
 
-        // Fetch user profile from RTDB with strict 2.5s timeout so it NEVER hangs
+        // Fetch user profile from RTDB (read-only; never overwrite with blanks if fetch is slow)
         try {
           const profileRef = ref(rtdb, `users/${fbUser.uid}/user_profile`);
-          const profileSnap = await withTimeout(get(profileRef), 2500, null);
+          const profileSnap = await withTimeout(get(profileRef), 3500, null);
 
-          let resolvedFarmName = fbUser.displayName || defaultFarmName;
+          let val = profileSnap && profileSnap.exists() ? profileSnap.val() : null;
 
-          const val = profileSnap && profileSnap.exists() ? profileSnap.val() : {};
-          if (profileSnap && profileSnap.exists()) {
-            resolvedFarmName = val.farm_name || val.farmName || resolvedFarmName;
-          }
-
-          if (!resolvedFarmName) {
+          if (!val) {
             // Check fallback path users/{uid}/profile
-            const altSnap = await withTimeout(get(ref(rtdb, `users/${fbUser.uid}/profile`)), 1500, null);
+            const altSnap = await withTimeout(get(ref(rtdb, `users/${fbUser.uid}/profile`)), 2000, null);
             if (altSnap && altSnap.exists()) {
-              const altVal = altSnap.val();
-              resolvedFarmName = altVal.farm_name || altVal.farmName || resolvedFarmName;
+              val = altSnap.val();
             }
           }
 
-          const currentProfile: FarmUser = {
-            ...immediateUser,
-            uid: fbUser.uid,
-            email: fbUser.email || '',
-            farm_name: resolvedFarmName,
-            owner_name: val?.owner_name || immediateUser.owner_name || '',
-            location: val?.location || immediateUser.location || '',
-            farm_size: val?.farm_size || immediateUser.farm_size || '',
-            primary_breed: val?.primary_breed || immediateUser.primary_breed || '',
-            phone: val?.phone || immediateUser.phone || '',
-            bio: val?.bio || immediateUser.bio || '',
-            production_focus: val?.production_focus || immediateUser.production_focus || '',
-            grazing_system: val?.grazing_system || immediateUser.grazing_system || '',
-            founded_year: val?.founded_year || immediateUser.founded_year || '',
-            logo_url: val?.logo_url || immediateUser.logo_url || '',
-            created_at: val?.created_at || (profileSnap && profileSnap.exists() && profileSnap.val().created_at
-              ? profileSnap.val().created_at
-              : immediateUser.created_at),
-          };
+          if (val) {
+            const resolvedFarmName = val.farm_name || val.farmName || fbUser.displayName || immediateUser.farm_name || defaultFarmName;
+            const currentProfile: FarmUser = {
+              ...immediateUser,
+              uid: fbUser.uid,
+              email: fbUser.email || val.email || immediateUser.email,
+              farm_name: resolvedFarmName,
+              owner_name: val.owner_name || val.ownerName || immediateUser.owner_name || '',
+              location: val.location || val.county || immediateUser.location || '',
+              farm_size: val.farm_size || val.farmSize || immediateUser.farm_size || '',
+              primary_breed: val.primary_breed || val.primaryBreed || immediateUser.primary_breed || '',
+              phone: val.phone || val.phoneNumber || immediateUser.phone || '',
+              bio: val.bio || immediateUser.bio || '',
+              production_focus: val.production_focus || val.productionFocus || immediateUser.production_focus || '',
+              grazing_system: val.grazing_system || val.grazingSystem || immediateUser.grazing_system || '',
+              founded_year: val.founded_year || val.foundedYear || immediateUser.founded_year || '',
+              logo_url: val.logo_url || val.logoUrl || immediateUser.logo_url || '',
+              created_at: val.created_at || immediateUser.created_at,
+            };
 
-          setUser(currentProfile);
-          localStorage.setItem('sgm_user', JSON.stringify(currentProfile));
-
-          // Ensure profile is saved to RTDB if not present
-          if (!profileSnap || !profileSnap.exists()) {
-            set(profileRef, {
-              farm_name: currentProfile.farm_name,
-              email: currentProfile.email,
-              created_at: currentProfile.created_at,
-            }).catch(e => console.warn('Could not auto-write profile to RTDB:', e));
+            setUser(currentProfile);
+            localStorage.setItem('sgm_user', JSON.stringify(currentProfile));
+            localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(currentProfile));
           }
         } catch (err: any) {
           console.warn('Firebase profile fetch notice:', err.message);
@@ -482,6 +478,255 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
+  // Central helper to parse and apply database snapshot to state and local storage
+  const applyDatabaseSnapshot = (userData: any, uid: string) => {
+    if (!userData) {
+      setGoats([]);
+      setBreeding([]);
+      setHealth([]);
+      setSales([]);
+      setExpenses([]);
+      setWorkers([]);
+      setMilk([]);
+      setFeeds([]);
+      setMedications([]);
+      setKidGrowthRecords([]);
+      return;
+    }
+
+    // Sync full profile if present
+    const profile = userData.user_profile || userData.profile;
+    if (profile) {
+      const cloudFarmName = profile.farm_name || profile.farmName || 'Smart Goat Farm';
+      setUser(prev => {
+        const updated: FarmUser = {
+          uid: prev?.uid || uid,
+          email: profile.email || prev?.email || firebaseUser?.email || '',
+          farm_name: cloudFarmName,
+          owner_name: profile.owner_name || profile.ownerName || prev?.owner_name || '',
+          location: profile.location || profile.county || prev?.location || '',
+          farm_size: profile.farm_size || profile.farmSize || prev?.farm_size || '',
+          primary_breed: profile.primary_breed || profile.primaryBreed || prev?.primary_breed || '',
+          phone: profile.phone || profile.phoneNumber || prev?.phone || '',
+          bio: profile.bio || prev?.bio || '',
+          production_focus: profile.production_focus || profile.productionFocus || prev?.production_focus || '',
+          grazing_system: profile.grazing_system || profile.grazingSystem || prev?.grazing_system || '',
+          founded_year: profile.founded_year || profile.foundedYear || prev?.founded_year || '',
+          logo_url: profile.logo_url || profile.logoUrl || prev?.logo_url || '',
+          created_at: profile.created_at || prev?.created_at || new Date().toISOString(),
+        };
+        localStorage.setItem('sgm_user', JSON.stringify(updated));
+        localStorage.setItem(`sgm_profile_${uid}`, JSON.stringify(updated));
+        return updated;
+      });
+    }
+
+    const recordsContainer = userData.records || userData;
+
+    // Goats
+    if (recordsContainer.goats) {
+      const rawGoats = recordsContainer.goats;
+      const parsedGoats: GoatRecord[] = Object.entries(rawGoats).map(([key, val]: [string, any]) => ({
+        id: key,
+        tag_number: val.tag_number || val.tagNumber || val.tag || val.tag_no || key,
+        breed: val.breed || 'Boer',
+        gender: val.gender || val.sex || 'Female',
+        dob: val.dob || val.date_of_birth || new Date().toISOString().split('T')[0],
+        created_at: val.created_at || val.createdAt || new Date().toISOString(),
+        weight_kg: val.weight_kg != null ? Number(val.weight_kg) : (val.weight != null ? Number(val.weight) : 45),
+        status: val.status || 'Active',
+      }));
+      setGoats(parsedGoats);
+    } else {
+      setGoats([]);
+    }
+
+    // Breeding
+    if (recordsContainer.breeding) {
+      const rawBreeding = recordsContainer.breeding;
+      const parsedBreeding: BreedingRecord[] = Object.entries(rawBreeding).map(([key, val]: [string, any]) => ({
+        id: key,
+        female_id: val.female_id || val.femaleId || val.dam || '',
+        male_id: val.male_id || val.maleId || val.sire || '',
+        mating_date: val.mating_date || val.matingDate || val.date || '',
+        expected_birth: val.expected_birth || val.expectedBirth || val.kidding_date || '',
+        gestation_days: Number(val.gestation_days || val.gestationDays || 150),
+        status: val.status || 'Active',
+        notes: val.notes || '',
+        actual_birth_date: val.actual_birth_date || val.actualBirthDate || undefined,
+        kids_born: val.kids_born != null ? Number(val.kids_born) : undefined,
+      }));
+      setBreeding(parsedBreeding);
+    } else {
+      setBreeding([]);
+    }
+
+    // Health
+    if (recordsContainer.health) {
+      const rawHealth = recordsContainer.health;
+      const parsedHealth: HealthRecord[] = Object.entries(rawHealth).map(([key, val]: [string, any]) => ({
+        id: key,
+        goat_id: val.goat_id || val.goatId || '',
+        condition: val.condition || val.diagnosis || '',
+        treatment: val.treatment || val.medication || '',
+        checkup_date: val.checkup_date || val.checkupDate || val.date || '',
+        checkup_type: val.checkup_type || val.checkupType || 'Routine',
+        is_pregnant: Boolean(val.is_pregnant || val.pregnant),
+        fetal_age_days: val.fetal_age_days != null ? Number(val.fetal_age_days) : undefined,
+        custom_gestation_days: val.custom_gestation_days != null ? Number(val.custom_gestation_days) : undefined,
+        vet_name: val.vet_name || val.vetName || '',
+      }));
+      setHealth(parsedHealth);
+    } else {
+      setHealth([]);
+    }
+
+    // Sales
+    if (recordsContainer.sales) {
+      const rawSales = recordsContainer.sales;
+      const parsedSales: SaleRecord[] = Object.entries(rawSales).map(([key, val]: [string, any]) => ({
+        id: key,
+        goat_id: val.goat_id || val.goatId || '',
+        buyer_name: val.buyer_name || val.buyer || '',
+        price: Number(val.price) || 0,
+        sale_date: val.sale_date || val.date || '',
+      }));
+      setSales(parsedSales);
+    } else {
+      setSales([]);
+    }
+
+    // Expenses
+    if (recordsContainer.expenses) {
+      const rawExpenses = recordsContainer.expenses;
+      const parsedExpenses: ExpenseRecord[] = Object.entries(rawExpenses).map(([key, val]: [string, any]) => ({
+        id: key,
+        category: val.category || 'Other',
+        title: val.title || val.description || 'Expense',
+        amount: Number(val.amount) || 0,
+        date: val.date || new Date().toISOString().split('T')[0],
+        notes: val.notes || '',
+        receipt_number: val.receipt_number || val.receiptNumber || '',
+      }));
+      setExpenses(parsedExpenses);
+    } else {
+      setExpenses([]);
+    }
+
+    // Workers
+    if (recordsContainer.workers) {
+      const rawWorkers = recordsContainer.workers;
+      const parsedWorkers: WorkerRecord[] = Object.entries(rawWorkers).map(([key, val]: [string, any]) => ({
+        id: key,
+        full_name: val.full_name || val.name || '',
+        phone: val.phone || val.phoneNumber || '',
+        location: val.location || val.address || '',
+      }));
+      setWorkers(parsedWorkers);
+    } else {
+      setWorkers([]);
+    }
+
+    // Milk
+    if (recordsContainer.milk) {
+      const rawMilk = recordsContainer.milk;
+      const parsedMilk: MilkRecord[] = Object.entries(rawMilk).map(([key, val]: [string, any]) => ({
+        id: key,
+        goat_id: val.goat_id || val.goatId || '',
+        date: val.date || '',
+        morning_liters: Number(val.morning_liters || val.morning) || 0,
+        evening_liters: Number(val.evening_liters || val.evening) || 0,
+        total_liters: Number(val.total_liters) || (Number(val.morning_liters || 0) + Number(val.evening_liters || 0)),
+      }));
+      setMilk(parsedMilk);
+    } else {
+      setMilk([]);
+    }
+
+    // Feeds
+    if (recordsContainer.feeds) {
+      const rawFeeds = recordsContainer.feeds;
+      const parsedFeeds: FeedRecord[] = Object.entries(rawFeeds)
+        .filter(([k]) => !['feed-1', 'feed-2', 'feed-3', 'feed-4', 'feed-5'].includes(k))
+        .map(([key, val]: [string, any]) => ({
+          id: key,
+          name: val.name || '',
+          category: val.category || 'Fodder & Hay',
+          quantity: Number(val.quantity) || 0,
+          unit: val.unit || 'kg',
+          min_threshold: Number(val.min_threshold) || 0,
+          cost_per_unit: val.cost_per_unit !== undefined ? Number(val.cost_per_unit) : undefined,
+          supplier: val.supplier || '',
+          storage_location: val.storage_location || '',
+          last_restocked: val.last_restocked || '',
+          expiry_date: val.expiry_date || '',
+          notes: val.notes || '',
+        }));
+      setFeeds(parsedFeeds);
+      localStorage.setItem('sgm_feeds', JSON.stringify(parsedFeeds));
+    } else {
+      setFeeds([]);
+      localStorage.setItem('sgm_feeds', JSON.stringify([]));
+    }
+
+    // Medications
+    if (recordsContainer.medications) {
+      const rawMeds = recordsContainer.medications;
+      const parsedMeds: MedicationRecord[] = Object.entries(rawMeds).map(([key, val]: [string, any]) => ({
+        id: key,
+        name: val.name || '',
+        category: val.category || 'Antibiotic',
+        quantity: Number(val.quantity) || 0,
+        unit: val.unit || 'vials',
+        min_threshold: Number(val.min_threshold) || 0,
+        batch_number: val.batch_number || '',
+        expiry_date: val.expiry_date || '',
+        target_diseases: val.target_diseases || '',
+        withdrawal_period_days: val.withdrawal_period_days !== undefined ? Number(val.withdrawal_period_days) : undefined,
+        storage_requirements: val.storage_requirements || '',
+        supplier: val.supplier || '',
+        last_restocked: val.last_restocked || '',
+        notes: val.notes || '',
+      }));
+      setMedications(parsedMeds);
+      localStorage.setItem('sgm_medications', JSON.stringify(parsedMeds));
+    } else {
+      setMedications([]);
+      localStorage.setItem('sgm_medications', JSON.stringify([]));
+    }
+
+    // Kid Growth
+    if (recordsContainer.kid_growth) {
+      const rawKids = recordsContainer.kid_growth;
+      const parsedKids: KidGrowthRecord[] = Object.entries(rawKids).map(([id, val]: [string, any]) => ({
+        id,
+        kid_tag: val.kid_tag || '',
+        kid_name: val.kid_name || '',
+        gender: val.gender || 'Male',
+        breed: val.breed || '',
+        dob: val.dob || '',
+        dam_tag: val.dam_tag || '',
+        dam_name: val.dam_name || '',
+        sire_tag: val.sire_tag || '',
+        sire_name: val.sire_name || '',
+        birth_weight_kg: Number(val.birth_weight_kg) || 0,
+        thirty_day_weight_kg: val.thirty_day_weight_kg !== undefined ? Number(val.thirty_day_weight_kg) : undefined,
+        weaning_date: val.weaning_date || '',
+        weaning_weight_kg: val.weaning_weight_kg !== undefined ? Number(val.weaning_weight_kg) : undefined,
+        target_weaning_weight_kg: val.target_weaning_weight_kg !== undefined ? Number(val.target_weaning_weight_kg) : undefined,
+        adg_grams_per_day: val.adg_grams_per_day !== undefined ? Number(val.adg_grams_per_day) : undefined,
+        status: val.status || 'Nursing',
+        notes: val.notes || '',
+        created_at: val.created_at || new Date().toISOString(),
+      }));
+      setKidGrowthRecords(parsedKids);
+      localStorage.setItem('sgm_kid_growth', JSON.stringify(parsedKids));
+    } else {
+      setKidGrowthRecords([]);
+      localStorage.setItem('sgm_kid_growth', JSON.stringify([]));
+    }
+  };
+
   // Sync with Firebase Realtime Database for active authenticated user
   useEffect(() => {
     if (!firebaseUser) {
@@ -508,251 +753,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRecordsLoaded(true);
 
         if (snapshot.exists()) {
-          const userData = snapshot.val();
-
-          // Sync full profile if present
-          const profile = userData.user_profile || userData.profile;
-          if (profile) {
-            const cloudFarmName = profile.farm_name || profile.farmName || 'Smart Goat Farm';
-            setUser(prev => {
-              const updated: FarmUser = {
-                uid: prev?.uid || uid,
-                email: profile.email || prev?.email || firebaseUser?.email || '',
-                farm_name: cloudFarmName,
-                owner_name: profile.owner_name || profile.ownerName || prev?.owner_name || '',
-                location: profile.location || prev?.location || '',
-                farm_size: profile.farm_size || profile.farmSize || prev?.farm_size || '',
-                primary_breed: profile.primary_breed || profile.primaryBreed || prev?.primary_breed || '',
-                phone: profile.phone || prev?.phone || '',
-                bio: profile.bio || prev?.bio || '',
-                production_focus: profile.production_focus || profile.productionFocus || prev?.production_focus || '',
-                grazing_system: profile.grazing_system || profile.grazingSystem || prev?.grazing_system || '',
-                founded_year: profile.founded_year || profile.foundedYear || prev?.founded_year || '',
-                logo_url: profile.logo_url || profile.logoUrl || prev?.logo_url || '',
-                created_at: profile.created_at || prev?.created_at || new Date().toISOString(),
-              };
-              localStorage.setItem('sgm_user', JSON.stringify(updated));
-              return updated;
-            });
-          }
-
-          // Records may be in userData.records or directly in userData
-          const recordsContainer = userData.records || userData;
-
-          // Parse Goats
-          if (recordsContainer.goats) {
-            const rawGoats = recordsContainer.goats;
-            const parsedGoats: GoatRecord[] = Object.entries(rawGoats).map(([key, val]: [string, any]) => ({
-              id: key,
-              tag_number: val.tag_number || val.tagNumber || val.tag || val.tag_no || key,
-              breed: val.breed || 'Boer',
-              gender: val.gender || val.sex || 'Female',
-              dob: val.dob || val.date_of_birth || new Date().toISOString().split('T')[0],
-              created_at: val.created_at || val.createdAt || new Date().toISOString(),
-              weight_kg: val.weight_kg != null ? Number(val.weight_kg) : (val.weight != null ? Number(val.weight) : 45),
-              status: val.status || 'Active',
-            }));
-            setGoats(parsedGoats);
-          } else {
-            // Explicitly set to empty array if no goats under this account
-            setGoats([]);
-          }
-
-          // Parse Breeding
-          if (recordsContainer.breeding) {
-            const rawBreeding = recordsContainer.breeding;
-            const parsedBreeding: BreedingRecord[] = Object.entries(rawBreeding).map(([key, val]: [string, any]) => ({
-              id: key,
-              female_id: val.female_id || val.femaleId || val.dam || '',
-              male_id: val.male_id || val.maleId || val.sire || '',
-              mating_date: val.mating_date || val.matingDate || val.date || '',
-              expected_birth: val.expected_birth || val.expectedBirth || val.kidding_date || '',
-              gestation_days: Number(val.gestation_days || val.gestationDays || 150),
-              status: val.status || 'Active',
-              notes: val.notes || '',
-              actual_birth_date: val.actual_birth_date || val.actualBirthDate || undefined,
-              kids_born: val.kids_born != null ? Number(val.kids_born) : undefined,
-            }));
-            setBreeding(parsedBreeding);
-          } else {
-            setBreeding([]);
-          }
-
-          // Parse Health
-          if (recordsContainer.health) {
-            const rawHealth = recordsContainer.health;
-            const parsedHealth: HealthRecord[] = Object.entries(rawHealth).map(([key, val]: [string, any]) => ({
-              id: key,
-              goat_id: val.goat_id || val.goatId || '',
-              condition: val.condition || val.diagnosis || '',
-              treatment: val.treatment || val.medication || '',
-              checkup_date: val.checkup_date || val.checkupDate || val.date || '',
-              checkup_type: val.checkup_type || val.checkupType || 'Routine',
-              is_pregnant: Boolean(val.is_pregnant || val.pregnant),
-              fetal_age_days: val.fetal_age_days != null ? Number(val.fetal_age_days) : undefined,
-              custom_gestation_days: val.custom_gestation_days != null ? Number(val.custom_gestation_days) : undefined,
-              vet_name: val.vet_name || val.vetName || '',
-            }));
-            setHealth(parsedHealth);
-          } else {
-            setHealth([]);
-          }
-
-          // Parse Sales
-          if (recordsContainer.sales) {
-            const rawSales = recordsContainer.sales;
-            const parsedSales: SaleRecord[] = Object.entries(rawSales).map(([key, val]: [string, any]) => ({
-              id: key,
-              goat_id: val.goat_id || val.goatId || '',
-              buyer_name: val.buyer_name || val.buyer || '',
-              price: Number(val.price) || 0,
-              sale_date: val.sale_date || val.date || '',
-            }));
-            setSales(parsedSales);
-          } else {
-            setSales([]);
-          }
-
-          // Parse Expenses
-          if (recordsContainer.expenses) {
-            const rawExpenses = recordsContainer.expenses;
-            const parsedExpenses: ExpenseRecord[] = Object.entries(rawExpenses).map(([key, val]: [string, any]) => ({
-              id: key,
-              category: val.category || 'Other',
-              title: val.title || val.description || 'Expense',
-              amount: Number(val.amount) || 0,
-              date: val.date || new Date().toISOString().split('T')[0],
-              notes: val.notes || '',
-              receipt_number: val.receipt_number || val.receiptNumber || '',
-            }));
-            setExpenses(parsedExpenses);
-          } else {
-            setExpenses([]);
-          }
-
-          // Parse Workers
-          if (recordsContainer.workers) {
-            const rawWorkers = recordsContainer.workers;
-            const parsedWorkers: WorkerRecord[] = Object.entries(rawWorkers).map(([key, val]: [string, any]) => ({
-              id: key,
-              full_name: val.full_name || val.name || '',
-              phone: val.phone || val.phoneNumber || '',
-              location: val.location || val.address || '',
-            }));
-            setWorkers(parsedWorkers);
-          } else {
-            setWorkers([]);
-          }
-
-          // Parse Milk
-          if (recordsContainer.milk) {
-            const rawMilk = recordsContainer.milk;
-            const parsedMilk: MilkRecord[] = Object.entries(rawMilk).map(([key, val]: [string, any]) => ({
-              id: key,
-              goat_id: val.goat_id || val.goatId || '',
-              date: val.date || '',
-              morning_liters: Number(val.morning_liters || val.morning) || 0,
-              evening_liters: Number(val.evening_liters || val.evening) || 0,
-              total_liters: Number(val.total_liters) || (Number(val.morning_liters || 0) + Number(val.evening_liters || 0)),
-            }));
-            setMilk(parsedMilk);
-          } else {
-            setMilk([]);
-          }
-
-          // Parse Feeds
-          if (recordsContainer.feeds) {
-            const rawFeeds = recordsContainer.feeds;
-            const parsedFeeds: FeedRecord[] = Object.entries(rawFeeds)
-              .filter(([key]) => !['feed-1', 'feed-2', 'feed-3', 'feed-4', 'feed-5'].includes(key))
-              .map(([key, val]: [string, any]) => ({
-                id: key,
-                name: val.name || '',
-                category: val.category || 'Fodder & Hay',
-                quantity: Number(val.quantity) || 0,
-                unit: val.unit || 'kg',
-                min_threshold: Number(val.min_threshold) || 0,
-                cost_per_unit: val.cost_per_unit !== undefined ? Number(val.cost_per_unit) : undefined,
-                supplier: val.supplier || '',
-                storage_location: val.storage_location || '',
-                last_restocked: val.last_restocked || '',
-                expiry_date: val.expiry_date || '',
-                notes: val.notes || '',
-              }));
-            setFeeds(parsedFeeds);
-            localStorage.setItem('sgm_feeds', JSON.stringify(parsedFeeds));
-          } else {
-            setFeeds([]);
-            localStorage.setItem('sgm_feeds', JSON.stringify([]));
-          }
-
-          // Parse Medications
-          if (recordsContainer.medications) {
-            const rawMeds = recordsContainer.medications;
-            const parsedMeds: MedicationRecord[] = Object.entries(rawMeds).map(([key, val]: [string, any]) => ({
-              id: key,
-              name: val.name || '',
-              category: val.category || 'Antibiotic',
-              quantity: Number(val.quantity) || 0,
-              unit: val.unit || 'vials',
-              min_threshold: Number(val.min_threshold) || 0,
-              batch_number: val.batch_number || '',
-              expiry_date: val.expiry_date || '',
-              target_diseases: val.target_diseases || '',
-              withdrawal_period_days: val.withdrawal_period_days !== undefined ? Number(val.withdrawal_period_days) : undefined,
-              storage_requirements: val.storage_requirements || '',
-              supplier: val.supplier || '',
-              last_restocked: val.last_restocked || '',
-              notes: val.notes || '',
-            }));
-            setMedications(parsedMeds);
-            localStorage.setItem('sgm_medications', JSON.stringify(parsedMeds));
-          } else {
-            setMedications([]);
-            localStorage.setItem('sgm_medications', JSON.stringify([]));
-          }
-
-          // Parse Kid Growth Records
-          if (recordsContainer.kid_growth) {
-            const rawKids = recordsContainer.kid_growth;
-            const parsedKids: KidGrowthRecord[] = Object.entries(rawKids).map(([id, val]: [string, any]) => ({
-              id,
-              kid_tag: val.kid_tag || '',
-              kid_name: val.kid_name || '',
-              gender: val.gender || 'Male',
-              breed: val.breed || '',
-              dob: val.dob || '',
-              dam_tag: val.dam_tag || '',
-              dam_name: val.dam_name || '',
-              sire_tag: val.sire_tag || '',
-              sire_name: val.sire_name || '',
-              birth_weight_kg: Number(val.birth_weight_kg) || 0,
-              thirty_day_weight_kg: val.thirty_day_weight_kg !== undefined ? Number(val.thirty_day_weight_kg) : undefined,
-              weaning_date: val.weaning_date || '',
-              weaning_weight_kg: val.weaning_weight_kg !== undefined ? Number(val.weaning_weight_kg) : undefined,
-              target_weaning_weight_kg: val.target_weaning_weight_kg !== undefined ? Number(val.target_weaning_weight_kg) : undefined,
-              adg_grams_per_day: val.adg_grams_per_day !== undefined ? Number(val.adg_grams_per_day) : undefined,
-              status: val.status || 'Nursing',
-              notes: val.notes || '',
-              created_at: val.created_at || new Date().toISOString(),
-            }));
-            setKidGrowthRecords(parsedKids);
-            localStorage.setItem('sgm_kid_growth', JSON.stringify(parsedKids));
-          } else {
-            setKidGrowthRecords([]);
-            localStorage.setItem('sgm_kid_growth', JSON.stringify([]));
-          }
+          applyDatabaseSnapshot(snapshot.val(), uid);
         } else {
-          // Snapshot does not exist -> This account has zero records in RTDB
-          setGoats([]);
-          setBreeding([]);
-          setHealth([]);
-          setSales([]);
-          setWorkers([]);
-          setMilk([]);
-          setFeeds([]);
-          setMedications([]);
-          setKidGrowthRecords([]);
+          applyDatabaseSnapshot(null, uid);
         }
       },
       error => {
@@ -786,21 +789,26 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
 
       if (!userCredential || !userCredential.user) {
+        setAuthLoading(false);
         throw new Error('Authentication request timed out. Please check your network connection.');
       }
 
       const fbUser = userCredential.user;
       setFirebaseUser(fbUser);
+      setAuthLoading(false);
       setIsFirebaseActive(true);
+      setSyncStatus('connecting');
 
-      // Establish profile immediately so sign-in is instant
+      // Establish profile immediately from local cache so sign-in is instant
       let resolvedFarmName = fbUser.displayName || '';
       let initialOwner = '';
+      let cachedProfile: FarmUser | null = null;
       try {
-        const cached = localStorage.getItem('sgm_user');
+        const cached = localStorage.getItem(`sgm_profile_${fbUser.uid}`) || localStorage.getItem('sgm_user');
         if (cached) {
           const parsed = JSON.parse(cached);
           if (parsed.uid === fbUser.uid) {
+            cachedProfile = parsed;
             resolvedFarmName = parsed.farm_name || resolvedFarmName;
             initialOwner = parsed.owner_name || '';
           }
@@ -814,7 +822,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resolvedFarmName = prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Goat Farm';
       }
 
-      const immediateProfile: FarmUser = {
+      const immediateProfile: FarmUser = cachedProfile || {
         uid: fbUser.uid,
         email: fbUser.email || email,
         farm_name: resolvedFarmName,
@@ -824,30 +832,40 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(immediateProfile);
       localStorage.setItem('sgm_user', JSON.stringify(immediateProfile));
+      localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(immediateProfile));
 
       // Attempt to load profile from RTDB in background without blocking login
-      withTimeout(get(ref(rtdb, `users/${fbUser.uid}/user_profile`)), 2000, null)
+      withTimeout(get(ref(rtdb, `users/${fbUser.uid}/user_profile`)), 3500, null)
         .then(snap => {
-          if (snap && snap.exists()) {
-            const val = snap.val();
+          let val = snap && snap.exists() ? snap.val() : null;
+          if (!val) {
+            return withTimeout(get(ref(rtdb, `users/${fbUser.uid}/profile`)), 2000, null).then(altSnap => {
+              return altSnap && altSnap.exists() ? altSnap.val() : null;
+            });
+          }
+          return val;
+        })
+        .then(val => {
+          if (val) {
             const cloudFarmName = val.farm_name || val.farmName || resolvedFarmName;
             setUser(prev => {
               const updated: FarmUser = {
                 ...(prev || immediateProfile),
                 farm_name: cloudFarmName,
-                owner_name: val.owner_name || prev?.owner_name || '',
-                location: val.location || prev?.location || '',
-                farm_size: val.farm_size || prev?.farm_size || '',
-                primary_breed: val.primary_breed || prev?.primary_breed || '',
-                phone: val.phone || prev?.phone || '',
+                owner_name: val.owner_name || val.ownerName || prev?.owner_name || '',
+                location: val.location || val.county || prev?.location || '',
+                farm_size: val.farm_size || val.farmSize || prev?.farm_size || '',
+                primary_breed: val.primary_breed || val.primaryBreed || prev?.primary_breed || '',
+                phone: val.phone || val.phoneNumber || prev?.phone || '',
                 bio: val.bio || prev?.bio || '',
-                production_focus: val.production_focus || prev?.production_focus || '',
-                grazing_system: val.grazing_system || prev?.grazing_system || '',
-                founded_year: val.founded_year || prev?.founded_year || '',
-                logo_url: val.logo_url || prev?.logo_url || '',
+                production_focus: val.production_focus || val.productionFocus || prev?.production_focus || '',
+                grazing_system: val.grazing_system || val.grazingSystem || prev?.grazing_system || '',
+                founded_year: val.founded_year || val.foundedYear || prev?.founded_year || '',
+                logo_url: val.logo_url || val.logoUrl || prev?.logo_url || '',
                 created_at: val.created_at || prev?.created_at || new Date().toISOString(),
               };
               localStorage.setItem('sgm_user', JSON.stringify(updated));
+              localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(updated));
               return updated;
             });
           }
@@ -856,6 +874,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: true };
     } catch (err: any) {
+      setAuthLoading(false);
       const code = err?.code || '';
       const msg = (err?.message || '').toLowerCase();
       if (
@@ -1113,9 +1132,12 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(merged);
       localStorage.setItem('sgm_user', JSON.stringify(merged));
+      if (activeUid) {
+        localStorage.setItem(`sgm_profile_${activeUid}`, JSON.stringify(merged));
+      }
 
       if (activeUid) {
-        await set(ref(rtdb, `users/${activeUid}/user_profile`), {
+        const payload = {
           farm_name: merged.farm_name,
           email: merged.email,
           owner_name: merged.owner_name || '',
@@ -1130,7 +1152,14 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           logo_url: merged.logo_url || '',
           updated_at: new Date().toISOString(),
           created_at: merged.created_at || new Date().toISOString(),
-        });
+          is_activated: true,
+          email_verified: true,
+        };
+
+        await Promise.all([
+          set(ref(rtdb, `users/${activeUid}/user_profile`), payload),
+          set(ref(rtdb, `users/${activeUid}/profile`), payload)
+        ]);
 
         if (firebaseUser && updates.farm_name) {
           try {
@@ -1195,18 +1224,30 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRecordsLoaded(true);
   };
 
-  const refreshFromFirebase = async () => {
-    if (!firebaseUser) return;
+  const refreshFromFirebase = async (): Promise<{ success: boolean; message: string }> => {
+    if (!firebaseUser) {
+      return { success: false, message: 'No authenticated farm account found. Please sign in first.' };
+    }
     try {
       setSyncStatus('connecting');
-      const snap = await get(ref(rtdb, `users/${firebaseUser.uid}`));
-      if (snap.exists()) {
+      const snap = await withTimeout(get(ref(rtdb, `users/${firebaseUser.uid}`)), 6000, null);
+      if (snap && snap.exists()) {
+        applyDatabaseSnapshot(snap.val(), firebaseUser.uid);
         setSyncStatus('connected');
         setIsFirebaseActive(true);
+        setSyncError(null);
+        setRecordsLoaded(true);
+        setLastSyncedAt(new Date());
+        return { success: true, message: 'Database details successfully fetched and updated!' };
+      } else {
+        setSyncStatus('connected');
+        setRecordsLoaded(true);
+        return { success: true, message: 'Connected to database! (No stored records found for this account).' };
       }
     } catch (e: any) {
       setSyncStatus('error');
       setSyncError(e.message);
+      return { success: false, message: e.message || 'Failed to fetch database details' };
     }
   };
 
@@ -2744,9 +2785,40 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         kid_growth: kidGrowthObj,
       });
 
+      // Also ensure full profile is pushed to both user_profile and profile paths
+      const profileData = {
+        uid: user?.uid || activeUid,
+        farm_name: user?.farm_name || 'My Goat Farm',
+        email: user?.email || firebaseUser.email || '',
+        owner_name: user?.owner_name || '',
+        location: user?.location || '',
+        farm_size: user?.farm_size || '',
+        primary_breed: user?.primary_breed || '',
+        phone: user?.phone || '',
+        bio: user?.bio || '',
+        production_focus: user?.production_focus || '',
+        grazing_system: user?.grazing_system || '',
+        founded_year: user?.founded_year || '',
+        logo_url: user?.logo_url || '',
+        created_at: user?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_activated: true,
+        email_verified: true,
+      };
+
+      await Promise.all([
+        set(ref(rtdb, `users/${activeUid}/user_profile`), profileData),
+        set(ref(rtdb, `users/${activeUid}/profile`), profileData)
+      ]);
+
+      if (user) {
+        localStorage.setItem(`sgm_profile_${activeUid}`, JSON.stringify(user));
+      }
+
       setSyncStatus('connected');
       setSyncError(null);
-      return { success: true, message: 'All current farm records successfully synchronized to Realtime Database!' };
+      setLastSyncedAt(new Date());
+      return { success: true, message: 'All farm records & profile successfully synchronized to Realtime Database!' };
     } catch (err: any) {
       console.error('syncAllCurrentRecordsToFirebase error:', err);
       setSyncStatus('error');

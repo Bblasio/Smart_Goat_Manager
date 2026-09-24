@@ -12,6 +12,7 @@ import {
   Stethoscope,
   TrendingUp,
   Building2,
+  Settings,
   Plus,
   ArrowRight,
   ChevronRight,
@@ -58,7 +59,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     { id: 'breeding_estimator', title: 'Breeding Cycle Estimator', category: 'Navigation', icon: Baby },
     { id: 'feed_supply', title: 'Feed & Supply Inventory', category: 'Navigation', icon: Package },
     { id: 'reports', title: 'Reports & Forecasts', category: 'Navigation', icon: TrendingUp },
-    { id: 'profile', title: 'Farm Profile & Identity', category: 'Navigation', icon: Building2 },
+    { id: 'settings', title: 'Settings', category: 'Navigation', icon: Settings },
   ];
 
   const actionItems: { title: string; recordType: RecordType; category: 'Action'; icon: React.ComponentType<{ className?: string }> }[] = [

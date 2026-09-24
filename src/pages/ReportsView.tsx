@@ -492,17 +492,21 @@ export const ReportsView: React.FC = () => {
           </p>
         </div>
 
-        {/* Download & Print Report Actions */}
-        <div className="relative shrink-0 flex items-center gap-2 flex-wrap">
+        {/* Download & Print Report Actions:
+            - <600px: Stack to a single vertical column, full-width buttons
+            - 600px - 1099px: Wrap into a 2x2 grid
+            - >=1100px: One clean horizontal flex row
+        */}
+        <div className="shrink-0 w-full min-[1100px]:w-auto grid grid-cols-1 sm:grid-cols-2 min-[1100px]:flex min-[1100px]:items-center gap-2">
           <button
             id="btn-generate-duration-report"
             type="button"
             onClick={() => setIsReportModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="w-full min-[1100px]:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
             title="Generate custom duration report (Yesterday, Today, Specific Day, 2 Days, 1 Month) for Sales, Expenses, Milk, or Summary"
           >
-            <FileText className="w-4 h-4" />
-            <span>Generate Duration Report</span>
+            <FileText className="w-4 h-4 shrink-0" />
+            <span className="truncate">Generate Duration Report</span>
           </button>
 
           {/* Print Button */}
@@ -510,35 +514,35 @@ export const ReportsView: React.FC = () => {
             id="btn-print-report"
             type="button"
             onClick={() => setIsReportModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="w-full min-[1100px]:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-stone-200 text-white dark:text-stone-900 text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
             title="Open printable report document with farm branding"
           >
-            <Printer className="w-4 h-4" />
-            <span>Print Report</span>
+            <Printer className="w-4 h-4 shrink-0" />
+            <span className="truncate">Print Report</span>
           </button>
 
           <button
             id="btn-export-herd-health-csv"
             type="button"
             onClick={() => handleDownloadReport('herd_health')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors"
+            className="w-full min-[1100px]:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition-colors"
             title="Download herd livestock and health records in CSV format"
           >
-            <Download className="w-4 h-4" />
-            <span>Export Herd & Health (CSV)</span>
+            <Download className="w-4 h-4 shrink-0" />
+            <span className="truncate">Export Herd & Health (CSV)</span>
           </button>
 
-          <div className="relative inline-block text-left">
+          <div className="relative inline-block text-left w-full min-[1100px]:w-auto">
             <button
               id="btn-toggle-export-menu"
               type="button"
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="px-3 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-sm font-semibold rounded-xl border border-stone-200 dark:border-stone-700 shadow-xs transition-colors flex items-center gap-1.5"
+              className="w-full min-[1100px]:w-auto px-3.5 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs sm:text-sm font-semibold rounded-xl border border-stone-200 dark:border-stone-700 shadow-xs transition-colors flex items-center justify-center gap-1.5"
               aria-label="More CSV export options"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>More Exports</span>
-              <ChevronDown className="w-3.5 h-3.5" />
+              <ChevronDown className="w-3.5 h-3.5 shrink-0" />
             </button>
 
             {showExportMenu && (

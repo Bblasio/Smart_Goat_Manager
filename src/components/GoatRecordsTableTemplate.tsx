@@ -473,10 +473,6 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                   </div>
                 </th>
 
-                <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">
-                  CURRENT HEALTH
-                </th>
-
                 <th
                   onClick={() => toggleSort('status')}
                   className="px-6 py-3.5 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700"
@@ -581,38 +577,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                         </div>
                       </td>
 
-                      {/* Column 3: Current Health */}
-                      <td className="px-6 py-[15px]">
-                        <div className="flex flex-col gap-1 items-start">
-                          {healthInfo.status === 'Healthy' && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#dcfce7] text-[#15803d] border border-[#bbf7d0] dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800">
-                              <span className="w-2 h-2 rounded-full bg-[#16a34a] dark:bg-emerald-400" />
-                              Healthy
-                            </span>
-                          )}
-
-                          {healthInfo.status === 'Pregnant' && (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#f3e8ff] text-[#7e22ce] border border-[#e9d5ff] dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800">
-                              Pregnant
-                            </span>
-                          )}
-
-                          {healthInfo.status === 'Sick' && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#ffe4e6] text-[#be123c] border border-[#fecdd3] dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800">
-                              <span className="w-2 h-2 rounded-full bg-[#e11d48]" />
-                              Critical
-                            </span>
-                          )}
-
-                          {healthInfo.subtitle ? (
-                            <span className="text-[11px] text-stone-500 dark:text-stone-400 max-w-[200px] truncate" title={healthInfo.subtitle}>
-                              {healthInfo.subtitle}
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
-
-                      {/* Column 4: Herd Status (Static Badge + Price if Sold) */}
+                      {/* Column: Herd Status (Static Badge + Price if Sold) */}
                       <td className="px-6 py-[15px]">
                         <div className="flex flex-col gap-1 items-start">
                           {effectiveStatus === 'Active' && (
@@ -793,7 +758,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-stone-500 dark:text-stone-400 text-sm">
+                  <td colSpan={8} className="px-6 py-12 text-center text-stone-500 dark:text-stone-400 text-sm">
                     No goat records found matching your filters.
                   </td>
                 </tr>

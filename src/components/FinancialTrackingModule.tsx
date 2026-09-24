@@ -360,25 +360,25 @@ export const FinancialTrackingModule: React.FC = () => {
       )}
 
       {/* Top Action Bar & Summary Card */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0 max-w-xl">
           <h3 className="text-lg font-bold text-stone-900 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-emerald-600" />
-            Financial Tracking & Operational Ledger
+            <DollarSign className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>Financial Tracking &amp; Operational Ledger</span>
           </h3>
           <p className="text-xs text-stone-500 mt-0.5">
             Log farm operational expenses (feed, vet, equipment) and commercial revenue to monitor cash flow and net profitability.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
           <button
             type="button"
             id="btn-log-expense-trigger"
             onClick={() => setShowAddExpenseModal(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 shrink-0" />
             <span>Log Expense</span>
           </button>
 
@@ -386,9 +386,9 @@ export const FinancialTrackingModule: React.FC = () => {
             type="button"
             id="btn-log-revenue-trigger"
             onClick={() => setShowAddRevenueModal(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 shrink-0" />
             <span>Log Revenue</span>
           </button>
 
@@ -396,17 +396,17 @@ export const FinancialTrackingModule: React.FC = () => {
             type="button"
             id="btn-export-financial-csv"
             onClick={handleExportFinancialCsv}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl border border-stone-200 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl border border-stone-200 transition-colors cursor-pointer"
             title="Download Financial CSV"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 shrink-0" />
             <span>Export CSV</span>
           </button>
         </div>
       </div>
 
-      {/* KPI Cards: Revenue, Expenses, Net Profit using unified StatCard */}
-      <div className="stat-grid">
+      {/* KPI Cards: Revenue, Expenses, Net Profit using auto-fit minmax(240px, 1fr) */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
         {/* Total Revenue */}
         <StatCard
           label="Total Revenue (Sales)"
@@ -456,12 +456,12 @@ export const FinancialTrackingModule: React.FC = () => {
         />
       </div>
 
-      {/* Operating Expense Breakdown by Category */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Operating Expense Breakdown by Category: auto-fit minmax(160px, 1fr) */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
         <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200/80">
           <div className="flex items-center gap-1.5 text-amber-900 text-xs font-semibold">
-            <Wheat className="w-3.5 h-3.5 text-amber-600" />
-            <span>Feed & Forage</span>
+            <Wheat className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="truncate">Feed &amp; Forage</span>
           </div>
           <div className="text-base font-bold text-amber-950 font-mono mt-1">
             Ksh {categoryTotals.Feed.toLocaleString()}
@@ -473,8 +473,8 @@ export const FinancialTrackingModule: React.FC = () => {
 
         <div className="p-3.5 bg-sky-50/60 rounded-xl border border-sky-200/80">
           <div className="flex items-center gap-1.5 text-sky-900 text-xs font-semibold">
-            <Stethoscope className="w-3.5 h-3.5 text-sky-600" />
-            <span>Vet & Healthcare</span>
+            <Stethoscope className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+            <span className="truncate">Vet &amp; Healthcare</span>
           </div>
           <div className="text-base font-bold text-sky-950 font-mono mt-1">
             Ksh {categoryTotals.Vet.toLocaleString()}
@@ -486,8 +486,8 @@ export const FinancialTrackingModule: React.FC = () => {
 
         <div className="p-3.5 bg-purple-50/60 rounded-xl border border-purple-200/80">
           <div className="flex items-center gap-1.5 text-purple-900 text-xs font-semibold">
-            <Wrench className="w-3.5 h-3.5 text-purple-600" />
-            <span>Equipment & Tools</span>
+            <Wrench className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+            <span className="truncate">Equipment &amp; Tools</span>
           </div>
           <div className="text-base font-bold text-purple-950 font-mono mt-1">
             Ksh {categoryTotals.Equipment.toLocaleString()}
@@ -499,8 +499,8 @@ export const FinancialTrackingModule: React.FC = () => {
 
         <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
           <div className="flex items-center gap-1.5 text-stone-700 text-xs font-semibold">
-            <Tag className="w-3.5 h-3.5 text-stone-500" />
-            <span>Labor & Other</span>
+            <Tag className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+            <span className="truncate">Labor &amp; Other</span>
           </div>
           <div className="text-base font-bold text-stone-900 font-mono mt-1">
             Ksh {(categoryTotals.Labor + categoryTotals.Other).toLocaleString()}
@@ -513,17 +513,20 @@ export const FinancialTrackingModule: React.FC = () => {
 
       {/* Summary Table with Filtering & Search */}
       <div className="bg-white border border-stone-200 rounded-2xl shadow-xs overflow-hidden">
-        {/* Table Filter Tabs and Search Bar */}
-        <div className="p-4 border-b border-stone-100 bg-stone-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5">
+        {/* Table Filter Tabs and Search Bar:
+            - Filter tabs scroll horizontally with no visible scrollbar
+            - Search box drops below tabs on <1000px, or shares row on >=1000px
+        */}
+        <div className="p-3.5 sm:p-4 border-b border-stone-100 bg-stone-50/60 flex flex-col min-[1000px]:flex-row min-[1000px]:items-center justify-between gap-3">
+          {/* Filter Pills with horizontal scroll & hidden scrollbar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 min-[1000px]:pb-0 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden -mx-1 px-1 shrink-0 max-w-full">
             <button
               type="button"
               id="filter-all-financials"
               onClick={() => setActiveFilter('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 activeFilter === 'all'
-                  ? 'bg-stone-900 text-white'
+                  ? 'bg-stone-900 text-white shadow-xs'
                   : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
               }`}
             >
@@ -533,9 +536,9 @@ export const FinancialTrackingModule: React.FC = () => {
               type="button"
               id="filter-revenue-only"
               onClick={() => setActiveFilter('revenue')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 activeFilter === 'revenue'
-                  ? 'bg-emerald-700 text-white'
+                  ? 'bg-emerald-700 text-white shadow-xs'
                   : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
               }`}
             >
@@ -545,9 +548,9 @@ export const FinancialTrackingModule: React.FC = () => {
               type="button"
               id="filter-expense-only"
               onClick={() => setActiveFilter('expense')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 activeFilter === 'expense'
-                  ? 'bg-rose-700 text-white'
+                  ? 'bg-rose-700 text-white shadow-xs'
                   : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
               }`}
             >
@@ -557,9 +560,9 @@ export const FinancialTrackingModule: React.FC = () => {
               type="button"
               id="filter-feed-only"
               onClick={() => setActiveFilter('feed')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 activeFilter === 'feed'
-                  ? 'bg-amber-700 text-white'
+                  ? 'bg-amber-700 text-white shadow-xs'
                   : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
               }`}
             >
@@ -569,9 +572,9 @@ export const FinancialTrackingModule: React.FC = () => {
               type="button"
               id="filter-vet-only"
               onClick={() => setActiveFilter('vet')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 activeFilter === 'vet'
-                  ? 'bg-sky-700 text-white'
+                  ? 'bg-sky-700 text-white shadow-xs'
                   : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
               }`}
             >
@@ -581,9 +584,9 @@ export const FinancialTrackingModule: React.FC = () => {
               type="button"
               id="filter-equipment-only"
               onClick={() => setActiveFilter('equipment')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                 activeFilter === 'equipment'
-                  ? 'bg-purple-700 text-white'
+                  ? 'bg-purple-700 text-white shadow-xs'
                   : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
               }`}
             >
@@ -592,7 +595,7 @@ export const FinancialTrackingModule: React.FC = () => {
           </div>
 
           {/* Search Box */}
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full min-[1000px]:w-64 shrink-0">
             <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-2.5" />
             <input
               id="input-search-financials"
@@ -605,37 +608,104 @@ export const FinancialTrackingModule: React.FC = () => {
           </div>
         </div>
 
-        {/* Ledger Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm record-table-grid">
+        {/* Mobile View (<768px): Stacked Cards */}
+        <div className="md:hidden divide-y divide-stone-100 p-3 space-y-3">
+          {filteredLedger.length > 0 ? (
+            filteredLedger.map(entry => (
+              <div
+                key={`mobile-${entry.id}`}
+                className="p-3 bg-white rounded-xl border border-stone-200/80 shadow-2xs space-y-2 hover:border-stone-300 transition-colors"
+              >
+                {/* Top line: Date + Category pill */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-stone-500 font-mono">
+                    {entry.date || '—'}
+                  </span>
+                  <div>{getCategoryBadge(entry.category, entry.type)}</div>
+                </div>
+
+                {/* Description as Title */}
+                <div>
+                  <div className="font-semibold text-stone-900 text-sm leading-snug">
+                    {entry.title}
+                  </div>
+                  {entry.reference && (
+                    <div className="text-xs text-stone-500 mt-0.5">
+                      Ref: <span className="font-medium text-stone-700">{entry.reference}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom line: Single colored amount (green for inflow, red for outflow) & action */}
+                <div className="flex items-center justify-between pt-2 border-t border-stone-100">
+                  <div className="text-[11px] font-medium text-stone-400 uppercase tracking-wider">
+                    {entry.type === 'revenue' ? 'Inflow' : 'Outflow'}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {entry.type === 'revenue' ? (
+                      <span className="font-bold text-sm text-emerald-700 font-mono">
+                        +Ksh {entry.amount.toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="font-bold text-sm text-rose-700 font-mono">
+                        -Ksh {entry.amount.toLocaleString()}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteItem(entry)}
+                      className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1"
+                      title="Delete record"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-8 text-center text-stone-400 text-xs">
+              No financial records match the filter criteria.
+            </div>
+          )}
+        </div>
+
+        {/* Tablet (768-1023px) and Desktop (>=1024px) Table:
+            - Horizontal scroll on table only
+            - Sticky/frozen Date (left-0) and Category (left-[110px]) columns
+        */}
+        <div className="hidden md:block overflow-x-auto relative">
+          <table className="w-full text-left text-sm record-table-grid min-w-[700px]">
             <thead className="bg-stone-50 text-xs font-semibold text-stone-600 uppercase tracking-wider border-b border-stone-200">
               <tr>
-                <th className="px-5 py-3">Date</th>
-                <th className="px-5 py-3">Category</th>
-                <th className="px-5 py-3">Description / Item</th>
-                <th className="px-5 py-3">Reference / Counterparty</th>
-                <th className="px-5 py-3 text-right">Inflow (Revenue)</th>
-                <th className="px-5 py-3 text-right">Outflow (Expense)</th>
-                <th className="px-5 py-3 text-center">Actions</th>
+                <th className="px-4 py-3 sticky left-0 z-20 bg-stone-50 min-w-[110px]">Date</th>
+                <th className="px-4 py-3 sticky left-[110px] z-20 bg-stone-50 min-w-[150px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">Category</th>
+                <th className="px-4 py-3 min-w-[180px]">Description / Item</th>
+                <th className="px-4 py-3 min-w-[150px]">Reference / Counterparty</th>
+                <th className="px-4 py-3 text-right min-w-[120px]">Inflow (Revenue)</th>
+                <th className="px-4 py-3 text-right min-w-[120px]">Outflow (Expense)</th>
+                <th className="px-4 py-3 text-center min-w-[70px]">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white">
               {filteredLedger.length > 0 ? (
                 filteredLedger.map(entry => (
-                  <tr key={entry.id} className="hover:bg-stone-50/60 transition-colors">
-                    <td className="px-5 py-3.5 text-xs text-stone-500 font-mono whitespace-nowrap">
+                  <tr key={entry.id} className="group hover:bg-stone-50/70 transition-colors">
+                    {/* Sticky Column 1: Date */}
+                    <td className="px-4 py-3.5 text-xs text-stone-500 font-mono whitespace-nowrap sticky left-0 z-10 bg-white group-hover:bg-stone-50/70 transition-colors">
                       {entry.date || '—'}
                     </td>
-                    <td className="px-5 py-3.5 whitespace-nowrap">
+                    {/* Sticky Column 2: Category */}
+                    <td className="px-4 py-3.5 whitespace-nowrap sticky left-[110px] z-10 bg-white group-hover:bg-stone-50/70 transition-colors shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
                       {getCategoryBadge(entry.category, entry.type)}
                     </td>
-                    <td className="px-5 py-3.5 font-semibold text-stone-900">
+                    <td className="px-4 py-3.5 font-semibold text-stone-900">
                       {entry.title}
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-stone-500">
-                      {entry.reference}
+                    <td className="px-4 py-3.5 text-xs text-stone-500">
+                      {entry.reference || '—'}
                     </td>
-                    <td className="px-5 py-3.5 text-right font-mono text-xs whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-right font-mono text-xs whitespace-nowrap">
                       {entry.type === 'revenue' ? (
                         <span className="font-bold text-emerald-700">
                           +Ksh {entry.amount.toLocaleString()}
@@ -644,7 +714,7 @@ export const FinancialTrackingModule: React.FC = () => {
                         <span className="text-stone-300">—</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-right font-mono text-xs whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-right font-mono text-xs whitespace-nowrap">
                       {entry.type === 'expense' ? (
                         <span className="font-bold text-rose-700">
                           -Ksh {entry.amount.toLocaleString()}
@@ -653,7 +723,7 @@ export const FinancialTrackingModule: React.FC = () => {
                         <span className="text-stone-300">—</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => handleDeleteItem(entry)}
@@ -668,7 +738,7 @@ export const FinancialTrackingModule: React.FC = () => {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-5 py-8 text-center text-stone-400 text-sm">
-                    No transactions found matching the selected filter.
+                    No financial records match the filter criteria.
                   </td>
                 </tr>
               )}
@@ -677,17 +747,17 @@ export const FinancialTrackingModule: React.FC = () => {
             {filteredLedger.length > 0 && (
               <tfoot className="bg-stone-50 font-semibold text-xs border-t border-stone-200">
                 <tr>
-                  <td colSpan={4} className="px-5 py-3 text-stone-700 uppercase tracking-wider">
+                  <td colSpan={4} className="px-4 py-3 text-stone-700 uppercase tracking-wider">
                     Total Filtered ({filteredLedger.length} items)
                   </td>
-                  <td className="px-5 py-3 text-right font-mono font-bold text-emerald-700">
+                  <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">
                     +Ksh{' '}
                     {filteredLedger
                       .filter(e => e.type === 'revenue')
                       .reduce((sum, e) => sum + e.amount, 0)
                       .toLocaleString()}
                   </td>
-                  <td className="px-5 py-3 text-right font-mono font-bold text-rose-700">
+                  <td className="px-4 py-3 text-right font-mono font-bold text-rose-700">
                     -Ksh{' '}
                     {filteredLedger
                       .filter(e => e.type === 'expense')

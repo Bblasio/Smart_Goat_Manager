@@ -2,11 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/app.png" />
-    <link rel="apple-touch-icon" href="/app.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Smart Goat Management System</title>
     <meta name="description" content="Comprehensive goat farm management application to track livestock records, breeding cycles, health, sales, workers, and production analytics." />
+    
+    <!-- PWA Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Theme & System Colors -->
+    <meta name="theme-color" content="#047857" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- iOS Safari Configuration & Apple Touch Icon -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Smart Goat" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="shortcut icon" href="/pwa-192x192.png" />
     <meta property="og:title" content="Smart Goat Management System" />
     <meta property="og:description" content="Comprehensive goat farm management application to track livestock records, breeding cycles, health, sales, workers, and production analytics." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +30,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-stone-50 text-stone-900 font-sans antialiased min-h-screen">
+  <body class="bg-stone-50 text-stone-900 font-sans antialiased min-h-screen overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

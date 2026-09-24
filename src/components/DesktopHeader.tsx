@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useFarm } from '../context/FarmContext';
-import { ThemeToggle } from './ThemeToggle';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
+import { PWAInstallButton } from './PWAInstallButton';
 import { AppView, RecordType } from '../types';
 import {
   Search,
@@ -70,7 +70,9 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
       case 'reports':
         return 'Analytics & Forecast Reports';
       case 'profile':
-        return 'Farm Profile & Identity';
+        return 'Settings';
+      case 'settings':
+        return 'Settings';
       default:
         return 'Farm Ledger';
     }
@@ -86,7 +88,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   ];
 
   return (
-    <header className="no-print hidden xl:flex sticky top-0 z-30 h-16 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800/80 px-6 items-center justify-between transition-colors duration-200">
+    <header className="no-print hidden md:flex sticky top-0 z-30 h-16 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800/80 px-4 xl:px-6 items-center justify-between transition-colors duration-200">
       {/* Left: Breadcrumb Navigation */}
       <div className="flex items-center gap-2.5 min-w-0">
         <button
@@ -143,6 +145,9 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           )}
         </button>
 
+        {/* PWA Install Button */}
+        <PWAInstallButton variant="header" />
+
         {/* Quick Add Dropdown Menu */}
         <div className="relative" ref={addMenuRef}>
           <button
@@ -182,15 +187,12 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           )}
         </div>
 
-        {/* Theme Toggle */}
-        <ThemeToggle />
-
-        {/* Farm Profile Avatar Link */}
+        {/* Settings / Profile Avatar Link */}
         <button
           type="button"
-          onClick={() => setActiveTab('profile')}
+          onClick={() => setActiveTab('settings')}
           className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200/80 dark:hover:bg-stone-700/80 border border-stone-200 dark:border-stone-700 transition-colors"
-          title="View & Edit Farm Profile"
+          title="Settings & Farm Profile"
         >
           {user?.logo_url ? (
             <img

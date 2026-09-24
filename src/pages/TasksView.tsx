@@ -23,12 +23,10 @@ import {
   ChevronRight,
   BadgeAlert,
   Check,
-  Tag,
-  Camera
+  Tag
 } from 'lucide-react';
 import { AppView } from '../types';
 import { suggestTaskTagAndCategory, GoatTaskSuggestion, createQuarantineBiosecurityTasks } from '../utils/taskHelper';
-import { TagScannerModal } from '../components/TagScannerModal';
 
 export type TaskTab = 'pending' | 'done' | 'important_history';
 export type TaskCategory = 'all' | 'vaccination' | 'deworming' | 'breeding' | 'medical' | 'hoof' | 'farm_record';
@@ -69,7 +67,6 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
   const [newGoatId, setNewGoatId] = useState('');
   const [newTag, setNewTag] = useState<'Health Check' | 'Gestation' | ''>('');
   const [taskSuggestion, setTaskSuggestion] = useState<GoatTaskSuggestion | null>(null);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [newCategory, setNewCategory] = useState<FarmTaskItem['category']>('farm_record');
   const [newDueDate, setNewDueDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [newDescription, setNewDescription] = useState('');
@@ -998,20 +995,9 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-stone-700 dark:text-stone-300 font-bold">
-                      Related Goat ID / Tag
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsScannerOpen(true)}
-                      className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 font-bold px-1.5 py-0.5 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
-                      title="Scan ear tag barcode or QR code"
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>Scan Tag</span>
-                    </button>
-                  </div>
+                  <label className="block text-stone-700 dark:text-stone-300 font-bold mb-1">
+                    Related Goat ID / Tag
+                  </label>
                   <input
                     type="text"
                     value={newGoatId}
@@ -1173,19 +1159,6 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
             </form>
           </div>
         </div>
-      )}
-
-      {/* Tag Scanner Modal */}
-      {isScannerOpen && (
-        <TagScannerModal
-          isOpen={isScannerOpen}
-          onClose={() => setIsScannerOpen(false)}
-          goats={goats}
-          onScanTag={(scannedTag: string) => {
-            handleGoatIdChange(scannedTag);
-            setIsScannerOpen(false);
-          }}
-        />
       )}
     </div>
   );

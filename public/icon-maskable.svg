@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGradMaskable" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#065f46"/>
+      <stop offset="50%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#022c22"/>
+    </linearGradient>
+    <linearGradient id="hornGradM" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <filter id="shadowM" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <!-- Full-bleed background with zero radius for adaptive Android masks -->
+  <rect width="512" height="512" fill="url(#bgGradMaskable)"/>
+
+  <!-- Scaled inside safe zone (central 76%) -->
+  <g transform="translate(61.44, 61.44) scale(0.76)">
+    <!-- Subtle Inner Ring -->
+    <circle cx="256" cy="256" r="224" fill="none" stroke="#34d399" stroke-opacity="0.25" stroke-width="4"/>
+
+    <!-- Goat Icon Graphic Group -->
+    <g filter="url(#shadowM)" transform="translate(0, -6)">
+      <!-- Horns -->
+      <path d="M 210 160 C 180 110 130 95 90 120 C 130 145 165 180 190 220 Z" fill="url(#hornGradM)"/>
+      <path d="M 302 160 C 332 110 382 95 422 120 C 382 145 347 180 322 220 Z" fill="url(#hornGradM)"/>
+      
+      <!-- Ears -->
+      <path d="M 175 220 C 120 225 80 260 70 290 C 100 295 145 275 170 250 Z" fill="#a7f3d0"/>
+      <path d="M 337 220 C 392 225 432 260 442 290 C 412 295 367 275 342 250 Z" fill="#a7f3d0"/>
+
+      <!-- Head Main Shape -->
+      <path d="M 180 195 C 230 180 282 180 332 195 C 345 240 340 285 320 335 C 300 385 275 420 256 430 C 237 420 212 385 192 335 C 172 285 167 240 180 195 Z" fill="#ffffff"/>
+
+      <!-- Snout & Muzzle Accent -->
+      <path d="M 220 340 C 240 330 272 330 292 340 C 295 375 285 410 256 422 C 227 410 217 375 220 340 Z" fill="#e2e8f0"/>
+      
+      <!-- Nostrils -->
+      <ellipse cx="242" cy="385" rx="5" ry="9" transform="rotate(-15 242 385)" fill="#0f172a"/>
+      <ellipse cx="270" cy="385" rx="5" ry="9" transform="rotate(15 270 385)" fill="#0f172a"/>
+      
+      <!-- Mouth Line -->
+      <path d="M 256 395 L 256 410" stroke="#0f172a" stroke-width="4" stroke-linecap="round"/>
+
+      <!-- Eyes -->
+      <ellipse cx="205" cy="265" rx="14" ry="11" fill="#fef08a"/>
+      <rect x="195" y="262" width="20" height="6" rx="3" fill="#0f172a"/>
+      <ellipse cx="307" cy="265" rx="14" ry="11" fill="#fef08a"/>
+      <rect x="297" y="262" width="20" height="6" rx="3" fill="#0f172a"/>
+
+      <!-- Forehead Star Mark -->
+      <path d="M 256 220 L 262 235 L 278 238 L 266 248 L 270 264 L 256 255 L 242 264 L 246 248 L 234 238 L 250 235 Z" fill="#10b981"/>
+    </g>
+  </g>
+</svg>

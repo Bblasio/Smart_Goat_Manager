@@ -231,7 +231,7 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
           {activities.map(item => (
             <div
               key={item.id}
-              className="py-3 flex items-start justify-between gap-3 hover:bg-stone-50/60 dark:hover:bg-stone-800/40 rounded-xl px-2.5 -mx-2.5 transition-colors"
+              className="py-3 flex items-start justify-between gap-3 hover:bg-stone-50/60 dark:hover:bg-stone-800/40 rounded-xl px-2 transition-colors"
             >
               <div className="flex items-start gap-3 min-w-0">
                 <div className="mt-0.5 p-2 rounded-xl bg-stone-100 dark:bg-stone-800 shrink-0">

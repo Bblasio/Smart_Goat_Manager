@@ -1371,6 +1371,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name: data.name || '',
       id,
       created_at: createdAt,
+      quarantine_start_date: data.status === 'Quarantine' ? (data.quarantine_start_date || createdAt) : undefined,
     };
 
     // Immediate optimistic update
@@ -1409,8 +1410,18 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateGoat = async (id: string, updates: Partial<GoatRecord>) => {
     const activeUid = firebaseUser?.uid;
+    const nowIso = new Date().toISOString();
     setGoats(prev => {
-      const updated = prev.map(g => (g.id === id ? { ...g, ...updates } : g));
+      const updated = prev.map(g => {
+        if (g.id !== id) return g;
+        const next = { ...g, ...updates };
+        if (updates.status === 'Quarantine' && g.status !== 'Quarantine' && !updates.quarantine_start_date) {
+          next.quarantine_start_date = nowIso;
+        } else if (updates.status && updates.status !== 'Quarantine') {
+          next.quarantine_start_date = undefined;
+        }
+        return next;
+      });
       persistRecordsLocally(activeUid, { goats: updated });
       return updated;
     });
@@ -1422,10 +1433,15 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         Object.entries(updates).forEach(([k, v]) => {
           if (v !== undefined) {
             sanitizedUpdates[k] = v;
-          } else if (k === 'photo_url') {
+          } else if (k === 'photo_url' || k === 'quarantine_start_date') {
             sanitizedUpdates[k] = null;
           }
         });
+        if (updates.status === 'Quarantine' && !updates.quarantine_start_date) {
+          sanitizedUpdates.quarantine_start_date = nowIso;
+        } else if (updates.status && updates.status !== 'Quarantine') {
+          sanitizedUpdates.quarantine_start_date = null;
+        }
         await update(itemRef, sanitizedUpdates);
         setSyncStatus('connected');
         setSyncError(null);

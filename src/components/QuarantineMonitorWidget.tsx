@@ -54,17 +54,30 @@ export const QuarantineMonitorWidget: React.FC<QuarantineMonitorWidgetProps> = (
     const latestHealth = goatHealth[0];
     const today = new Date();
     
-    // Estimate quarantine start date (latest health check or 8 days ago as typical ongoing isolation)
+    // Accurate quarantine start date:
+    // 1. Explicit quarantine_start_date property on goat
+    // 2. Or registration/created_at timestamp
+    // 3. Or latest quarantine/isolation health checkup date
+    // 4. Default to current day
     let startDate: Date;
-    if (latestHealth?.checkup_date) {
+    if (goat.quarantine_start_date) {
+      startDate = new Date(goat.quarantine_start_date);
+    } else if (goat.created_at) {
+      startDate = new Date(goat.created_at);
+    } else if (latestHealth?.checkup_date) {
       startDate = new Date(latestHealth.checkup_date);
     } else {
-      // Default to 8 days ago so user sees progress in demo
-      startDate = new Date(today.getTime() - 8 * 24 * 60 * 60 * 1000);
+      startDate = today;
     }
 
-    const diffTime = today.getTime() - startDate.getTime();
-    const daysElapsed = Math.max(1, Math.min(14, Math.floor(diffTime / (1000 * 60 * 60 * 24))));
+    // Calculate calendar days between start date and today
+    const startMidnight = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diffTime = todayMidnight.getTime() - startMidnight.getTime();
+    const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+
+    // Day 0 begins on the day registered/isolated (14-day automatic quarantine: Day 0 to Day 14)
+    const daysElapsed = Math.min(14, diffDays);
     const daysRemaining = Math.max(0, 14 - daysElapsed);
     const progressPercent = Math.min(100, Math.round((daysElapsed / 14) * 100));
 

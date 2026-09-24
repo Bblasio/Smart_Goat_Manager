@@ -8,6 +8,7 @@ export interface GoatRecord {
   created_at: string;
   weight_kg?: number;
   status?: 'Active' | 'Sold' | 'Quarantine' | 'Pregnant' | 'Dead';
+  quarantine_start_date?: string;
   dam_tag?: string;
   sire_tag?: string;
   photo_url?: string;
@@ -98,7 +99,7 @@ export interface FarmUser {
 }
 
 export type RecordType = 'goat' | 'breeding' | 'health' | 'sale' | 'expense' | 'worker' | 'milk' | 'feed' | 'medication' | 'kid_growth';
-export type AppView = 'dashboard' | 'tasks' | 'breeding_estimator' | 'records' | 'health_vet' | 'feed_supply' | 'reports' | 'profile';
+export type AppView = 'dashboard' | 'tasks' | 'breeding_estimator' | 'records' | 'health_vet' | 'feed_supply' | 'reports' | 'profile' | 'settings';
 
 export interface KidGrowthRecord {
   id: string;

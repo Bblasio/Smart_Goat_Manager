@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FarmProvider, useFarm } from './context/FarmContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider, useToast } from './context/ToastContext';
-import { ThemeToggle } from './components/ThemeToggle';
 import { Sidebar } from './components/Sidebar';
 import { DesktopHeader } from './components/DesktopHeader';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -13,6 +12,7 @@ import { RecordsView } from './pages/RecordsView';
 import { HealthCareView } from './pages/HealthCareView';
 import { ReportsView } from './pages/ReportsView';
 import { ProfileView } from './pages/ProfileView';
+import { SettingsView } from './pages/SettingsView';
 import { TasksView } from './pages/TasksView';
 import { FeedSupplyView } from './pages/FeedSupplyView';
 import { AuthView } from './pages/AuthView';
@@ -20,6 +20,7 @@ import { AddRecordModal } from './components/AddRecordModal';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { AppLaunchLoader } from './components/AppLaunchLoader';
 import { SyncStatusIndicator } from './components/SyncStatusIndicator';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { AppFooter } from './components/AppFooter';
 import { RecordType, AppView } from './types';
 import { getFarmNotifications } from './utils/notificationHelper';
@@ -38,6 +39,7 @@ const MainLayout: React.FC = () => {
   const [profilePromptDismissed, setProfilePromptDismissed] = useState(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isSettingsDrilledIn, setIsSettingsDrilledIn] = useState(false);
   const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('sgm_dismissed_notifs');
@@ -129,7 +131,9 @@ const MainLayout: React.FC = () => {
       case 'reports':
         return 'Reports & Forecasts';
       case 'profile':
-        return 'Farm Profile';
+        return 'Settings';
+      case 'settings':
+        return 'Settings';
       default:
         return 'Farm Section';
     }
@@ -139,6 +143,7 @@ const MainLayout: React.FC = () => {
   const heavyTabs: AppView[] = ['breeding_estimator', 'reports'];
 
   const handleNavigate = (newTab: AppView) => {
+    setIsSettingsDrilledIn(false);
     if (newTab === activeTab) return;
     if (mobileSidebarOpen) setMobileSidebarOpen(false);
 
@@ -172,8 +177,12 @@ const MainLayout: React.FC = () => {
     setIsAddModalOpen(true);
   };
 
+  const handleOpenSettings = () => {
+    handleNavigate('settings');
+  };
+
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex transition-colors duration-200">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex transition-colors duration-200">
       {/* Navigation Loading Animation Overlay */}
       {isNavigating && (
         <AppLaunchLoader
@@ -193,11 +202,12 @@ const MainLayout: React.FC = () => {
         setMobileOpen={setMobileSidebarOpen}
         onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
         todayNotificationCount={activeTodayCount}
+        onOpenSettings={handleOpenSettings}
       />
 
-      {/* Main Content Area (offset by left sidebar: 0 on mobile, 64px on tablet rail, 240px on desktop) */}
-      <div className="flex-1 md:pl-16 xl:pl-[240px] print:pl-0 flex flex-col min-w-0">
-        {/* Desktop Sticky Header Bar */}
+      {/* Main Content Area (offset by left sidebar: 0 on mobile, 68px on tablet rail, 256px on desktop) */}
+      <div className="flex-1 w-full max-w-full min-w-0 md:pl-[68px] xl:pl-64 print:pl-0 flex flex-col">
+        {/* Desktop & Tablet Sticky Header Bar */}
         <DesktopHeader
           activeTab={activeTab}
           setActiveTab={handleNavigate}
@@ -237,7 +247,7 @@ const MainLayout: React.FC = () => {
         )}
 
         {/* Profile Incomplete Notification Banner */}
-        {!isDemoMode && isAuthenticated && !isProfileComplete && !profilePromptDismissed && activeTab !== 'profile' && (
+        {!isDemoMode && isAuthenticated && !isProfileComplete && !profilePromptDismissed && activeTab !== 'profile' && activeTab !== 'settings' && (
           <div className="no-print bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-emerald-950/70 border-b border-emerald-200 dark:border-emerald-800/80 px-4 py-3 text-xs text-emerald-900 dark:text-emerald-200 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-3">
               <span className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-2xs shrink-0">
@@ -256,7 +266,7 @@ const MainLayout: React.FC = () => {
               <button
                 type="button"
                 id="btn-complete-profile-banner"
-                onClick={() => handleNavigate('profile')}
+                onClick={() => handleNavigate('settings')}
                 className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs flex items-center gap-1"
               >
                 <span>Complete Profile</span>
@@ -274,8 +284,8 @@ const MainLayout: React.FC = () => {
           </div>
         )}
 
-        {/* Mobile / Tablet Header Bar (< 1280px) */}
-        <header className="no-print xl:hidden sticky top-0 z-30 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 px-4 py-3 flex items-center justify-between">
+        {/* Mobile Header Bar (< 768px) */}
+        <header className="no-print md:hidden sticky top-0 z-30 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -288,9 +298,9 @@ const MainLayout: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => handleNavigate('profile')}
+              onClick={() => handleNavigate('settings')}
               className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity focus:outline-none"
-              title="View & Edit Farm Profile / Logo"
+              title="Settings & Farm Profile"
             >
               {user?.logo_url ? (
                 <img
@@ -332,12 +342,11 @@ const MainLayout: React.FC = () => {
                 <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-stone-900 animate-pulse" />
               )}
             </button>
-            <ThemeToggle />
           </div>
         </header>
 
         {/* Dynamic Main Views */}
-        <main className="flex-1 pb-24 md:pb-12">
+        <main className="flex-1 w-full max-w-full overflow-x-hidden pb-24 md:pb-12">
           {activeTab === 'dashboard' && (
             <DashboardView
               onNavigateToRecords={() => handleNavigate('records')}
@@ -381,19 +390,28 @@ const MainLayout: React.FC = () => {
 
           {activeTab === 'reports' && <ReportsView />}
 
+          {activeTab === 'settings' && (
+            <SettingsView
+              onNavigate={handleNavigate}
+              onMobileDrillChange={setIsSettingsDrilledIn}
+            />
+          )}
+
           {activeTab === 'profile' && (
-            <ProfileView
-              onNavigateToRecords={() => handleNavigate('records')}
-              onNavigateToReports={() => handleNavigate('reports')}
+            <SettingsView
+              onNavigate={handleNavigate}
+              initialSection="you_and_farm"
+              onMobileDrillChange={setIsSettingsDrilledIn}
             />
           )}
         </main>
 
-        {/* Mobile Bottom Navigation Bar */}
+        {/* Mobile Bottom Navigation Bar (Hidden when drawer is open or when settings is drilled into a sub-page) */}
         <MobileBottomNav
           activeTab={activeTab}
           setActiveTab={handleNavigate}
-          onOpenAddModal={handleOpenAddModal}
+          onOpenSettings={handleOpenSettings}
+          isDrawerOpen={mobileSidebarOpen || (activeTab === 'settings' && isSettingsDrilledIn)}
         />
 
         {/* Furnished Application Enterprise Footer */}
@@ -430,6 +448,9 @@ const MainLayout: React.FC = () => {
         onDismissAllToday={handleDismissAllToday}
         onNavigate={handleNavigate}
       />
+
+      {/* Offline connectivity indicator banner */}
+      <OfflineIndicator />
     </div>
   );
 };

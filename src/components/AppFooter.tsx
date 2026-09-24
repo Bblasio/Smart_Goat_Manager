@@ -1,16 +1,16 @@
 import React from 'react';
 import { useFarm } from '../context/FarmContext';
 import { AppView } from '../types';
-import { ChevronUp, Settings } from 'lucide-react';
+import { ChevronUp } from 'lucide-react';
 
 interface AppFooterProps {
-  onNavigate: (view: AppView) => void;
+  onNavigate?: (view: AppView) => void;
   onOpenAddModal?: () => void;
   isSettingsOpen?: boolean;
   onToggleSettings?: () => void;
 }
 
-export const AppFooter: React.FC<AppFooterProps> = ({ onNavigate }) => {
+export const AppFooter: React.FC<AppFooterProps> = () => {
   const { farmName, user } = useFarm();
 
   const currentYear = new Date().getFullYear();
@@ -34,17 +34,6 @@ export const AppFooter: React.FC<AppFooterProps> = ({ onNavigate }) => {
           </div>
 
           <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              id="btn-footer-settings"
-              onClick={() => onNavigate('settings')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 font-medium text-xs transition-colors shadow-2xs cursor-pointer"
-              title="Open Settings Page"
-            >
-              <Settings className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Settings</span>
-            </button>
-
             <button
               type="button"
               id="btn-footer-scroll-top"

@@ -11,11 +11,9 @@ import {
   Sun,
   Bell,
   Sliders,
-  Database,
   Info,
   Search,
   LogOut,
-  RefreshCw,
   ExternalLink,
   ChevronRight,
   ChevronLeft,
@@ -50,7 +48,6 @@ export type SettingsSection =
   | 'appearance'
   | 'notifications'
   | 'units'
-  | 'data_backup'
   | 'about';
 
 interface NavItemConfig {
@@ -75,14 +72,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     user,
     logout,
     updateFarmProfile,
-    syncAllCurrentRecordsToFirebase,
-    syncStatus,
-    syncError,
-    goats,
-    health,
-    breeding,
-    sales,
-    expenses,
     isDemoMode,
     isOnline,
   } = useFarm();
@@ -106,7 +95,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   );
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSuccessMsg, setProfileSuccessMsg] = useState<string | null>(null);
@@ -267,18 +255,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     showToast(`Milk unit updated to ${unit}`, 'success');
   };
 
-  const handleManualSync = async () => {
-    setIsSyncing(true);
-    try {
-      await syncAllCurrentRecordsToFirebase();
-      showToast('Synchronized successfully', 'success');
-    } catch {
-      showToast('Failed to synchronize', 'error');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingProfile(true);
@@ -307,66 +283,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleExportBackup = () => {
-    try {
-      const backupData = {
-        exportedAt: new Date().toISOString(),
-        version: '2.5',
-        farmName: farmNameVal || farmName,
-        owner: ownerNameVal,
-        email: user?.email || 'ochiengblasio@gmail.com',
-        stats: {
-          goatsCount: goats.length,
-          healthLogsCount: health.length,
-          breedingCount: breeding.length,
-          salesCount: sales.length,
-          expensesCount: expenses.length,
-        },
-        preferences: {
-          currency,
-          weightUnit,
-          milkUnit,
-          breedingAlerts,
-          quarantineAlerts,
-          vaccineAlerts,
-          feedLowStockAlerts,
-        },
-        records: {
-          goats,
-          health,
-          breeding,
-          sales,
-          expenses,
-        },
-      };
-
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `smart_goat_manager_backup_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast('Farm backup JSON exported successfully', 'success');
-    } catch {
-      showToast('Failed to export backup', 'error');
-    }
-  };
-
-  const handleResetCache = () => {
-    if (window.confirm('Clear cached temporary data and reset notification dismissals? Your herd records will remain intact.')) {
-      try {
-        localStorage.removeItem('sgm_dismissed_notifs');
-        localStorage.removeItem('sgm_dismissed_notifications');
-        showToast('Local cache and notifications reset successfully', 'success');
-      } catch {
-        showToast('Failed to clear cache', 'error');
-      }
-    }
-  };
-
   const handleSignOut = async () => {
     try {
       await logout();
@@ -380,7 +296,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const navItems: NavItemConfig[] = [
     {
       id: 'you_and_farm',
-      label: 'You and Smart Goat',
+      label: 'Account',
       subtitle: 'Farm identity & owner profile',
       icon: User,
       iconBgLight: 'bg-emerald-100',
@@ -423,17 +339,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       group: 'preferences',
     },
     {
-      id: 'data_backup',
-      label: 'Data & Backup',
-      subtitle: 'Download JSON archive & cache reset',
-      icon: Database,
-      iconBgLight: 'bg-sky-100',
-      iconColorLight: 'text-sky-700',
-      iconBgDark: 'dark:bg-sky-950/60',
-      iconColorDark: 'dark:text-sky-400',
-      group: 'system',
-    },
-    {
       id: 'about',
       label: 'About Smart Goat Manager',
       subtitle: 'Version 2.5 • Enterprise Caprine Edition',
@@ -463,7 +368,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const displayEmail = user?.email || 'ochiengblasio@gmail.com';
   const displayFarmName = user?.farm_name || farmNameVal || farmName || 'Smart Goat Farm';
 
-  // Section 1: You and Smart Goat
+  // Section 1: Account
   const renderYouAndFarmSection = () => (
     <section
       id="section-you-and-farm"
@@ -472,7 +377,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="border-b border-stone-100 dark:border-stone-800 pb-3">
         <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
           <User className="w-5 h-5 text-emerald-600" />
-          <span>You and Smart Goat Manager</span>
+          <span>Account</span>
         </h2>
       </div>
 
@@ -514,29 +419,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* Sub-rows under Profile Card */}
       <div className="rounded-xl border border-stone-200 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden">
-        {/* Row 1: Sync Data */}
-        <div className="p-3.5 sm:p-4 bg-white dark:bg-stone-900 flex items-center justify-between gap-3 hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition-colors">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shrink-0">
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            </div>
-            <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
-              Sync Data
-            </div>
-          </div>
-          <button
-            type="button"
-            id="btn-settings-sync-now"
-            onClick={handleManualSync}
-            disabled={isSyncing}
-            className="px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
-          </button>
-        </div>
-
-        {/* Row 2: Manage Farm Profile Details */}
+        {/* Manage Farm Profile Details */}
         <div className="p-3.5 sm:p-4 bg-white dark:bg-stone-900 hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition-colors">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -996,63 +879,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     </section>
   );
 
-  // Section 5: Data & Backup
-  const renderDataBackupSection = () => (
-    <section
-      id="section-data-backup"
-      className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/80 dark:border-stone-800 p-5 sm:p-6 shadow-2xs space-y-4"
-    >
-      <div className="border-b border-stone-100 dark:border-stone-800 pb-3">
-        <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
-          <Database className="w-5 h-5 text-sky-600" />
-          <span>Data Storage &amp; Offline Backup</span>
-        </h2>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Export Full Backup */}
-        <div className="p-4 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-800/40 space-y-3">
-          <div className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
-            <Download className="w-4 h-4 text-emerald-600" />
-            <span>Export Database Archive</span>
-          </div>
-          <button
-            type="button"
-            id="btn-settings-export-backup"
-            onClick={handleExportBackup}
-            className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors shadow-2xs flex items-center justify-center gap-2"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download Farm Archive (.json)</span>
-          </button>
-        </div>
-
-        {/* Clear Temporary Cache */}
-        <div className="p-4 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-800/40 space-y-3">
-          <div className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
-            <Trash2 className="w-4 h-4 text-stone-500" />
-            <span>Reset Local Cache</span>
-          </div>
-          <button
-            type="button"
-            id="btn-settings-clear-cache"
-            onClick={handleResetCache}
-            className="w-full py-2 px-3 rounded-xl border border-stone-300 dark:border-stone-700 hover:bg-stone-200/60 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 text-xs font-semibold transition-colors flex items-center justify-center gap-2"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Reset Local Cache</span>
-          </button>
-        </div>
-      </div>
-
-      {/* PWA Native Installation & Offline Caching Card */}
-      <div className="pt-2">
-        <PWAInstallButton variant="card" />
-      </div>
-    </section>
-  );
-
-  // Section 6: About Smart Goat Manager
+  // Section 5: About Smart Goat Manager
   const renderAboutSection = () => (
     <section
       id="section-about"
@@ -1094,8 +921,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         return renderNotificationsSection();
       case 'units':
         return renderUnitsSection();
-      case 'data_backup':
-        return renderDataBackupSection();
       case 'about':
         return renderAboutSection();
       default:
@@ -1324,7 +1149,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     )}
                   </div>
                   <div className="text-[11px] text-stone-500 dark:text-stone-400 truncate mt-0.5">
-                    Syncing to {displayEmail}
+                    {displayEmail}
                   </div>
                   <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium truncate mt-0.5">
                     {displayFarmName} • Manage Profile
@@ -1384,10 +1209,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
 
-            {/* Mobile Categories Group: System & Storage */}
+            {/* Mobile Categories Group: System & About */}
             <div className="space-y-1">
               <div className="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500 px-1">
-                Data &amp; System
+                System &amp; About
               </div>
               <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800 shadow-2xs overflow-hidden">
                 {filteredNavItems

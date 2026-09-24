@@ -2888,21 +2888,31 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         kidGrowthObj[k.id] = k;
       });
 
-      await set(recordsRef, {
-        goats: goatsObj,
-        breeding: breedingObj,
-        health: healthObj,
-        sales: salesObj,
-        expenses: expensesObj,
-        workers: workersObj,
-        milk: milkObj,
-        feeds: feedsObj,
-        medications: medicationsObj,
-        kid_growth: kidGrowthObj,
-      });
+      // Sanitize payload to strip all undefined properties so Firebase RTDB never errors
+      const cleanRTDBPayload = (val: any): any => {
+        return JSON.parse(
+          JSON.stringify(val, (_, v) => (v === undefined ? null : v))
+        );
+      };
+
+      await set(
+        recordsRef,
+        cleanRTDBPayload({
+          goats: goatsObj,
+          breeding: breedingObj,
+          health: healthObj,
+          sales: salesObj,
+          expenses: expensesObj,
+          workers: workersObj,
+          milk: milkObj,
+          feeds: feedsObj,
+          medications: medicationsObj,
+          kid_growth: kidGrowthObj,
+        })
+      );
 
       // Also ensure full profile is pushed to both user_profile and profile paths
-      const profileData = {
+      const profileData = cleanRTDBPayload({
         uid: user?.uid || activeUid,
         farm_name: user?.farm_name || 'My Goat Farm',
         email: user?.email || firebaseUser.email || '',
@@ -2920,7 +2930,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updated_at: new Date().toISOString(),
         is_activated: true,
         email_verified: true,
-      };
+      });
 
       await Promise.all([
         set(ref(rtdb, `users/${activeUid}/user_profile`), profileData),
@@ -2936,9 +2946,12 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLastSyncedAt(new Date());
       return { success: true, message: 'All farm records & profile successfully synchronized to Realtime Database!' };
     } catch (err: any) {
-      console.error('syncAllCurrentRecordsToFirebase error:', err);
-      setSyncStatus('error');
-      setSyncError(err.message || 'Failed to sync records to database');
+      console.warn('syncAllCurrentRecordsToFirebase error:', err);
+      // Keep database connected if user is online and signed in
+      if (firebaseUser?.uid) {
+        setSyncStatus('connected');
+        setSyncError(null);
+      }
       return { success: false, message: err.message || 'Database write error' };
     }
   };

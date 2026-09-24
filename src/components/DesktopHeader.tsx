@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { SyncStatusIndicator } from './SyncStatusIndicator';
-import { PWAInstallButton } from './PWAInstallButton';
 import { AppView, RecordType } from '../types';
 import {
   Search,
@@ -144,9 +143,6 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
             </span>
           )}
         </button>
-
-        {/* PWA Install Button */}
-        <PWAInstallButton variant="header" />
 
         {/* Quick Add Dropdown Menu */}
         <div className="relative" ref={addMenuRef}>

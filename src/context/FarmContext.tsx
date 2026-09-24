@@ -558,6 +558,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         created_at: val.created_at || val.createdAt || new Date().toISOString(),
         weight_kg: val.weight_kg != null ? Number(val.weight_kg) : (val.weight != null ? Number(val.weight) : 45),
         status: val.status || 'Active',
+        photo_url: val.photo_url || val.photoUrl || undefined,
+        quarantine_start_date: val.status === 'Quarantine' ? (val.quarantine_start_date || new Date().toISOString()) : undefined,
       }));
       setGoats(parsedGoats);
     } else {
@@ -1394,6 +1396,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           weight_kg: newGoat.weight_kg || 45,
           status: newGoat.status || 'Active',
         };
+        if (newGoat.quarantine_start_date) {
+          goatPayload.quarantine_start_date = newGoat.quarantine_start_date;
+        }
         if (newGoat.photo_url) {
           goatPayload.photo_url = newGoat.photo_url;
         }
@@ -1415,8 +1420,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updated = prev.map(g => {
         if (g.id !== id) return g;
         const next = { ...g, ...updates };
-        if (updates.status === 'Quarantine' && g.status !== 'Quarantine' && !updates.quarantine_start_date) {
-          next.quarantine_start_date = nowIso;
+        if (updates.status === 'Quarantine' && !updates.quarantine_start_date) {
+          next.quarantine_start_date = g.quarantine_start_date || nowIso;
         } else if (updates.status && updates.status !== 'Quarantine') {
           next.quarantine_start_date = undefined;
         }
@@ -1457,9 +1462,17 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!ids || ids.length === 0) return;
     const idSet = new Set(ids);
     const activeUid = firebaseUser?.uid;
+    const nowIso = new Date().toISOString();
+    const effectiveUpdates: Partial<GoatRecord> = { ...updates };
+    if (effectiveUpdates.status === 'Quarantine' && !effectiveUpdates.quarantine_start_date) {
+      effectiveUpdates.quarantine_start_date = nowIso;
+    } else if (effectiveUpdates.status && effectiveUpdates.status !== 'Quarantine') {
+      effectiveUpdates.quarantine_start_date = undefined;
+    }
+
     setIsSyncing(true);
     setGoats(prev => {
-      const updated = prev.map(g => (idSet.has(g.id) ? { ...g, ...updates } : g));
+      const updated = prev.map(g => (idSet.has(g.id) ? { ...g, ...effectiveUpdates } : g));
       persistRecordsLocally(activeUid, { goats: updated });
       return updated;
     });
@@ -1468,8 +1481,12 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const updatePayload: Record<string, any> = {};
         ids.forEach(id => {
-          Object.entries(updates).forEach(([key, val]) => {
-            updatePayload[`users/${activeUid}/records/goats/${id}/${key}`] = val;
+          Object.entries(effectiveUpdates).forEach(([key, val]) => {
+            if (val !== undefined) {
+              updatePayload[`users/${activeUid}/records/goats/${id}/${key}`] = val;
+            } else if (key === 'quarantine_start_date') {
+              updatePayload[`users/${activeUid}/records/goats/${id}/${key}`] = null;
+            }
           });
         });
         await update(ref(rtdb), updatePayload);

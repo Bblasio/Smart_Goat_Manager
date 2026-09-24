@@ -184,6 +184,7 @@ export const initialGoats: GoatRecord[] = [
     created_at: '2025-07-22T09:00:00Z',
     weight_kg: 45,
     status: 'Quarantine',
+    quarantine_start_date: new Date().toISOString(),
   }
 ];
 

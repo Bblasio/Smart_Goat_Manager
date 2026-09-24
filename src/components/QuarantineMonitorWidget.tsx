@@ -56,16 +56,15 @@ export const QuarantineMonitorWidget: React.FC<QuarantineMonitorWidgetProps> = (
     
     // Accurate quarantine start date:
     // 1. Explicit quarantine_start_date property on goat
-    // 2. Or registration/created_at timestamp
-    // 3. Or latest quarantine/isolation health checkup date
-    // 4. Default to current day
+    // 2. Or latest quarantine/isolation health checkup date within the last 14 days
+    // 3. Default to today (never fall back to goat.created_at, which refers to registration date!)
     let startDate: Date;
     if (goat.quarantine_start_date) {
-      startDate = new Date(goat.quarantine_start_date);
-    } else if (goat.created_at) {
-      startDate = new Date(goat.created_at);
+      const parsed = new Date(goat.quarantine_start_date);
+      startDate = isNaN(parsed.getTime()) ? today : parsed;
     } else if (latestHealth?.checkup_date) {
-      startDate = new Date(latestHealth.checkup_date);
+      const parsed = new Date(latestHealth.checkup_date);
+      startDate = isNaN(parsed.getTime()) ? today : parsed;
     } else {
       startDate = today;
     }
@@ -76,16 +75,17 @@ export const QuarantineMonitorWidget: React.FC<QuarantineMonitorWidgetProps> = (
     const diffTime = todayMidnight.getTime() - startMidnight.getTime();
     const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
 
-    // Day 0 begins on the day registered/isolated (14-day automatic quarantine: Day 0 to Day 14)
-    const daysElapsed = Math.min(14, diffDays);
-    const daysRemaining = Math.max(0, 14 - daysElapsed);
-    const progressPercent = Math.min(100, Math.round((daysElapsed / 14) * 100));
+    // Quarantine starts counting immediately from Day 1 on the day of isolation
+    const currentDay = Math.min(14, diffDays + 1);
+    const daysRemaining = Math.max(0, 14 - currentDay);
+    const progressPercent = Math.min(100, Math.round((currentDay / 14) * 100));
 
-    const day7Passed = daysElapsed >= 7;
-    const isReadyForRelease = daysElapsed >= 14;
+    const day7Passed = currentDay >= 7;
+    const isReadyForRelease = diffDays >= 13; // Completed full 14-day protocol
 
     return {
-      daysElapsed,
+      currentDay,
+      daysElapsed: diffDays,
       daysRemaining,
       progressPercent,
       day7Passed,
@@ -118,11 +118,15 @@ export const QuarantineMonitorWidget: React.FC<QuarantineMonitorWidgetProps> = (
     if (!targetGoat) return;
 
     try {
-      await updateGoat(targetGoat.id, { status: 'Quarantine' });
-      // Schedule Day 7 and Day 14 tasks
-      createQuarantineBiosecurityTasks(targetGoat);
+      const nowIso = new Date().toISOString();
+      await updateGoat(targetGoat.id, { 
+        status: 'Quarantine',
+        quarantine_start_date: nowIso
+      });
+      // Schedule Day 7 and Day 14 tasks from today
+      createQuarantineBiosecurityTasks(targetGoat, nowIso.split('T')[0]);
       
-      setActionSuccessMsg(`${targetGoat.tag_number} moved to Isolation Pen. 14-day biosecurity schedule initiated.`);
+      setActionSuccessMsg(`${targetGoat.tag_number} isolated. Day 1 of 14 biosecurity protocol initiated.`);
       setIsIsolateModalOpen(false);
       setSelectedGoatId('');
       setTimeout(() => setActionSuccessMsg(null), 4000);
@@ -240,7 +244,7 @@ export const QuarantineMonitorWidget: React.FC<QuarantineMonitorWidgetProps> = (
                           : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300'
                       }`}
                     >
-                      {details.isReadyForRelease ? 'Clearance Due' : `Day ${details.daysElapsed} of 14`}
+                      {details.isReadyForRelease ? 'Clearance Due' : `Day ${details.currentDay} of 14`}
                     </span>
                   </div>
 

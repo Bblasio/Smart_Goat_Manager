@@ -287,7 +287,8 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
     // 5. Automated Biosecurity Quarantine Timers (7-Day Intermediate & 14-Day Clearance)
     // Automatically schedules midway checkup and clearance evaluation for any goat in quarantine
     goats.filter(g => g.status === 'Quarantine').forEach(qGoat => {
-      const qTasks = createQuarantineBiosecurityTasks(qGoat, todayStr);
+      const qStartStr = qGoat.quarantine_start_date ? qGoat.quarantine_start_date.split('T')[0] : todayStr;
+      const qTasks = createQuarantineBiosecurityTasks(qGoat, qStartStr);
       qTasks.forEach(qt => {
         const diff = getDaysDiff(qt.due_date);
         let urgency: TaskUrgency = 'upcoming';

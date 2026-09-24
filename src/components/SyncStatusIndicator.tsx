@@ -48,11 +48,11 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ compac
 
   const handleManualSync = async () => {
     if (!isOnline) {
-      showToast('Cannot sync to cloud while offline. Please check your internet connection.', 'warning');
+      showToast('Cannot sync while offline. Please check your internet connection.', 'warning');
       return;
     }
     if (isDemoMode) {
-      showToast('Demo mode: records are saved locally. Sign in to sync to cloud.', 'info');
+      showToast('Demo mode: records are saved locally. Sign in to synchronize.', 'info');
       return;
     }
 
@@ -60,9 +60,9 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ compac
     try {
       const res = await syncAllCurrentRecordsToFirebase();
       if (res.success) {
-        showToast('All farm records successfully synced to cloud!', 'success');
+        showToast('Synchronized successfully', 'success');
       } else {
-        showToast(res.message || 'Cloud sync failed', 'error');
+        showToast(res.message || 'Sync failed', 'error');
       }
     } catch (err: any) {
       showToast(err.message || 'Sync error', 'error');

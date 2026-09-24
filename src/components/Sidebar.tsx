@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { ThemeToggle } from './ThemeToggle';
-import { PWAInstallButton } from './PWAInstallButton';
 import { formatActiveDurationCompact } from '../utils/dateHelper';
 import {
   LayoutGrid,
@@ -427,9 +426,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Farm Settings Quick Button */}
-            {/* PWA Install Button (Mobile Drawer & Desktop XL) */}
-            <PWAInstallButton variant="sidebar" />
-
             <button
               type="button"
               id="btn-sidebar-open-settings"

@@ -13,9 +13,14 @@ export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
   const [isIOS, setIsIOS] = useState<boolean>(false);
+  const [isInIframe, setIsInIframe] = useState<boolean>(false);
 
   useEffect(() => {
-    // 1. Check if app is already running in standalone mode (installed PWA)
+    // 1. Check if running inside an iframe (like AI Studio preview)
+    const inIframe = typeof window !== 'undefined' && window.self !== window.top;
+    setIsInIframe(inIframe);
+
+    // 2. Check if app is already running in standalone mode (installed PWA)
     const checkStandalone = () => {
       const isStandaloneMedia = window.matchMedia('(display-mode: standalone)').matches;
       const isStandaloneNavigator = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
@@ -51,20 +56,29 @@ export function usePWAInstall() {
   }, []);
 
   const install = useCallback(async (): Promise<boolean> => {
-    if (!deferredPrompt) {
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          setIsInstalled(true);
+          setDeferredPrompt(null);
+          return true;
+        }
+      } catch (err) {
+        console.warn('[PWA] Install prompt error:', err);
+      }
       return false;
     }
-    try {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setIsInstalled(true);
-        setDeferredPrompt(null);
-        return true;
-      }
-    } catch (err) {
-      console.warn('[PWA] Install prompt error:', err);
+
+    // If running in an iframe (e.g. AI Studio development preview),
+    // browser security prohibits beforeinstallprompt inside iframes.
+    // Opening in a new standalone tab allows the browser native install banner to prompt.
+    if (typeof window !== 'undefined' && window.self !== window.top) {
+      window.open(window.location.href, '_blank');
+      return true;
     }
+
     return false;
   }, [deferredPrompt]);
 
@@ -72,6 +86,7 @@ export function usePWAInstall() {
     isInstallable: Boolean(deferredPrompt),
     isInstalled,
     isIOS,
+    isInIframe,
     canPrompt: !isInstalled,
     install,
   };

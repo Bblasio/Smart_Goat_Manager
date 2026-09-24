@@ -271,9 +271,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIsSyncing(true);
     try {
       await syncAllCurrentRecordsToFirebase();
-      showToast('All farm records synchronized with Firebase cloud', 'success');
+      showToast('Synchronized successfully', 'success');
     } catch {
-      showToast('Failed to complete cloud synchronization', 'error');
+      showToast('Failed to synchronize', 'error');
     } finally {
       setIsSyncing(false);
     }
@@ -296,7 +296,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         founded_year: foundedYearVal,
         bio: bioVal,
       });
-      setProfileSuccessMsg('Profile updated and saved to cloud!');
+      setProfileSuccessMsg('Profile updated successfully!');
       showToast('Farm profile updated successfully', 'success');
       setIsEditingProfile(false);
       setTimeout(() => setProfileSuccessMsg(null), 4000);
@@ -381,7 +381,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     {
       id: 'you_and_farm',
       label: 'You and Smart Goat',
-      subtitle: 'Farm identity, cloud sync & owner profile',
+      subtitle: 'Farm identity & owner profile',
       icon: User,
       iconBgLight: 'bg-emerald-100',
       iconColorLight: 'text-emerald-700',
@@ -474,12 +474,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <User className="w-5 h-5 text-emerald-600" />
           <span>You and Smart Goat Manager</span>
         </h2>
-        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-          Manage your manager identity, cloud synchronization, and credentials
-        </p>
       </div>
 
-      {/* Chrome Style Top Profile Card */}
+      {/* Top Profile Card */}
       <div className="rounded-2xl border border-stone-200 dark:border-stone-700/80 bg-stone-50/60 dark:bg-stone-800/40 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
           <div className="relative shrink-0">
@@ -488,24 +485,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             <span
               className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-stone-900"
-              title="Cloud Synchronized & Online"
+              title="Online"
             />
           </div>
           <div className="min-w-0">
             <div className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100 truncate">
               {displayOwnerName}
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400 truncate mt-0.5">
-              <RefreshCw className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span className="truncate">Syncing to {displayEmail}</span>
-            </div>
-            <div className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">
-              {displayFarmName} • {isDemoMode ? 'Demo Workspace' : 'Cloud Verified'}
+            <div className="text-xs text-stone-500 dark:text-stone-400 truncate mt-0.5">
+              {displayEmail}
             </div>
           </div>
         </div>
 
-        {/* Chrome "Turn off" Style Sign Out Button */}
+        {/* Sign Out Button */}
         <div className="shrink-0 w-full sm:w-auto flex justify-end">
           <button
             type="button"
@@ -521,21 +514,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* Sub-rows under Profile Card */}
       <div className="rounded-xl border border-stone-200 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden">
-        {/* Row 1: Sync and Cloud Services */}
+        {/* Row 1: Sync Data */}
         <div className="p-3.5 sm:p-4 bg-white dark:bg-stone-900 flex items-center justify-between gap-3 hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition-colors">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shrink-0">
               <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
             </div>
-            <div>
-              <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
-                Sync and Cloud Services
-              </div>
-              <div className="text-[11px] text-stone-500 dark:text-stone-400">
-                {syncStatus === 'connected'
-                  ? 'All records up to date with Realtime Database'
-                  : 'Synchronized with local offline cache and cloud'}
-              </div>
+            <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
+              Sync Data
             </div>
           </div>
           <button
@@ -559,10 +545,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
               <div>
                 <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
-                  Manage Farm Profile &amp; Identity
+                  Farm Profile
                 </div>
                 <div className="text-[11px] text-stone-500 dark:text-stone-400">
-                  {displayFarmName} • {locationVal || 'Kenya'} • {farmSizeVal || 'Size not specified'}
+                  {displayFarmName}
                 </div>
               </div>
             </div>
@@ -572,7 +558,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onClick={() => setIsEditingProfile(prev => !prev)}
               className="px-3 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
             >
-              {isEditingProfile ? 'Close Editor' : 'Edit Profile'}
+              {isEditingProfile ? 'Close' : 'Edit Profile'}
             </button>
           </div>
 
@@ -699,7 +685,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           )}
         </div>
 
-        {/* Row 3: Google Account & Cloud Credentials */}
+        {/* Row 3: Farm Account */}
         <div className="p-3.5 sm:p-4 bg-white dark:bg-stone-900 flex items-center justify-between gap-3 hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition-colors">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center shrink-0">
@@ -707,16 +693,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             <div>
               <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
-                Google Account &amp; Farm Owner
+                Farm Account
               </div>
-              <div className="text-[11px] text-stone-500 dark:text-stone-400">
-                {displayEmail} (Firebase Realtime Database Active)
+              <div className="text-xs text-stone-500 dark:text-stone-400">
+                {displayEmail}
               </div>
             </div>
           </div>
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            Protected
-          </span>
         </div>
       </div>
     </section>
@@ -731,11 +714,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="border-b border-stone-100 dark:border-stone-800 pb-3">
         <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
           <Moon className="w-5 h-5 text-indigo-600" />
-          <span>Appearance &amp; Display Theme</span>
+          <span>Appearance</span>
         </h2>
-        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-          Customize high-contrast daylight reading and evening low-glare dark mode
-        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -753,7 +733,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 bg-white dark:bg-stone-900'
           }`}
         >
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
               <Sun className="w-5 h-5" />
             </div>
@@ -764,9 +744,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             )}
           </div>
           <div className="text-sm font-bold text-stone-900 dark:text-stone-100">Light Mode</div>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-            Optimized for full outdoor daylight pasture inspection and livestock pen walks.
-          </p>
         </button>
 
         {/* Dark Theme Card */}
@@ -783,7 +760,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 bg-white dark:bg-stone-900'
           }`}
         >
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <div className="w-9 h-9 rounded-xl bg-stone-800 text-stone-200 flex items-center justify-center">
               <Moon className="w-5 h-5" />
             </div>
@@ -794,9 +771,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             )}
           </div>
           <div className="text-sm font-bold text-stone-900 dark:text-stone-100">Dark Mode</div>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-            Gentle on the eyes during late-night kidding vigils, barn checks, and low-light work.
-          </p>
         </button>
       </div>
 
@@ -807,13 +781,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="w-8 h-8 rounded-lg bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-200 flex items-center justify-center shrink-0">
               {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4 text-stone-400" />}
             </div>
-            <div>
-              <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
-                Audible Task &amp; Notification Chimes
-              </div>
-              <div className="text-[11px] text-stone-500 dark:text-stone-400">
-                Play acoustic tone when completing schedules or recording vitals
-              </div>
+            <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
+              Sound Effects
             </div>
           </div>
           <button
@@ -843,23 +812,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="border-b border-stone-100 dark:border-stone-800 pb-3">
         <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
           <Bell className="w-5 h-5 text-amber-600" />
-          <span>Notifications &amp; Automated Alerts</span>
+          <span>Notifications</span>
         </h2>
-        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-          Configure proactive smart alerts for clinical bio-security, breeding cycles, and feed inventory
-        </p>
       </div>
 
       <div className="divide-y divide-stone-100 dark:divide-stone-800">
         {/* Toggle 1: Breeding Alert */}
         <div className="py-3.5 flex items-center justify-between gap-4">
-          <div>
-            <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
-              Breeding &amp; Kidding Countdown Alerts
-            </div>
-            <div className="text-[11px] text-stone-500 dark:text-stone-400">
-              Proactive alerts 14 days before expected doe parturition date
-            </div>
+          <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
+            Breeding &amp; Kidding Alerts
           </div>
           <button
             type="button"
@@ -879,13 +840,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {/* Toggle 2: Quarantine Alert */}
         <div className="py-3.5 flex items-center justify-between gap-4">
-          <div>
-            <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
-              14-Day Bio-Security Quarantine Timer
-            </div>
-            <div className="text-[11px] text-stone-500 dark:text-stone-400">
-              Automatic zero-day countdown alerts for newly acquired or isolated goats
-            </div>
+          <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
+            14-Day Quarantine Timer
           </div>
           <button
             type="button"
@@ -905,13 +861,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {/* Toggle 3: Vaccination Alert */}
         <div className="py-3.5 flex items-center justify-between gap-4">
-          <div>
-            <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
-              Scheduled Vaccination &amp; Deworming Booster Warnings
-            </div>
-            <div className="text-[11px] text-stone-500 dark:text-stone-400">
-              Alerts for upcoming PPR, CCPP, Enterotoxemia, and anthelmintic rotations
-            </div>
+          <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
+            Vaccination &amp; Deworming Booster Alerts
           </div>
           <button
             type="button"
@@ -931,13 +882,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {/* Toggle 4: Low Feed Stock Alert */}
         <div className="py-3.5 flex items-center justify-between gap-4">
-          <div>
-            <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
-              Low Feed &amp; Mineral Stock Depletion Notice
-            </div>
-            <div className="text-[11px] text-stone-500 dark:text-stone-400">
-              Alert when concentrate, hay bales, or salt blocks drop below 3 days buffer
-            </div>
+          <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
+            Low Feed Stock Alerts
           </div>
           <button
             type="button"
@@ -967,11 +913,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="border-b border-stone-100 dark:border-stone-800 pb-3">
         <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
           <Sliders className="w-5 h-5 text-teal-600" />
-          <span>Units, Currencies &amp; Standards</span>
+          <span>Units &amp; Standards</span>
         </h2>
-        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-          Define financial currency, live weight measurement, and dairy volume units
-        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -996,7 +939,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-stone-400">Used across sales, expenses, and herd valuations</p>
         </div>
 
         {/* Live Weight Unit */}
@@ -1023,7 +965,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-stone-400">Used for animal weighing, dosing, and kid growth charts</p>
         </div>
 
         {/* Milk Yield Unit */}
@@ -1050,18 +991,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-stone-400">Applied in daily lactation yields and dairy records</p>
-        </div>
-      </div>
-
-      {/* Bio-security Isolation Standard */}
-      <div className="p-4 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-900/60 flex items-start gap-3">
-        <ShieldCheck className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
-        <div className="text-xs text-teal-900 dark:text-teal-200 space-y-1">
-          <div className="font-bold">Bio-Security Compliance Standard: 14-Day Automatic Quarantine</div>
-          <p className="text-teal-800 dark:text-teal-300">
-            When a goat is marked as quarantined, isolation monitoring starts immediately from Day 0, counting up to Day 14 before clear status can be granted.
-          </p>
         </div>
       </div>
     </section>
@@ -1078,22 +1007,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <Database className="w-5 h-5 text-sky-600" />
           <span>Data Storage &amp; Offline Backup</span>
         </h2>
-        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-          Safeguard your herd data with instant offline backups and cache management
-        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Export Full Backup */}
         <div className="p-4 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-800/40 space-y-3">
-          <div>
-            <div className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
-              <Download className="w-4 h-4 text-emerald-600" />
-              <span>Export Full JSON Archive</span>
-            </div>
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-              Download complete database including goats, breeding logs, health records, sales, and accounting.
-            </p>
+          <div className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+            <Download className="w-4 h-4 text-emerald-600" />
+            <span>Export Database Archive</span>
           </div>
           <button
             type="button"
@@ -1108,14 +1029,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {/* Clear Temporary Cache */}
         <div className="p-4 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-800/40 space-y-3">
-          <div>
-            <div className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
-              <Trash2 className="w-4 h-4 text-stone-500" />
-              <span>Reset Temporary Cache</span>
-            </div>
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-              Clear dismissed notifications and local query caches without affecting any registered goat records.
-            </p>
+          <div className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+            <Trash2 className="w-4 h-4 text-stone-500" />
+            <span>Reset Local Cache</span>
           </div>
           <button
             type="button"
@@ -1158,10 +1074,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             Smart Goat Manager Pro
           </div>
           <div className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-            Version 2.5 (Enterprise Caprine Edition &amp; Installable PWA)
-          </div>
-          <div className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">
-            Progressive Web App with offline service worker, standalone display, and mobile home screen installation.
+            Version 2.5 • Enterprise Caprine Edition
           </div>
         </div>
       </div>

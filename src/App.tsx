@@ -21,6 +21,7 @@ import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { AppLaunchLoader } from './components/AppLaunchLoader';
 import { SyncStatusIndicator } from './components/SyncStatusIndicator';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { MobileTabletInstallPopup } from './components/MobileTabletInstallPopup';
 import { AppFooter } from './components/AppFooter';
 import { RecordType, AppView } from './types';
 import { getFarmNotifications } from './utils/notificationHelper';
@@ -451,6 +452,9 @@ const MainLayout: React.FC = () => {
 
       {/* Offline connectivity indicator banner */}
       <OfflineIndicator />
+
+      {/* Mobile and Tablet Transient Installation Pop-up */}
+      <MobileTabletInstallPopup />
     </div>
   );
 };

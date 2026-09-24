@@ -52,7 +52,7 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({ isOpen, onClose 
       if (res.success) {
         setFeedback({
           type: 'success',
-          message: res.message || 'All records successfully written to your Firebase Realtime Database!',
+          message: 'Synchronized successfully',
         });
       } else {
         setFeedback({

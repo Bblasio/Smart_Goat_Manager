@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   DollarSign,
   HeartPulse,
-  Baby,
+  Lock,
   Users,
   Download,
   Milk,
@@ -40,6 +40,7 @@ import { HerdRecordsHeaderTemplate } from '../components/HerdRecordsHeaderTempla
 import { GoatRecordsTableTemplate } from '../components/GoatRecordsTableTemplate';
 import { KidGrowthTracker } from '../components/KidGrowthTracker';
 import { RecordKiddingModal } from '../components/RecordKiddingModal';
+import { GoatKidIcon } from '../components/GoatKidIcon';
 import { useUnits } from '../context/UnitsContext';
 import {
   formatGoatsForExcel,
@@ -805,7 +806,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wide flex items-center gap-1">
-              <Baby className="w-3.5 h-3.5 text-amber-600" />
+              <GoatKidIcon className="w-3.5 h-3.5 text-amber-600" />
               Kids
             </span>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300">
@@ -1461,11 +1462,16 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
               <tbody className="divide-y divide-stone-200/50 dark:divide-stone-800/80">
                 {filteredBreeding.length > 0 ? (
                   filteredBreeding.map((item, index) => {
+                    const todayMidnight = new Date();
+                    todayMidnight.setHours(0, 0, 0, 0);
                     const exp = new Date(item.expected_birth);
+                    const expMidnight = new Date(exp);
+                    expMidnight.setHours(0, 0, 0, 0);
                     const diffDays = Math.ceil(
-                      (exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+                      (expMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24)
                     );
-                    const isDueSoon = diffDays >= 0 && diffDays <= 7;
+                    const isDue = diffDays <= 0;
+                    const isDueSoon = diffDays > 0 && diffDays <= 7;
                     const isEven = index % 2 === 1;
 
                     return (
@@ -1509,16 +1515,26 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                               <span>Delivered ({item.kids_born || 1} {item.kids_born === 1 ? 'kid' : 'kids'})</span>
                             </span>
-                          ) : (
+                          ) : isDue ? (
                             <button
                               type="button"
                               id={`btn-record-kidding-${item.id}`}
                               onClick={() => handleOpenKiddingModal(item)}
-                              className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 flex items-center gap-1.5 transition-all shadow-2xs"
-                              title="Record Kidding / Delivery of newborn kids"
+                              className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-all shadow-2xs ring-2 ring-emerald-500/20 cursor-pointer"
+                              title="Due date reached! Record delivery of newborn kids"
                             >
-                              <Baby className="w-3.5 h-3.5 text-amber-600" />
-                              <span>Record Kidding</span>
+                              <GoatKidIcon className="w-3.5 h-3.5" />
+                              <span>Goat Gave Birth</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 border border-stone-200 dark:border-stone-700 flex items-center gap-1.5 cursor-not-allowed opacity-75"
+                              title={`Gestation in progress (${diffDays} days remaining). Activates on due date (${item.expected_birth}).`}
+                            >
+                              <Lock className="w-3 h-3 text-stone-400 dark:text-stone-500" />
+                              <span>Active on Due Date ({diffDays}d)</span>
                             </button>
                           )}
                           {onNavigate && (
@@ -1941,7 +1957,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-stone-900 p-5 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xs">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase text-stone-500 dark:text-stone-400">
-                <Baby className="w-4 h-4 text-amber-600" />
+                <GoatKidIcon className="w-4 h-4 text-amber-600" />
                 <span>Kidding Soon</span>
               </div>
               <div className="text-2xl font-bold text-stone-900 dark:text-white mt-2">

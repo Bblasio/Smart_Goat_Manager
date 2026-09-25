@@ -5,7 +5,6 @@ import { useUnits } from '../context/UnitsContext';
 import { BreedingRecord, GoatRecord } from '../types';
 import {
   X,
-  Baby,
   Calendar,
   Tag,
   CheckCircle2,
@@ -17,6 +16,7 @@ import {
   Dna,
   Heart
 } from 'lucide-react';
+import { GoatKidIcon } from './GoatKidIcon';
 
 export interface RecordKiddingModalProps {
   isOpen: boolean;
@@ -138,6 +138,14 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
       return copy;
     });
   };
+
+  // Days until expected due date
+  const targetMidnight = new Date(breedingRecord.expected_birth);
+  targetMidnight.setHours(0, 0, 0, 0);
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const daysUntilDue = Math.ceil((targetMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+  const isDueReached = daysUntilDue <= 0;
 
   // Gestation variance calculation (days early or late)
   let gestationVarianceInfo = '';
@@ -297,7 +305,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
         <div className="flex items-start justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
-              <Baby className="w-5 h-5" />
+              <GoatKidIcon className="w-5 h-5" />
             </div>
             <div>
               <h3 id="record-kidding-title" className="text-lg font-bold text-stone-900 dark:text-stone-100">
@@ -320,14 +328,23 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
 
         {/* Breeding Pair Information (Auto-linked from breeding record) */}
         <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 space-y-2.5">
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
             <span className="font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
               <Dna className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Official Breeding Record Pair</span>
             </span>
-            <span className="text-[11px] font-mono text-stone-500 dark:text-stone-400">
-              Mating: {breedingRecord.mating_date} • Expected: {breedingRecord.expected_birth}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono text-stone-500 dark:text-stone-400">
+                Mating: {breedingRecord.mating_date} • Due: {breedingRecord.expected_birth}
+              </span>
+              <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                isDueReached
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+              }`}>
+                {isDueReached ? 'Due Date Reached' : `${daysUntilDue}d until Due`}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -402,7 +419,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
-                <Baby className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <GoatKidIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Newborn Kids ({kids.length})</span>
               </span>
               <button
@@ -564,7 +581,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
               disabled={isSubmitting}
               className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-xs flex items-center gap-1.5 active:scale-98 disabled:opacity-50"
             >
-              <Baby className="w-4 h-4" />
+              <GoatKidIcon className="w-4 h-4" />
               <span>
                 {isSubmitting
                   ? 'Saving Delivery...'

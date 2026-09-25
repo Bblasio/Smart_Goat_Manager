@@ -15,10 +15,11 @@ import {
   Sliders,
   ChevronRight,
   Save,
-  Baby
+  Lock
 } from 'lucide-react';
 import { GoatRecord, HealthRecord, BreedingRecord } from '../types';
 import { RecordKiddingModal } from '../components/RecordKiddingModal';
+import { GoatKidIcon } from '../components/GoatKidIcon';
 
 interface BreedPreset {
   name: string;
@@ -581,25 +582,50 @@ export const BreedingEstimatorView: React.FC = () => {
             </div>
 
             {/* Quick Action: Enter Goat Gave Birth for Currently Selected Doe */}
-            {activeBreedingForSelectedDoe && (
-              <div className="p-3.5 rounded-xl bg-white/10 border border-white/20 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
-                <div className="text-xs text-emerald-100 flex items-center gap-2">
-                  <Baby className="w-4 h-4 text-emerald-300 shrink-0" />
-                  <span>
-                    Doe <strong>{selectedDoeTag}</strong> gave birth early or today?
-                  </span>
+            {activeBreedingForSelectedDoe && (() => {
+              const doeTargetDate = new Date(activeBreedingForSelectedDoe.expected_birth);
+              const t = new Date();
+              t.setHours(0, 0, 0, 0);
+              const target = new Date(doeTargetDate);
+              target.setHours(0, 0, 0, 0);
+              const doeDaysLeft = Math.ceil((target.getTime() - t.getTime()) / (1000 * 60 * 60 * 24));
+              const isDoeDue = doeDaysLeft <= 0;
+
+              return (
+                <div className="p-3.5 rounded-xl bg-white/10 border border-white/20 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
+                  <div className="text-xs text-emerald-100 flex items-center gap-2">
+                    {isDoeDue ? (
+                      <GoatKidIcon className="w-4 h-4 text-emerald-300 shrink-0" />
+                    ) : (
+                      <Lock className="w-4 h-4 text-emerald-300 shrink-0" />
+                    )}
+                    <span>
+                      {isDoeDue
+                        ? `Doe ${selectedDoeTag} has reached expected kidding date (${activeBreedingForSelectedDoe.expected_birth})!`
+                        : `Doe ${selectedDoeTag} in gestation: ${doeDaysLeft} days remaining until due date (${activeBreedingForSelectedDoe.expected_birth}).`}
+                    </span>
+                  </div>
+                  {isDoeDue ? (
+                    <button
+                      type="button"
+                      id="btn-hero-goat-gave-birth"
+                      onClick={() => setSelectedBreedingForDelivery(activeBreedingForSelectedDoe)}
+                      className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                    >
+                      <GoatKidIcon className="w-4 h-4 text-stone-950" />
+                      <span>Enter Goat Gave Birth</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold text-emerald-200/90 px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 flex items-center gap-1.5" title={`Activates on due date (${activeBreedingForSelectedDoe.expected_birth})`}>
+                        <Lock className="w-3 h-3 text-emerald-300" />
+                        <span>Active on Due Date ({doeDaysLeft}d)</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  id="btn-hero-goat-gave-birth"
-                  onClick={() => setSelectedBreedingForDelivery(activeBreedingForSelectedDoe)}
-                  className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
-                >
-                  <Baby className="w-3.5 h-3.5 text-stone-950" />
-                  <span>Enter Goat Gave Birth</span>
-                </button>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Clinical Milestones Timeline */}
@@ -687,7 +713,7 @@ export const BreedingEstimatorView: React.FC = () => {
                 <tr>
                   <td colSpan={7} className="px-5 py-10 text-center">
                     <div className="max-w-sm mx-auto space-y-2">
-                      <Baby className="w-8 h-8 text-stone-400 mx-auto opacity-60" />
+                      <GoatKidIcon className="w-8 h-8 text-stone-400 mx-auto opacity-60" />
                       <p className="text-sm font-semibold text-stone-800 dark:text-stone-200">
                         No expectant does currently in countdown
                       </p>
@@ -702,8 +728,13 @@ export const BreedingEstimatorView: React.FC = () => {
                   .filter(b => b.status === 'Active' || !b.status)
                   .map(b => {
                     const targetDate = new Date(b.expected_birth);
-                    const daysLeft = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                    const isDueSoon = daysLeft <= 7 && daysLeft >= 0;
+                    const todayMidnight = new Date();
+                    todayMidnight.setHours(0, 0, 0, 0);
+                    const targetMidnight = new Date(targetDate);
+                    targetMidnight.setHours(0, 0, 0, 0);
+                    const daysLeft = Math.ceil((targetMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+                    const isDue = daysLeft <= 0;
+                    const isDueSoon = daysLeft <= 7 && daysLeft > 0;
                     const isOverdue = daysLeft < 0;
 
                     return (
@@ -746,16 +777,28 @@ export const BreedingEstimatorView: React.FC = () => {
                         </td>
                         <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              id={`btn-birth-${b.id}`}
-                              onClick={() => setSelectedBreedingForDelivery(b)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-all active:scale-95 cursor-pointer"
-                              title={`Enter that doe ${b.female_id} gave birth`}
-                            >
-                              <Baby className="w-3.5 h-3.5" />
-                              <span>Goat Gave Birth</span>
-                            </button>
+                            {isDue ? (
+                              <button
+                                type="button"
+                                id={`btn-birth-${b.id}`}
+                                onClick={() => setSelectedBreedingForDelivery(b)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-500/20"
+                                title={`Doe ${b.female_id} reached expected due date! Click to record kidding delivery`}
+                              >
+                                <GoatKidIcon className="w-4 h-4 shrink-0" />
+                                <span>Goat Gave Birth</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 border border-stone-200 dark:border-stone-700/80 cursor-not-allowed opacity-75"
+                                title={`Gestation in progress (${daysLeft} days remaining). Kidding registration activates on due date (${targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}).`}
+                              >
+                                <Lock className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0" />
+                                <span>Active on Due Date ({daysLeft}d)</span>
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => {

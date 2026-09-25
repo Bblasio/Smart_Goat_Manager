@@ -5,6 +5,7 @@ import {
   BreedingRecord,
   SaleRecord,
 } from '../types';
+import { useUnits } from '../context/UnitsContext';
 import {
   Search,
   Eye,
@@ -58,6 +59,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
   onViewPedigree,
   onNavigateToHealthWithGoat,
 }) => {
+  const { formatWeight, weightUnit, formatCurrency } = useUnits();
   const [activeMenuGoatId, setActiveMenuGoatId] = useState<string | null>(null);
   const [expandedMobileGoatIds, setExpandedMobileGoatIds] = useState<Record<string, boolean>>({});
   const [quickViewGoat, setQuickViewGoat] = useState<GoatRecord | null>(null);
@@ -202,7 +204,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
   const getSaleInfo = (goat: GoatRecord) => {
     const sale = sales.find(s => s.goat_id === goat.tag_number || s.goat_id === goat.id);
     if (!sale) return null;
-    return `Ksh ${Number(sale.price).toLocaleString()}`;
+    return formatCurrency(sale.price);
   };
 
   // Date formatter
@@ -360,7 +362,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                           </span>
                           {salePrice !== null && (
                             <span className="block text-[11px] font-mono text-amber-700 dark:text-amber-400 font-bold mt-0.5">
-                              Ksh {salePrice.toLocaleString()}
+                              {formatCurrency(salePrice)}
                             </span>
                           )}
                         </div>
@@ -374,9 +376,9 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                       </div>
 
                       <div>
-                        <span className="text-stone-400 text-[10px] uppercase block">Weight</span>
+                        <span className="text-stone-400 text-[10px] uppercase block">Weight ({weightUnit})</span>
                         <span className="font-mono font-medium text-stone-800 dark:text-stone-200 mt-0.5 block">
-                          {goat.weight_kg ? `${goat.weight_kg} kg` : <span className="italic text-[#b7bab2] font-normal">—</span>}
+                          {goat.weight_kg ? formatWeight(goat.weight_kg) : <span className="italic text-[#b7bab2] font-normal">—</span>}
                         </span>
                       </div>
 
@@ -508,7 +510,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                   className="px-6 py-3.5 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700"
                 >
                   <div className="flex items-center gap-1.5">
-                    <span>WEIGHT (KG)</span>
+                    <span>WEIGHT ({weightUnit.toUpperCase()})</span>
                     <span className="text-stone-400 font-mono text-[10px]">⇅</span>
                   </div>
                 </th>
@@ -614,7 +616,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                           {/* Price below if Sold */}
                           {effectiveStatus === 'Sold' && (
                             <span className="text-xs font-bold text-stone-900 dark:text-stone-100 font-mono mt-0.5">
-                              {salePrice || 'Ksh 30,000'}
+                              {salePrice || formatCurrency(30000)}
                             </span>
                           )}
                         </div>
@@ -640,9 +642,9 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                         )}
                       </td>
 
-                      {/* Column 7: Weight (kg) */}
+                      {/* Column 7: Weight */}
                       <td className="px-6 py-[15px] font-extrabold text-stone-900 dark:text-stone-100 font-mono text-xs">
-                        {goat.weight_kg ? `${goat.weight_kg} kg` : <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
+                        {goat.weight_kg ? formatWeight(goat.weight_kg) : <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
                       </td>
 
                       {/* Column 8: Date of Birth */}
@@ -807,7 +809,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
               <div className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-100 dark:border-stone-800">
                 <span className="text-stone-400 font-semibold uppercase text-[10px]">Weight</span>
                 <p className="font-bold text-stone-800 dark:text-stone-200 mt-0.5">
-                  {quickViewGoat.weight_kg ? `${quickViewGoat.weight_kg} kg` : '45 kg'}
+                  {quickViewGoat.weight_kg ? formatWeight(quickViewGoat.weight_kg) : formatWeight(45)}
                 </p>
               </div>
               <div className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-100 dark:border-stone-800">
@@ -916,7 +918,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
               </div>
 
               <div>
-                <label className="block text-stone-600 dark:text-stone-400 font-semibold mb-1">Weight (kg)</label>
+                <label className="block text-stone-600 dark:text-stone-400 font-semibold mb-1">Weight ({weightUnit})</label>
                 <input
                   type="number"
                   value={editWeight}

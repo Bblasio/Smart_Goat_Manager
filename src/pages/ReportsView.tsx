@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useUnits } from '../context/UnitsContext';
 import { FinancialTrackingModule } from '../components/FinancialTrackingModule';
 import { FarmReportModal } from '../components/FarmReportModal';
 import { StatCard } from '../components/StatCard';
@@ -36,6 +37,7 @@ import {
 
 export const ReportsView: React.FC = () => {
   const { farmName, user, goats, breeding, sales, expenses, health, milk, workers } = useFarm();
+  const { currency, weightUnit, formatCurrency, formatWeight } = useUnits();
 
   // Collapsible section states
   const [expandFinancialTracking, setExpandFinancialTracking] = useState(true);
@@ -78,9 +80,9 @@ export const ReportsView: React.FC = () => {
       csv += `# Total Registered Goats: ${goats.length}\n`;
       csv += `# Total Health Records: ${health.length}\n`;
       if (format === 'all') {
-        csv += `# Total Revenue: Ksh ${totalRev.toLocaleString()}\n`;
-        csv += `# Total Operating Expenses: Ksh ${totalExp.toLocaleString()}\n`;
-        csv += `# Net Farm Profit: Ksh ${netProfit.toLocaleString()}\n`;
+        csv += `# Total Revenue: ${formatCurrency(totalRev)}\n`;
+        csv += `# Total Operating Expenses: ${formatCurrency(totalExp)}\n`;
+        csv += `# Net Farm Profit: ${formatCurrency(netProfit)}\n`;
       }
       csv += `\n`;
     }
@@ -159,12 +161,12 @@ export const ReportsView: React.FC = () => {
       if (format === 'financial') {
         csv += `# ${farmName.toUpperCase()} - FINANCIAL LEDGER & OPERATING EXPENSES\n`;
         csv += `# Export Date: ${dateReadable}\n`;
-        csv += `# Total Revenue: Ksh ${totalRev.toLocaleString()}\n`;
-        csv += `# Total Expenses: Ksh ${totalExp.toLocaleString()}\n`;
-        csv += `# Net Profit: Ksh ${netProfit.toLocaleString()}\n\n`;
+        csv += `# Total Revenue: ${formatCurrency(totalRev)}\n`;
+        csv += `# Total Expenses: ${formatCurrency(totalExp)}\n`;
+        csv += `# Net Profit: ${formatCurrency(netProfit)}\n\n`;
       }
       csv += `--- OPERATING EXPENSES (FEED, VET, EQUIPMENT, LABOR) ---\n`;
-      csv += ['Expense ID', 'Category', 'Description / Item', 'Amount (Ksh)', 'Date', 'Receipt Number', 'Notes'].map(escapeCsv).join(',') + '\n';
+      csv += ['Expense ID', 'Category', 'Description / Item', `Amount (${currency})`, 'Date', 'Receipt Number', 'Notes'].map(escapeCsv).join(',') + '\n';
       if (expenses.length === 0) {
         csv += ['No expenses recorded', '', '', '', '', '', ''].map(escapeCsv).join(',') + '\n';
       } else {
@@ -180,10 +182,10 @@ export const ReportsView: React.FC = () => {
       if (format === 'sales') {
         csv += `# ${farmName.toUpperCase()} - SALES TRANSACTIONS\n`;
         csv += `# Export Date: ${dateReadable}\n`;
-        csv += `# Total Sales Revenue: Ksh ${totalRev.toLocaleString()}\n\n`;
+        csv += `# Total Sales Revenue: ${formatCurrency(totalRev)}\n\n`;
       }
       csv += `--- SALES & REVENUE TRANSACTIONS ---\n`;
-      csv += ['Sale ID', 'Goat Tag ID', 'Price (Ksh)', 'Buyer Name', 'Sale Date'].map(escapeCsv).join(',') + '\n';
+      csv += ['Sale ID', 'Goat Tag ID', `Price (${currency})`, 'Buyer Name', 'Sale Date'].map(escapeCsv).join(',') + '\n';
       if (sales.length === 0) {
         csv += ['No sales recorded', '', '', '', ''].map(escapeCsv).join(',') + '\n';
       } else {
@@ -435,7 +437,7 @@ export const ReportsView: React.FC = () => {
   if (totalSalesAmount > 0) {
     recs.push({
       id: 'rec-revenue',
-      text: `💰 Commercial revenue to date: Ksh ${totalSalesAmount.toLocaleString()}. Strong transaction velocity.`,
+      text: `💰 Commercial revenue to date: ${formatCurrency(totalSalesAmount)}. Strong transaction velocity.`,
       type: 'info',
     });
   }
@@ -704,7 +706,7 @@ export const ReportsView: React.FC = () => {
               <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-3 text-emerald-900 text-sm font-semibold">
                 <Award className="w-5 h-5 text-emerald-600 shrink-0" />
                 <span>
-                  🏆 Top sale record: Ksh {topSale.price.toLocaleString()} for Goat {topSale.goat_id} ({topSale.buyer_name || 'Verified Buyer'})
+                  🏆 Top sale record: {formatCurrency(topSale.price)} for Goat {topSale.goat_id} ({topSale.buyer_name || 'Verified Buyer'})
                 </span>
               </div>
             )}
@@ -716,7 +718,7 @@ export const ReportsView: React.FC = () => {
                     <tr>
                       <th className="px-5 py-3">Rank</th>
                       <th className="px-5 py-3">Goat ID</th>
-                      <th className="px-5 py-3">Price (Ksh)</th>
+                      <th className="px-5 py-3">Price ({currency})</th>
                       <th className="px-5 py-3">Buyer Name</th>
                       <th className="px-5 py-3">Sale Date</th>
                     </tr>
@@ -729,7 +731,7 @@ export const ReportsView: React.FC = () => {
                         </td>
                         <td className="px-5 py-3 font-bold text-stone-900">{s.goat_id}</td>
                         <td className="px-5 py-3 font-semibold text-emerald-700">
-                          Ksh {s.price.toLocaleString()}
+                          {formatCurrency(s.price)}
                         </td>
                         <td className="px-5 py-3 text-stone-600">{s.buyer_name || '—'}</td>
                         <td className="px-5 py-3 text-stone-500 font-mono text-xs">{s.sale_date || '—'}</td>
@@ -852,7 +854,7 @@ export const ReportsView: React.FC = () => {
                     <thead className="bg-rose-50/50 dark:bg-rose-950/40 text-xs font-semibold text-rose-900 dark:text-rose-200 uppercase tracking-wider">
                       <tr>
                         <th className="px-5 py-3">Goat ID</th>
-                        <th className="px-5 py-3">Price (Ksh)</th>
+                        <th className="px-5 py-3">Price ({currency})</th>
                         <th className="px-5 py-3">Buyer Name</th>
                         <th className="px-5 py-3">Sale Date</th>
                         <th className="px-5 py-3">Status</th>
@@ -863,7 +865,7 @@ export const ReportsView: React.FC = () => {
                         <tr key={a.id} className="hover:bg-rose-50/20">
                           <td className="px-5 py-3 font-bold text-stone-900">{a.goat_id}</td>
                           <td className="px-5 py-3 font-bold text-rose-700">
-                            Ksh {a.price.toLocaleString()}
+                            {formatCurrency(a.price)}
                           </td>
                           <td className="px-5 py-3 text-stone-600">{a.buyer_name}</td>
                           <td className="px-5 py-3 text-stone-500 font-mono text-xs">{a.sale_date}</td>
@@ -918,7 +920,7 @@ export const ReportsView: React.FC = () => {
                     <StatCard
                       key={i}
                       label={f.month}
-                      value={`Ksh ${f.predictedRevenue.toLocaleString()}`}
+                      value={formatCurrency(f.predictedRevenue)}
                       subtext="Predicted Yield"
                       icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
                     />
@@ -936,14 +938,14 @@ export const ReportsView: React.FC = () => {
                         tickFormatter={(val: number) => `${Math.round(val / 1000)}k`}
                       />
                       <Tooltip
-                        formatter={(val: any) => val ? [`Ksh ${Number(val).toLocaleString()}`, 'Revenue'] : ['—', '']}
+                        formatter={(val: any) => val ? [formatCurrency(Number(val)), 'Revenue'] : ['—', '']}
                         contentStyle={{ borderRadius: '12px', fontSize: '12px', border: '1px solid #e7e5e4' }}
                       />
                       <Legend />
                       <Line
                         type="monotone"
                         dataKey="ActualRevenue"
-                        name="Actual Revenue (Ksh)"
+                        name={`Actual Revenue (${currency})`}
                         stroke="#10b981"
                         strokeWidth={2.5}
                         dot={{ r: 4 }}
@@ -951,7 +953,7 @@ export const ReportsView: React.FC = () => {
                       <Line
                         type="monotone"
                         dataKey="ForecastRevenue"
-                        name="Projected Forecast (Ksh)"
+                        name={`Projected Forecast (${currency})`}
                         stroke="#f59e0b"
                         strokeWidth={2.5}
                         strokeDasharray="5 5"

@@ -48,8 +48,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [isSaving, setIsSaving] = useState(false);
 
   // Edit Form Fields
+  const parseLoc = (locStr?: string) => {
+    if (!locStr) return { county: 'Kiambu', country: 'Kenya' };
+    const parts = locStr.split(',').map(s => s.trim());
+    return { county: parts[0] || 'Kiambu', country: parts[1] || 'Kenya' };
+  };
+
+  const initialLoc = parseLoc(user?.location);
   const [editFarmName, setEditFarmName] = useState(user?.farm_name || farmName);
   const [editOwnerName, setEditOwnerName] = useState(user?.owner_name || '');
+  const [editCountry, setEditCountry] = useState(user?.country || initialLoc.country);
+  const [editCounty, setEditCounty] = useState(user?.county || initialLoc.county);
   const [editLocation, setEditLocation] = useState(user?.location || '');
   const [editFarmSize, setEditFarmSize] = useState(user?.farm_size || '');
   const [editPrimaryBreed, setEditPrimaryBreed] = useState(user?.primary_breed || '');
@@ -65,6 +74,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     if (!isEditing && user) {
       setEditFarmName(user.farm_name || farmName);
       setEditOwnerName(user.owner_name || '');
+      const parsed = parseLoc(user.location);
+      setEditCountry(user.country || parsed.country);
+      setEditCounty(user.county || parsed.county);
       setEditLocation(user.location || '');
       setEditFarmSize(user.farm_size || '');
       setEditPrimaryBreed(user.primary_breed || '');
@@ -92,6 +104,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const handleOpenEdit = () => {
     setEditFarmName(user?.farm_name || farmName);
     setEditOwnerName(user?.owner_name || '');
+    const parsed = parseLoc(user?.location);
+    setEditCountry(user?.country || parsed.country);
+    setEditCounty(user?.county || parsed.county);
     setEditLocation(user?.location || '');
     setEditFarmSize(user?.farm_size || '');
     setEditPrimaryBreed(user?.primary_breed || '');
@@ -150,10 +165,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setIsSaving(true);
     setErrorStatus(null);
 
+    const combinedLoc = [editCounty.trim(), editCountry.trim()].filter(Boolean).join(', ');
     const updates: Partial<FarmUser> = {
       farm_name: editFarmName.trim(),
       owner_name: editOwnerName.trim(),
-      location: editLocation.trim(),
+      location: combinedLoc,
+      country: editCountry.trim(),
+      county: editCounty.trim(),
       farm_size: editFarmSize.trim(),
       primary_breed: editPrimaryBreed.trim(),
       production_focus: editProductionFocus.trim(),
@@ -561,31 +579,77 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Owner / Manager Full Name
+                </label>
+                <input
+                  id="input-edit-owner-name"
+                  type="text"
+                  value={editOwnerName}
+                  onChange={e => setEditOwnerName(e.target.value)}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Owner / Manager Full Name
+                    Country *
                   </label>
                   <input
-                    id="input-edit-owner-name"
+                    id="input-edit-country"
                     type="text"
-                    value={editOwnerName}
-                    onChange={e => setEditOwnerName(e.target.value)}
+                    placeholder="e.g. Kenya, Uganda, Tanzania, USA"
+                    list="datalist-profile-countries"
+                    value={editCountry}
+                    onChange={e => setEditCountry(e.target.value)}
                     className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
                   />
+                  <datalist id="datalist-profile-countries">
+                    <option value="Kenya" />
+                    <option value="Uganda" />
+                    <option value="Tanzania" />
+                    <option value="Rwanda" />
+                    <option value="Nigeria" />
+                    <option value="South Africa" />
+                    <option value="United States" />
+                    <option value="United Kingdom" />
+                    <option value="Canada" />
+                    <option value="Australia" />
+                    <option value="India" />
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Farm Location (County / Region)
+                    County *
                   </label>
                   <input
-                    id="input-edit-location"
+                    id="input-edit-county"
                     type="text"
-                    placeholder="e.g. Nakuru County, Kenya"
-                    value={editLocation}
-                    onChange={e => setEditLocation(e.target.value)}
+                    placeholder="e.g. Kiambu, Nakuru, Nairobi, Meru"
+                    list="datalist-profile-counties"
+                    value={editCounty}
+                    onChange={e => setEditCounty(e.target.value)}
                     className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
                   />
+                  <datalist id="datalist-profile-counties">
+                    <option value="Kiambu" />
+                    <option value="Nakuru" />
+                    <option value="Nairobi" />
+                    <option value="Meru" />
+                    <option value="Machakos" />
+                    <option value="Uasin Gishu" />
+                    <option value="Nyeri" />
+                    <option value="Kajiado" />
+                    <option value="Murang'a" />
+                    <option value="Kilifi" />
+                    <option value="Laikipia" />
+                    <option value="Kisumu" />
+                    <option value="Mombasa" />
+                  </datalist>
                 </div>
               </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useUnits } from '../context/UnitsContext';
 import { ExpenseCategory } from '../types';
 import {
   TrendingUp,
@@ -27,6 +28,7 @@ import { StatCard } from './StatCard';
 
 export const FinancialTrackingModule: React.FC = () => {
   const { sales, expenses, addExpense, deleteExpense, addSale, deleteSale, goats, farmName } = useFarm();
+  const { currency, formatCurrency } = useUnits();
 
   // Modal / Form state
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
@@ -240,7 +242,7 @@ export const FinancialTrackingModule: React.FC = () => {
       setRevPrice('');
       setRevError(null);
       setShowAddRevenueModal(false);
-      setSuccessToast(`Goat ${existingGoat.tag_number} sale of Ksh ${Number(revPrice).toLocaleString()} recorded! Status updated to Sold.`);
+      setSuccessToast(`Goat ${existingGoat.tag_number} sale of ${formatCurrency(Number(revPrice))} recorded! Status updated to Sold.`);
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err: any) {
       setRevError(err?.message || 'Failed to record goat sale');
@@ -267,11 +269,11 @@ export const FinancialTrackingModule: React.FC = () => {
   const handleExportFinancialCsv = () => {
     let csv = `# SMART GOAT MANAGEMENT - ${farmName.toUpperCase()} FINANCIAL LEDGER\n`;
     csv += `# Export Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}\n`;
-    csv += `# Total Revenue: Ksh ${totalRevenue.toLocaleString()}\n`;
-    csv += `# Total Expenses: Ksh ${totalExpenses.toLocaleString()}\n`;
-    csv += `# Net Farm Profit: Ksh ${netProfit.toLocaleString()}\n\n`;
+    csv += `# Total Revenue: ${formatCurrency(totalRevenue)}\n`;
+    csv += `# Total Expenses: ${formatCurrency(totalExpenses)}\n`;
+    csv += `# Net Farm Profit: ${formatCurrency(netProfit)}\n\n`;
 
-    csv += ['Transaction ID', 'Date', 'Type', 'Category', 'Description', 'Reference / Buyer', 'Cash Inflow (Ksh)', 'Cash Outflow (Ksh)'].map(val => `"${val}"`).join(',') + '\n';
+    csv += ['Transaction ID', 'Date', 'Type', 'Category', 'Description', 'Reference / Buyer', `Cash Inflow (${currency})`, `Cash Outflow (${currency})`].map(val => `"${val}"`).join(',') + '\n';
 
     unifiedLedger.forEach(entry => {
       csv += [
@@ -410,7 +412,7 @@ export const FinancialTrackingModule: React.FC = () => {
         {/* Total Revenue */}
         <StatCard
           label="Total Revenue (Sales)"
-          value={`Ksh ${totalRevenue.toLocaleString()}`}
+          value={formatCurrency(totalRevenue)}
           icon={<TrendingUp className="w-4 h-4 text-emerald-600" />}
           iconBgColor="bg-emerald-50 text-emerald-600"
           subtext={
@@ -424,7 +426,7 @@ export const FinancialTrackingModule: React.FC = () => {
         {/* Total Expenses */}
         <StatCard
           label="Total Operating Expenses"
-          value={`Ksh ${totalExpenses.toLocaleString()}`}
+          value={formatCurrency(totalExpenses)}
           icon={<TrendingDown className="w-4 h-4 text-rose-600" />}
           iconBgColor="bg-rose-50 text-rose-600"
           variant="rose"
@@ -439,7 +441,7 @@ export const FinancialTrackingModule: React.FC = () => {
         {/* Net Profit / Margin */}
         <StatCard
           label="Net Farm Cash Flow"
-          value={`${netProfit >= 0 ? '+' : ''}Ksh ${netProfit.toLocaleString()}`}
+          value={`${netProfit >= 0 ? '+' : ''}${formatCurrency(netProfit)}`}
           variant={netProfit >= 0 ? 'emerald' : 'rose'}
           badge={
             <span
@@ -464,7 +466,7 @@ export const FinancialTrackingModule: React.FC = () => {
             <span className="truncate">Feed &amp; Forage</span>
           </div>
           <div className="text-base font-bold text-amber-950 font-mono mt-1">
-            Ksh {categoryTotals.Feed.toLocaleString()}
+            {formatCurrency(categoryTotals.Feed)}
           </div>
           <div className="text-[11px] text-amber-700 mt-0.5">
             {totalExpenses > 0 ? Math.round((categoryTotals.Feed / totalExpenses) * 100) : 0}% of expenses
@@ -477,7 +479,7 @@ export const FinancialTrackingModule: React.FC = () => {
             <span className="truncate">Vet &amp; Healthcare</span>
           </div>
           <div className="text-base font-bold text-sky-950 font-mono mt-1">
-            Ksh {categoryTotals.Vet.toLocaleString()}
+            {formatCurrency(categoryTotals.Vet)}
           </div>
           <div className="text-[11px] text-sky-700 mt-0.5">
             {totalExpenses > 0 ? Math.round((categoryTotals.Vet / totalExpenses) * 100) : 0}% of expenses
@@ -490,7 +492,7 @@ export const FinancialTrackingModule: React.FC = () => {
             <span className="truncate">Equipment &amp; Tools</span>
           </div>
           <div className="text-base font-bold text-purple-950 font-mono mt-1">
-            Ksh {categoryTotals.Equipment.toLocaleString()}
+            {formatCurrency(categoryTotals.Equipment)}
           </div>
           <div className="text-[11px] text-purple-700 mt-0.5">
             {totalExpenses > 0 ? Math.round((categoryTotals.Equipment / totalExpenses) * 100) : 0}% of expenses
@@ -503,7 +505,7 @@ export const FinancialTrackingModule: React.FC = () => {
             <span className="truncate">Labor &amp; Other</span>
           </div>
           <div className="text-base font-bold text-stone-900 font-mono mt-1">
-            Ksh {(categoryTotals.Labor + categoryTotals.Other).toLocaleString()}
+            {formatCurrency(categoryTotals.Labor + categoryTotals.Other)}
           </div>
           <div className="text-[11px] text-stone-500 mt-0.5">
             {totalExpenses > 0 ? Math.round(((categoryTotals.Labor + categoryTotals.Other) / totalExpenses) * 100) : 0}% of expenses
@@ -644,11 +646,11 @@ export const FinancialTrackingModule: React.FC = () => {
                   <div className="flex items-center gap-2">
                     {entry.type === 'revenue' ? (
                       <span className="font-bold text-sm text-emerald-700 font-mono">
-                        +Ksh {entry.amount.toLocaleString()}
+                        +{formatCurrency(entry.amount)}
                       </span>
                     ) : (
                       <span className="font-bold text-sm text-rose-700 font-mono">
-                        -Ksh {entry.amount.toLocaleString()}
+                        -{formatCurrency(entry.amount)}
                       </span>
                     )}
                     <button
@@ -708,7 +710,7 @@ export const FinancialTrackingModule: React.FC = () => {
                     <td className="px-4 py-3.5 text-right font-mono text-xs whitespace-nowrap">
                       {entry.type === 'revenue' ? (
                         <span className="font-bold text-emerald-700">
-                          +Ksh {entry.amount.toLocaleString()}
+                          +{formatCurrency(entry.amount)}
                         </span>
                       ) : (
                         <span className="text-stone-300">—</span>
@@ -717,7 +719,7 @@ export const FinancialTrackingModule: React.FC = () => {
                     <td className="px-4 py-3.5 text-right font-mono text-xs whitespace-nowrap">
                       {entry.type === 'expense' ? (
                         <span className="font-bold text-rose-700">
-                          -Ksh {entry.amount.toLocaleString()}
+                          -{formatCurrency(entry.amount)}
                         </span>
                       ) : (
                         <span className="text-stone-300">—</span>
@@ -751,18 +753,14 @@ export const FinancialTrackingModule: React.FC = () => {
                     Total Filtered ({filteredLedger.length} items)
                   </td>
                   <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">
-                    +Ksh{' '}
-                    {filteredLedger
+                    +{formatCurrency(filteredLedger
                       .filter(e => e.type === 'revenue')
-                      .reduce((sum, e) => sum + e.amount, 0)
-                      .toLocaleString()}
+                      .reduce((sum, e) => sum + e.amount, 0))}
                   </td>
                   <td className="px-4 py-3 text-right font-mono font-bold text-rose-700">
-                    -Ksh{' '}
-                    {filteredLedger
+                    -{formatCurrency(filteredLedger
                       .filter(e => e.type === 'expense')
-                      .reduce((sum, e) => sum + e.amount, 0)
-                      .toLocaleString()}
+                      .reduce((sum, e) => sum + e.amount, 0))}
                   </td>
                   <td></td>
                 </tr>
@@ -835,7 +833,7 @@ export const FinancialTrackingModule: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Amount (Ksh) *
+                    Amount ({currency}) *
                   </label>
                   <input
                     id="input-expense-amount"
@@ -1037,7 +1035,7 @@ export const FinancialTrackingModule: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Sale Price (Ksh) *
+                    Sale Price ({currency}) *
                   </label>
                   <input
                     id="input-revenue-price"

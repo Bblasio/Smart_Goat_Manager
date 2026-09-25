@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { GoatRecord, BreedingRecord, HealthRecord, MilkRecord } from '../types';
 import { StatCard } from './StatCard';
+import { useUnits } from '../context/UnitsContext';
 
 interface DashboardSummaryCardProps {
   goats: GoatRecord[];
@@ -35,6 +36,8 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
   onNavigateToTasks,
   onNavigateToHealth,
 }) => {
+  const { formatMilk } = useUnits();
+
   // Filter out sold and deceased goats from active on-farm herd metrics
   const soldOrDeadIdentifiers = new Set(
     goats
@@ -228,7 +231,7 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
           id="summary-milk-yield-companion"
           variant="blue"
           label="Daily Milk Yield"
-          value={todayMilkYield > 0 ? `${todayMilkYield.toFixed(1)}L` : '0.0L'}
+          value={formatMilk(todayMilkYield)}
           unit="today"
           icon={<Milk className="w-4 h-4" />}
           footer={

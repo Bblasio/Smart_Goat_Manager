@@ -19,12 +19,12 @@ import { AuthView } from './pages/AuthView';
 import { AddRecordModal } from './components/AddRecordModal';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { AppLaunchLoader } from './components/AppLaunchLoader';
-import { SyncStatusIndicator } from './components/SyncStatusIndicator';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { MobileTabletInstallPopup } from './components/MobileTabletInstallPopup';
 import { AppFooter } from './components/AppFooter';
 import { RecordType, AppView } from './types';
 import { getFarmNotifications } from './utils/notificationHelper';
+import { UnitsProvider } from './context/UnitsContext';
 import { Menu, Sparkles, X, Bell, Search, WifiOff } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
@@ -203,7 +203,6 @@ const MainLayout: React.FC = () => {
         setMobileOpen={setMobileSidebarOpen}
         onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
         todayNotificationCount={activeTodayCount}
-        onOpenSettings={handleOpenSettings}
       />
 
       {/* Main Content Area (offset by left sidebar: 0 on mobile, 68px on tablet rail, 256px on desktop) */}
@@ -225,63 +224,6 @@ const MainLayout: React.FC = () => {
               <WifiOff className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <span>Working in Offline Mode. Records are saved safely on your device and will sync to the cloud automatically once reconnected.</span>
             </div>
-            <SyncStatusIndicator compact={true} />
-          </div>
-        )}
-
-        {/* Demo Mode Notice Banner */}
-        {isDemoMode && (
-          <div className="no-print bg-amber-500/10 dark:bg-amber-950/40 border-b border-amber-300 dark:border-amber-800 px-4 py-2.5 text-xs font-semibold text-amber-900 dark:text-amber-300 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
-              <span>Viewing in Demo Mode. Sign in or create an account to save your herd records permanently.</span>
-            </div>
-            <button
-              type="button"
-              id="btn-demo-banner-signin"
-              onClick={logout}
-              className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
-            >
-              Sign In / Register
-            </button>
-          </div>
-        )}
-
-        {/* Profile Incomplete Notification Banner */}
-        {!isDemoMode && isAuthenticated && !isProfileComplete && !profilePromptDismissed && activeTab !== 'profile' && activeTab !== 'settings' && (
-          <div className="no-print bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-emerald-950/70 border-b border-emerald-200 dark:border-emerald-800/80 px-4 py-3 text-xs text-emerald-900 dark:text-emerald-200 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <span className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-2xs shrink-0">
-                <Sparkles className="w-4 h-4" />
-              </span>
-              <div>
-                <span className="font-bold text-emerald-950 dark:text-emerald-100 block sm:inline mr-1">
-                  Complete Your Farm Profile:
-                </span>
-                <span className="text-emerald-800 dark:text-emerald-300">
-                  Fill in your farm location, contact phone, and primary goat breed to personalize official reports, sales receipts, and medical logs.
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                id="btn-complete-profile-banner"
-                onClick={() => handleNavigate('settings')}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs flex items-center gap-1"
-              >
-                <span>Complete Profile</span>
-                <span>→</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setProfilePromptDismissed(true)}
-                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
-                title="Dismiss reminder"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         )}
 
@@ -297,12 +239,7 @@ const MainLayout: React.FC = () => {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <button
-              type="button"
-              onClick={() => handleNavigate('settings')}
-              className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity focus:outline-none"
-              title="Settings & Farm Profile"
-            >
+            <div className="flex items-center gap-2 text-left">
               {user?.logo_url ? (
                 <img
                   src={user.logo_url}
@@ -317,11 +254,10 @@ const MainLayout: React.FC = () => {
                 />
               )}
               <span className="font-bold text-stone-900 dark:text-stone-100 text-sm truncate max-w-[140px]">{farmName}</span>
-            </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <SyncStatusIndicator compact={true} />
             <button
               type="button"
               id="btn-mobile-search"
@@ -379,6 +315,7 @@ const MainLayout: React.FC = () => {
             <RecordsView
               onOpenAddModal={handleOpenAddModal}
               onNavigate={handleNavigate}
+              onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
             />
           )}
 
@@ -411,7 +348,6 @@ const MainLayout: React.FC = () => {
         <MobileBottomNav
           activeTab={activeTab}
           setActiveTab={handleNavigate}
-          onOpenSettings={handleOpenSettings}
           isDrawerOpen={mobileSidebarOpen || (activeTab === 'settings' && isSettingsDrilledIn)}
         />
 
@@ -463,9 +399,11 @@ export default function App() {
   return (
     <ThemeProvider>
       <FarmProvider>
-        <ToastProvider>
-          <MainLayout />
-        </ToastProvider>
+        <UnitsProvider>
+          <ToastProvider>
+            <MainLayout />
+          </ToastProvider>
+        </UnitsProvider>
       </FarmProvider>
     </ThemeProvider>
   );

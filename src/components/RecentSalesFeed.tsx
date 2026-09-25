@@ -12,6 +12,7 @@ import {
   Plus
 } from 'lucide-react';
 import { SaleRecord, GoatRecord } from '../types';
+import { useUnits } from '../context/UnitsContext';
 
 interface RecentSalesFeedProps {
   sales: SaleRecord[];
@@ -28,6 +29,8 @@ export const RecentSalesFeed: React.FC<RecentSalesFeedProps> = ({
   onOpenAddSale,
   className = '',
 }) => {
+  const { formatCurrency } = useUnits();
+
   // Sort sales newest to oldest and take last 5
   const recentTransactions = [...sales]
     .sort((a, b) => {
@@ -118,7 +121,7 @@ export const RecentSalesFeed: React.FC<RecentSalesFeedProps> = ({
             Recent Cash Inflow
           </div>
           <div className="text-lg font-black text-emerald-900 dark:text-emerald-100 font-mono mt-0.5">
-            Ksh {recentRevenue.toLocaleString()}
+            {formatCurrency(recentRevenue)}
           </div>
           <div className="text-[10px] text-emerald-700 dark:text-emerald-400">
             From last 5 sales
@@ -130,7 +133,7 @@ export const RecentSalesFeed: React.FC<RecentSalesFeedProps> = ({
             Avg Price / Head
           </div>
           <div className="text-lg font-black text-stone-900 dark:text-white font-mono mt-0.5">
-            Ksh {avgSalePrice.toLocaleString()}
+            {formatCurrency(avgSalePrice)}
           </div>
           <div className="text-[10px] text-stone-500 dark:text-stone-400">
             Commercial benchmark
@@ -142,7 +145,7 @@ export const RecentSalesFeed: React.FC<RecentSalesFeedProps> = ({
             Highest Valued Sale
           </div>
           <div className="text-lg font-black text-stone-900 dark:text-white font-mono mt-0.5">
-            Ksh {maxSale.toLocaleString()}
+            {formatCurrency(maxSale)}
           </div>
           <div className="text-[10px] text-stone-500 dark:text-stone-400">
             Top single animal
@@ -224,7 +227,7 @@ export const RecentSalesFeed: React.FC<RecentSalesFeedProps> = ({
 
                   <div className="sm:text-right flex sm:flex-col justify-between items-center sm:items-end">
                     <div className="text-base font-black text-emerald-700 dark:text-emerald-400 font-mono">
-                      +Ksh {Number(sale.price).toLocaleString()}
+                      +{formatCurrency(Number(sale.price))}
                     </div>
                     <span className="text-[10px] text-stone-400 font-medium">
                       Status Synced to Herd Record

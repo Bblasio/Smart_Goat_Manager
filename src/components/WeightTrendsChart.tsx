@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { TrendingUp, Scale, Info } from 'lucide-react';
 import { GoatRecord, HealthRecord } from '../types';
+import { useUnits } from '../context/UnitsContext';
 
 interface WeightTrendsChartProps {
   goats: GoatRecord[];
@@ -30,6 +31,8 @@ export const WeightTrendsChart: React.FC<WeightTrendsChartProps> = ({
   goats,
   healthRecords = [],
 }) => {
+  const { weightUnit, convertWeight } = useUnits();
+
   const chartData: MonthlyWeightPoint[] = useMemo(() => {
     // Generate the last 6 months starting from 5 months ago to current month
     const now = new Date();
@@ -64,13 +67,8 @@ export const WeightTrendsChart: React.FC<WeightTrendsChartProps> = ({
       : 44.5;
 
     // Calculate progression over the 6 months reflecting natural herd gain / feeding season
-    // If there are health checkup logs with weight notes, incorporate them
     return months.map((m, index) => {
-      // Natural progression factor across past 6 months:
-      // Index 0 (5 months ago) was slightly lighter, steadily increasing to current
       const monthsBack = 5 - index;
-      const seasonalGain = (5 - monthsBack) * 0.75; // approx 0.75 kg gain per month
-      
       const simulatedAvg = Math.max(15, baseAverage - (monthsBack * 0.65));
       const simulatedYoung = Math.max(10, baseYoungAvg - (monthsBack * 0.85));
       const simulatedMature = Math.max(25, baseMatureAvg - (monthsBack * 0.45));
@@ -78,13 +76,13 @@ export const WeightTrendsChart: React.FC<WeightTrendsChartProps> = ({
       return {
         month: `${m.short} ${m.date.getFullYear()}`,
         shortMonth: m.short,
-        averageWeight: Number(simulatedAvg.toFixed(1)),
+        averageWeight: convertWeight(simulatedAvg),
         recordedGoats: Math.max(1, Math.round(goats.length * (0.8 + (index * 0.04)))),
-        youngStockAvg: Number(simulatedYoung.toFixed(1)),
-        matureStockAvg: Number(simulatedMature.toFixed(1)),
+        youngStockAvg: convertWeight(simulatedYoung),
+        matureStockAvg: convertWeight(simulatedMature),
       };
     });
-  }, [goats, healthRecords]);
+  }, [goats, healthRecords, convertWeight]);
 
   // Metric highlights
   const latestMonth = chartData[chartData.length - 1];
@@ -122,7 +120,7 @@ export const WeightTrendsChart: React.FC<WeightTrendsChartProps> = ({
               Current Avg
             </span>
             <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
-              {latestMonth ? `${latestMonth.averageWeight} kg` : '36.5 kg'}
+              {latestMonth ? `${latestMonth.averageWeight} ${weightUnit}` : `36.5 ${weightUnit}`}
             </span>
           </div>
 
@@ -132,7 +130,7 @@ export const WeightTrendsChart: React.FC<WeightTrendsChartProps> = ({
               <TrendingUp className="w-3 h-3 text-emerald-500" />
             </span>
             <span className="text-sm font-extrabold text-stone-900 dark:text-stone-100 font-mono">
-              +{overallGain} kg
+              +{overallGain} {weightUnit}
             </span>
           </div>
         </div>
@@ -151,7 +149,7 @@ export const WeightTrendsChart: React.FC<WeightTrendsChartProps> = ({
               axisLine={false}
             />
             <YAxis
-              unit="kg"
+              unit={weightUnit}
               stroke="#94a3b8"
               fontSize={12}
               tickLine={false}
@@ -166,15 +164,15 @@ export const WeightTrendsChart: React.FC<WeightTrendsChartProps> = ({
                     <div className="bg-stone-900 dark:bg-stone-950 text-white p-3 rounded-xl shadow-xl border border-stone-700 text-xs space-y-1.5 min-w-[170px]">
                       <div className="font-bold text-stone-200 border-b border-stone-800 pb-1 flex justify-between">
                         <span>{data.month}</span>
-                        <span className="text-emerald-400 font-mono">{data.averageWeight} kg</span>
+                        <span className="text-emerald-400 font-mono">{data.averageWeight} {weightUnit}</span>
                       </div>
                       <div className="flex justify-between text-stone-400 text-[11px]">
                         <span>Mature Herd Avg:</span>
-                        <span className="text-stone-200 font-mono">{data.matureStockAvg} kg</span>
+                        <span className="text-stone-200 font-mono">{data.matureStockAvg} {weightUnit}</span>
                       </div>
                       <div className="flex justify-between text-stone-400 text-[11px]">
                         <span>Kids / Weaners Avg:</span>
-                        <span className="text-stone-200 font-mono">{data.youngStockAvg} kg</span>
+                        <span className="text-stone-200 font-mono">{data.youngStockAvg} {weightUnit}</span>
                       </div>
                       <div className="flex justify-between text-stone-400 text-[11px]">
                         <span>Goats Monitored:</span>
@@ -195,7 +193,7 @@ export const WeightTrendsChart: React.FC<WeightTrendsChartProps> = ({
             <Line
               type="monotone"
               dataKey="averageWeight"
-              name="Herd Average (kg)"
+              name={`Herd Average (${weightUnit})`}
               stroke="#10b981"
               strokeWidth={3}
               dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#ffffff' }}

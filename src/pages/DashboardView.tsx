@@ -5,7 +5,6 @@ import {
   Baby,
   Activity,
   AlertTriangle,
-  HeartPulse,
   TrendingUp,
   PieChart as PieIcon,
   BarChart3,
@@ -43,7 +42,6 @@ import { FeedSupplyAlertWidget } from '../components/FeedSupplyAlertWidget';
 import { QuarantineMonitorWidget } from '../components/QuarantineMonitorWidget';
 import { KidNurseryWidget } from '../components/KidNurseryWidget';
 import { FinancialCashFlowWidget } from '../components/FinancialCashFlowWidget';
-import { DailyNotificationBanner } from '../components/DailyNotificationBanner';
 import {
   DashboardCustomizerModal,
   DashboardWidgetId,
@@ -51,7 +49,6 @@ import {
   ALL_DASHBOARD_WIDGETS
 } from '../components/DashboardCustomizerModal';
 import { formatActiveDuration } from '../utils/dateHelper';
-import { getFarmNotifications } from '../utils/notificationHelper';
 
 interface DashboardViewProps {
   onNavigateToRecords: () => void;
@@ -133,17 +130,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }).length;
   const totalWorkers = workers.length;
 
-  // Farm Alerts & Dates (strictly excluding sold goats)
   const today = new Date();
-  const birthsDueSoon = breeding.filter(b => {
-    if (!b.expected_birth) return false;
-    if (b.status && b.status !== 'Active') return false;
-    const cleanDam = (b.female_id || '').trim().toUpperCase();
-    if (soldOrDeadIdentifiers.has(cleanDam)) return false;
-    const exp = new Date(b.expected_birth);
-    const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return diffDays >= 0 && diffDays <= 7;
-  });
 
   // Next expected kidding (strictly excluding sold does)
   const sortedUpcomingBirths = [...breeding]
@@ -158,21 +145,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const nextDeliveryDays = nextDelivery
     ? Math.ceil((new Date(nextDelivery.expected_birth).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     : null;
-
-  const sickGoats = health.filter(
-    h => {
-      if (!h.condition) return false;
-      const cleanGoat = (h.goat_id || '').trim().toUpperCase();
-      if (soldOrDeadIdentifiers.has(cleanGoat)) return false;
-      return (
-        h.condition.toLowerCase().includes('sick') ||
-        h.condition.toLowerCase().includes('mastitis') ||
-        h.condition.toLowerCase().includes('fever') ||
-        h.condition.toLowerCase().includes('isolated') ||
-        h.condition.toLowerCase().includes('foot rot')
-      );
-    }
-  );
 
   // Today's milk production
   const todayStr = today.toISOString().split('T')[0];
@@ -204,8 +176,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     month,
     Matings: count,
   }));
-
-  const notifications = useMemo(() => getFarmNotifications(goats, breeding, health), [goats, breeding, health]);
 
   // Customizable Dashboard Pinned Widgets State (Graphs & Activity Summaries)
   const [pinnedWidgetIds, setPinnedWidgetIds] = useState<DashboardWidgetId[]>(() => {
@@ -420,12 +390,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Scheduled For Today Notification Banner (Alerts upcoming breeding & vaccination reminders) */}
-      <DailyNotificationBanner
-        todayNotifications={notifications.todayNotifications}
-        onOpenModal={() => onOpenNotificationModal?.()}
-      />
-
       {/* Header and Summary Card */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
@@ -555,48 +519,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </button>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Urgent herd alerts if any */}
-        {(birthsDueSoon.length > 0 || sickGoats.length > 0) && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
-            {birthsDueSoon.length > 0 && (
-              <div
-                id="alert-births-due"
-                className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-sm cursor-pointer hover:bg-amber-100/80 dark:hover:bg-amber-900/50 transition-colors"
-                onClick={onNavigateToBreedingEstimator}
-              >
-                <div className="flex-1 min-w-0">
-                  <span className="font-bold">
-                    {birthsDueSoon.length} kidding(s) expected within 7 days!
-                  </span>
-                  <p className="text-xs text-amber-700 dark:text-amber-300/80">
-                    Prepare maternity stalls for {birthsDueSoon.map(b => b.female_id).join(', ')}. Click to estimate delivery times.
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-              </div>
-            )}
-
-            {sickGoats.length > 0 && (
-              <div
-                id="alert-sick-goats"
-                className="flex items-center gap-3 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 text-sm"
-              >
-                <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/70 flex items-center justify-center shrink-0">
-                  <HeartPulse className="w-4 h-4 text-rose-700 dark:text-rose-300" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="font-bold">
-                    ⚠️ {sickGoats.length} goat(s) flagged with active medical conditions
-                  </span>
-                  <p className="text-xs text-rose-700 dark:text-rose-300/80">
-                    {sickGoats.map(g => `${g.goat_id} (${g.condition})`).join('; ')}. Check isolation protocol.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>

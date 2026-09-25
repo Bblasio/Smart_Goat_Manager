@@ -1188,6 +1188,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: merged.email || firebaseUser?.email || '',
           owner_name: merged.owner_name || '',
           location: merged.location || '',
+          country: merged.country || '',
+          county: merged.county || '',
           farm_size: merged.farm_size || '',
           primary_breed: merged.primary_breed || '',
           phone: merged.phone || '',

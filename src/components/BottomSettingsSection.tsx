@@ -280,7 +280,7 @@ export const BottomSettingsSection: React.FC<BottomSettingsSectionProps> = ({
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
                 <Bell className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Notification Alerts</span>
+                <span>Notifications</span>
               </div>
               <p className="text-xs text-stone-500 dark:text-stone-400">
                 Select which proactive agricultural alerts trigger badge alerts.

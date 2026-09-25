@@ -84,6 +84,8 @@ export interface FarmUser {
   owner_name?: string;
   manager_name?: string;
   location?: string;
+  country?: string;
+  county?: string;
   farm_size?: string;
   size?: string;
   primary_breed?: string;

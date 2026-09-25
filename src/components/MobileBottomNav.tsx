@@ -5,36 +5,23 @@ import {
   ClipboardList,
   Stethoscope,
   CheckSquare,
-  Settings
 } from 'lucide-react';
 
 interface MobileBottomNavProps {
   activeTab: AppView;
   setActiveTab: (tab: AppView) => void;
-  onOpenSettings?: () => void;
   isDrawerOpen?: boolean;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   activeTab,
   setActiveTab,
-  onOpenSettings,
   isDrawerOpen = false,
 }) => {
   // If mobile drawer is open, hide bottom nav completely to prevent floating conflict
   if (isDrawerOpen) {
     return null;
   }
-
-  const handleSettingsClick = () => {
-    if (onOpenSettings) {
-      onOpenSettings();
-    }
-    const settingsElem = document.getElementById('farm-bottom-settings');
-    if (settingsElem) {
-      settingsElem.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <nav
@@ -99,22 +86,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       >
         <CheckSquare className="w-5 h-5 mb-0.5" strokeWidth={1.75} />
         <span className="text-[10px] leading-tight">Tasks</span>
-      </button>
-
-      {/* 5. Settings */}
-      <button
-        type="button"
-        id="btn-mobile-nav-settings"
-        onClick={() => setActiveTab('settings')}
-        className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[52px] min-h-[44px] ${
-          activeTab === 'settings'
-            ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-            : 'text-stone-500 dark:text-stone-400 font-medium hover:text-stone-900 dark:hover:text-stone-200'
-        }`}
-        title="Settings"
-      >
-        <Settings className="w-5 h-5 mb-0.5" strokeWidth={1.75} />
-        <span className="text-[10px] leading-tight">Settings</span>
       </button>
     </nav>
   );

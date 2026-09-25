@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useFarm } from '../context/FarmContext';
-import { SyncStatusIndicator } from './SyncStatusIndicator';
 import { AppView, RecordType } from '../types';
 import {
   Search,
@@ -8,16 +7,14 @@ import {
   Bell,
   ChevronRight,
   ChevronDown,
-  RefreshCw,
-  CloudOff,
-  AlertCircle,
   Sparkles,
   ClipboardList,
   HeartPulse,
   Milk,
   DollarSign,
   Baby,
-  Building2
+  Building2,
+  Settings
 } from 'lucide-react';
 
 interface DesktopHeaderProps {
@@ -37,7 +34,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   onOpenNotificationModal,
   todayNotificationCount,
 }) => {
-  const { farmName, user, syncStatus, syncError } = useFarm();
+  const { farmName, user } = useFarm();
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
 
@@ -121,10 +118,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           </kbd>
         </button>
 
-        {/* Live Cloud & Sync Status Indicator */}
-        <SyncStatusIndicator />
-
-        {/* Notification Alert Bell */}
+        {/* Notification Bell */}
         <button
           type="button"
           id="btn-desktop-notifications"
@@ -134,7 +128,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
               ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 shadow-2xs'
               : 'bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
           }`}
-          title="Daily Notifications & Alerts"
+          title="Notifications"
         >
           <Bell className="w-4 h-4" />
           {todayNotificationCount > 0 && (
@@ -183,29 +177,15 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           )}
         </div>
 
-        {/* Settings / Profile Avatar Link */}
+        {/* Settings Button */}
         <button
           type="button"
+          id="btn-desktop-header-settings"
           onClick={() => setActiveTab('settings')}
-          className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200/80 dark:hover:bg-stone-700/80 border border-stone-200 dark:border-stone-700 transition-colors"
-          title="Settings & Farm Profile"
+          className="p-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors"
+          title="Settings"
         >
-          {user?.logo_url ? (
-            <img
-              src={user.logo_url}
-              alt={farmName}
-              className="w-6 h-6 rounded-lg object-cover border border-stone-300 dark:border-stone-600 shrink-0"
-            />
-          ) : (
-            <img
-              src="/app.png"
-              alt={farmName}
-              className="w-6 h-6 rounded-lg object-cover border border-stone-300 dark:border-stone-600 shrink-0"
-            />
-          )}
-          <span className="text-xs font-bold text-stone-800 dark:text-stone-200 max-w-[100px] truncate">
-            {farmName}
-          </span>
+          <Settings className="w-4 h-4" />
         </button>
       </div>
     </header>

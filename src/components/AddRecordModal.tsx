@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useToast } from '../context/ToastContext';
+import { useUnits } from '../context/UnitsContext';
 import { RecordType, ExpenseCategory } from '../types';
 import { X, Check, Baby, Milk, Stethoscope, FileSpreadsheet } from 'lucide-react';
 import { ExcelImportModal } from './ExcelImportModal';
@@ -18,6 +19,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
 }) => {
   const { addGoat, addBreeding, addHealth, addSale, addExpense, addWorker, addMilk, addKidGrowthRecord, goats } = useFarm();
   const { showToast } = useToast();
+  const { currency, weightUnit, milkUnit, formatCurrency } = useUnits();
   const [recordType, setRecordType] = useState<RecordType>(defaultType);
   const [isExcelOpen, setIsExcelOpen] = useState(false);
 
@@ -233,7 +235,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           price: numericPrice,
           sale_date: saleDate,
         });
-        setSuccessMsg(`Sale of ${existingGoat.tag_number}${existingGoat.name ? ` (${existingGoat.name})` : ''} for Ksh ${numericPrice.toLocaleString()} recorded! Status updated to Sold.`);
+        setSuccessMsg(`Sale of ${existingGoat.tag_number}${existingGoat.name ? ` (${existingGoat.name})` : ''} for ${formatCurrency(numericPrice)} recorded! Status updated to Sold.`);
         setSaleGoatId('');
         setSaleBuyer('');
         setSalePrice('');
@@ -255,7 +257,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           receipt_number: expReceipt.trim() || undefined,
           notes: expNotes.trim() || undefined,
         });
-        setSuccessMsg(`Expense "${expTitle.trim()}" of Ksh ${numericAmount.toLocaleString()} recorded!`);
+        setSuccessMsg(`Expense "${expTitle.trim()}" of ${formatCurrency(numericAmount)} recorded!`);
         setExpTitle('');
         setExpAmount('');
         setExpReceipt('');
@@ -491,7 +493,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Current Weight (kg)
+                    Current Weight ({weightUnit})
                   </label>
                   <input
                     id="input-goat-weight"
@@ -599,7 +601,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Birth Weight (kg) *
+                    Birth Weight ({weightUnit}) *
                   </label>
                   <input
                     id="input-kid-birth-weight"

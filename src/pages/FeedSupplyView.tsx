@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useToast } from '../context/ToastContext';
+import { useUnits } from '../context/UnitsContext';
 import { FeedRecord, MedicationRecord, FeedCategory, MedicationCategory, FeedUnit, MedicationUnit } from '../types';
 import {
   Package,
@@ -48,6 +49,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
     goats,
   } = useFarm();
   const { showToast } = useToast();
+  const { currency, formatCurrency } = useUnits();
 
   const [activeTab, setActiveTab] = useState<'feeds' | 'meds' | 'alerts'>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
@@ -246,7 +248,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
     showToast(
       `Restocked ${restockAmount} ${restockItem.item.unit} of ${restockItem.item.name}${
         cost && cost > 0
-          ? ` (Added Ksh ${Math.round(restockAmount * cost).toLocaleString()} to ${
+          ? ` (Added ${formatCurrency(Math.round(restockAmount * cost))} to ${
               restockItem.type === 'feed' ? 'Feed' : 'Vet'
             } expenses)`
           : ''
@@ -571,7 +573,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                     {feed.cost_per_unit && (
                       <div className="flex items-center gap-1.5">
                         <span className="font-semibold text-stone-700 dark:text-stone-300">
-                          Ksh {Number(feed.cost_per_unit).toLocaleString()}
+                          {formatCurrency(Number(feed.cost_per_unit))}
                         </span>
                         <span>per {feed.unit}</span>
                       </div>
@@ -773,7 +775,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                       <div className="flex items-center justify-between">
                         <span className="text-stone-400">Unit Cost:</span>
                         <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                          Ksh {med.cost_per_unit.toLocaleString()} / {med.unit}
+                          {formatCurrency(med.cost_per_unit)} / {med.unit}
                         </span>
                       </div>
                     )}
@@ -1124,7 +1126,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Cost per Unit (Ksh)
+                    Cost per Unit ({currency})
                   </label>
                   <input
                     type="number"
@@ -1329,7 +1331,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Cost per Unit (Optional, Ksh)
+                    Cost per Unit (Optional, {currency})
                   </label>
                   <input
                     type="number"
@@ -1521,7 +1523,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
 
               <div>
                 <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Cost per Unit (Ksh) — Auto-records Farm Expense
+                  Cost per Unit ({currency}) — Auto-records Farm Expense
                 </label>
                 <input
                   type="number"
@@ -1547,7 +1549,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                       : 0;
                   return effective > 0 ? (
                     <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      Will add Ksh {Math.round(restockAmount * effective).toLocaleString()} to farm expenses ({restockItem.type === 'feed' ? 'Feed' : 'Vet & Medication'}).
+                      Will add {formatCurrency(Math.round(restockAmount * effective))} to farm expenses ({restockItem.type === 'feed' ? 'Feed' : 'Vet & Medication'}).
                     </p>
                   ) : null;
                 })()}

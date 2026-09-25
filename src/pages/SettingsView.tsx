@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
+import { useUnits } from '../context/UnitsContext';
 import { AppView } from '../types';
 import { PWAInstallButton } from '../components/PWAInstallButton';
 import {
@@ -34,7 +35,9 @@ import {
   Save,
   Volume2,
   VolumeX,
-  Laptop
+  Laptop,
+  Upload,
+  Camera
 } from 'lucide-react';
 
 interface SettingsViewProps {
@@ -48,7 +51,8 @@ export type SettingsSection =
   | 'appearance'
   | 'notifications'
   | 'units'
-  | 'about';
+  | 'about'
+  | 'logout';
 
 interface NavItemConfig {
   id: SettingsSection;
@@ -78,6 +82,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const { theme, setTheme } = useTheme();
   const { showToast } = useToast();
+  const {
+    currency,
+    weightUnit,
+    milkUnit,
+    setCurrency,
+    setWeightUnit,
+    setMilkUnit,
+  } = useUnits();
 
   // Desktop active section vs Mobile drill-down state
   const [activeSection, setActiveSection] = useState<SettingsSection>(
@@ -98,7 +110,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSuccessMsg, setProfileSuccessMsg] = useState<string | null>(null);
-  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+
+  // Helper to parse location into county and country
+  const parseLocation = (locStr?: string) => {
+    if (!locStr) return { county: 'Kiambu', country: 'Kenya' };
+    const parts = locStr.split(',').map(s => s.trim());
+    if (parts.length >= 2) {
+      return { county: parts[0], country: parts[1] };
+    }
+    return { county: locStr, country: 'Kenya' };
+  };
+
+  const initialLoc = parseLocation(user?.location);
+  const [countryVal, setCountryVal] = useState(user?.country || initialLoc.country || 'Kenya');
+  const [countyVal, setCountyVal] = useState(user?.county || initialLoc.county || 'Kiambu');
+  const [logoUrlVal, setLogoUrlVal] = useState(user?.logo_url || '');
+  const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
 
   // Notify parent component (App.tsx) when mobile drill state changes so bottom nav can hide on Screen 2
   useEffect(() => {
@@ -154,18 +181,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   });
 
-  const [currency, setCurrency] = useState<string>(() => {
-    return localStorage.getItem('sgm_pref_currency') || 'Ksh';
-  });
-
-  const [weightUnit, setWeightUnit] = useState<string>(() => {
-    return localStorage.getItem('sgm_pref_weight_unit') || 'kg';
-  });
-
-  const [milkUnit, setMilkUnit] = useState<string>(() => {
-    return localStorage.getItem('sgm_pref_milk_unit') || 'L';
-  });
-
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('sgm_pref_sound');
@@ -181,6 +196,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (user.farm_name) setFarmNameVal(user.farm_name);
       if (user.owner_name) setOwnerNameVal(user.owner_name);
       if (user.location) setLocationVal(user.location);
+      if (user.country) setCountryVal(user.country);
+      if (user.county) setCountyVal(user.county);
+      if (!user.country && !user.county && user.location) {
+        const parsed = parseLocation(user.location);
+        setCountryVal(parsed.country);
+        setCountyVal(parsed.county);
+      }
+      if (user.logo_url !== undefined) setLogoUrlVal(user.logo_url || '');
       if (user.phone) setPhoneVal(user.phone);
       if (user.farm_size) setFarmSizeVal(user.farm_size);
       if (user.primary_breed) setPrimaryBreedVal(user.primary_breed);
@@ -255,23 +278,45 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     showToast(`Milk unit updated to ${unit}`, 'success');
   };
 
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoUploadError('Logo file size must be less than 2MB.');
+      return;
+    }
+    setLogoUploadError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setLogoUrlVal(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingProfile(true);
     setProfileSuccessMsg(null);
+    const combinedLocation = [countyVal.trim(), countryVal.trim()].filter(Boolean).join(', ');
     try {
       await updateFarmProfile({
-        farm_name: farmNameVal,
-        owner_name: ownerNameVal,
-        location: locationVal,
-        phone: phoneVal,
-        farm_size: farmSizeVal,
-        primary_breed: primaryBreedVal,
-        production_focus: productionFocusVal,
-        grazing_system: grazingSystemVal,
-        founded_year: foundedYearVal,
-        bio: bioVal,
+        farm_name: farmNameVal.trim(),
+        owner_name: ownerNameVal.trim(),
+        location: combinedLocation,
+        country: countryVal.trim(),
+        county: countyVal.trim(),
+        logo_url: logoUrlVal.trim(),
+        phone: phoneVal.trim(),
+        farm_size: farmSizeVal.trim(),
+        primary_breed: primaryBreedVal.trim(),
+        production_focus: productionFocusVal.trim(),
+        grazing_system: grazingSystemVal.trim(),
+        founded_year: foundedYearVal.trim(),
+        bio: bioVal.trim(),
       });
+      setLocationVal(combinedLocation);
       setProfileSuccessMsg('Profile updated successfully!');
       showToast('Farm profile updated successfully', 'success');
       setIsEditingProfile(false);
@@ -280,15 +325,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       showToast('Failed to save profile changes', 'error');
     } finally {
       setIsSavingProfile(false);
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await logout();
-      showToast('Signed out successfully', 'info');
-    } catch {
-      showToast('Error during sign out', 'error');
     }
   };
 
@@ -307,7 +343,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     },
     {
       id: 'appearance',
-      label: 'Appearance',
+      label: 'Appearence',
       subtitle: `Theme: ${theme === 'dark' ? 'Dark Mode' : 'Light Mode'} • Sound alerts`,
       icon: Moon,
       iconBgLight: 'bg-indigo-100',
@@ -318,7 +354,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     },
     {
       id: 'notifications',
-      label: 'Notifications & Alerts',
+      label: 'Notification',
       subtitle: 'Breeding countdowns, quarantine & vaccines',
       icon: Bell,
       iconBgLight: 'bg-amber-100',
@@ -329,8 +365,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     },
     {
       id: 'units',
-      label: 'Units & Standards',
-      subtitle: `${currency} • ${weightUnit} • ${milkUnit} • 14-day quarantine`,
+      label: 'Units',
+      subtitle: `${currency} • ${weightUnit} • ${milkUnit}`,
       icon: Sliders,
       iconBgLight: 'bg-teal-100',
       iconColorLight: 'text-teal-700',
@@ -340,13 +376,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     },
     {
       id: 'about',
-      label: 'About Smart Goat Manager',
+      label: 'About',
       subtitle: 'Version 2.5 • Enterprise Caprine Edition',
       icon: Info,
       iconBgLight: 'bg-stone-200',
       iconColorLight: 'text-stone-700',
       iconBgDark: 'dark:bg-stone-800',
       iconColorDark: 'dark:text-stone-300',
+      group: 'system',
+    },
+    {
+      id: 'logout',
+      label: 'Logout',
+      subtitle: isDemoMode ? 'Exit demo & return to sign-in' : 'Sign out of farm session',
+      icon: LogOut,
+      iconBgLight: 'bg-rose-100',
+      iconColorLight: 'text-rose-700',
+      iconBgDark: 'dark:bg-rose-950/60',
+      iconColorDark: 'dark:text-rose-400',
       group: 'system',
     },
   ];
@@ -382,12 +429,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* Top Profile Card */}
-      <div className="rounded-2xl border border-stone-200 dark:border-stone-700/80 bg-stone-50/60 dark:bg-stone-800/40 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="rounded-2xl border border-stone-200 dark:border-stone-700/80 bg-stone-50/60 dark:bg-stone-800/40 p-4 sm:p-5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
           <div className="relative shrink-0">
-            <div className="w-12 h-12 rounded-full bg-emerald-700 text-white font-bold flex items-center justify-center text-lg shadow-xs ring-2 ring-white dark:ring-stone-900">
-              {displayOwnerName.charAt(0).toUpperCase()}
-            </div>
+            {user?.logo_url ? (
+              <img
+                src={user.logo_url}
+                alt={displayFarmName}
+                className="w-12 h-12 rounded-2xl object-cover shadow-xs ring-2 ring-white dark:ring-stone-900 border border-emerald-500/40"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-2xl bg-emerald-700 text-white font-bold flex items-center justify-center text-lg shadow-xs ring-2 ring-white dark:ring-stone-900">
+                {displayOwnerName.charAt(0).toUpperCase()}
+              </div>
+            )}
             <span
               className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-stone-900"
               title="Online"
@@ -395,25 +450,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
           <div className="min-w-0">
             <div className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100 truncate">
-              {displayOwnerName}
+              {displayOwnerName} • {displayFarmName}
             </div>
-            <div className="text-xs text-stone-500 dark:text-stone-400 truncate mt-0.5">
-              {displayEmail}
+            <div className="text-xs text-stone-500 dark:text-stone-400 truncate mt-0.5 flex items-center gap-1.5">
+              <span>{[countyVal, countryVal].filter(Boolean).join(', ')}</span>
+              <span>•</span>
+              <span>{displayEmail}</span>
             </div>
           </div>
-        </div>
-
-        {/* Sign Out Button */}
-        <div className="shrink-0 w-full sm:w-auto flex justify-end">
-          <button
-            type="button"
-            id="btn-settings-sign-out"
-            onClick={() => setShowSignOutConfirm(true)}
-            className="w-full sm:w-auto px-4 py-2 rounded-full border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-300 dark:hover:border-rose-800 text-stone-700 dark:text-stone-200 hover:text-rose-600 dark:hover:text-rose-400 text-xs font-semibold shadow-2xs transition-all active:scale-95 flex items-center justify-center gap-2"
-          >
-            <LogOut className="w-3.5 h-3.5 text-rose-500" />
-            <span>Sign out</span>
-          </button>
         </div>
       </div>
 
@@ -423,12 +467,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="p-3.5 sm:p-4 bg-white dark:bg-stone-900 hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition-colors">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center shrink-0">
-                <Building2 className="w-4 h-4" />
+              <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center shrink-0 overflow-hidden border border-purple-200 dark:border-purple-800/80">
+                {user?.logo_url ? (
+                  <img src={user.logo_url} alt={displayFarmName} className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 className="w-5 h-5" />
+                )}
               </div>
               <div>
-                <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100">
-                  Farm Profile
+                <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                  <span>Farm Profile</span>
+                  {(user?.county || user?.country) && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-normal">
+                      {[user?.county, user?.country].filter(Boolean).join(', ')}
+                    </span>
+                  )}
                 </div>
                 <div className="text-[11px] text-stone-500 dark:text-stone-400">
                   {displayFarmName}
@@ -448,10 +501,116 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {/* Inline Profile Editor */}
           {isEditingProfile && (
             <form onSubmit={handleSaveProfile} className="mt-4 pt-4 border-t border-stone-100 dark:border-stone-800 space-y-4">
+              {/* Farm Logo Uploader & Preview */}
+              <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-stone-800 dark:text-stone-200 font-semibold text-xs">
+                    Farm Logo / Emblem
+                  </label>
+                  {logoUrlVal && (
+                    <button
+                      type="button"
+                      onClick={() => setLogoUrlVal('')}
+                      className="text-[11px] text-rose-600 dark:text-rose-400 hover:underline font-medium"
+                    >
+                      Remove Logo
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                    {logoUrlVal ? (
+                      <img
+                        src={logoUrlVal}
+                        alt="Logo Preview"
+                        className="w-full h-full object-cover"
+                        onError={() => setLogoUploadError('Failed to preview image')}
+                      />
+                    ) : (
+                      <div className="text-stone-400 text-center font-bold text-xs">
+                        {farmNameVal ? farmNameVal.charAt(0).toUpperCase() : 'Logo'}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold cursor-pointer transition-colors shadow-2xs">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleLogoFileChange}
+                        />
+                      </label>
+                      <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                        or paste image URL below
+                      </span>
+                    </div>
+
+                    <input
+                      type="url"
+                      value={logoUrlVal}
+                      onChange={e => {
+                        setLogoUrlVal(e.target.value);
+                        setLogoUploadError(null);
+                      }}
+                      placeholder="https://example.com/farm-logo.png"
+                      className="w-full px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {logoUploadError && (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
+                    {logoUploadError}
+                  </p>
+                )}
+
+                {/* Preset Quick Logos */}
+                <div className="pt-2 border-t border-stone-200 dark:border-stone-700/60">
+                  <div className="text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-1.5">
+                    Quick Preset Farm Logos:
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[
+                      { label: 'Farm Emblem', url: '/app.png' },
+                      { label: 'Boer Goat', url: '/images/breeds/boer.jpg' },
+                      { label: 'Dairy Galla', url: '/images/breeds/galla.jpg' },
+                      { label: 'Caprine Badge', url: '/images/nav/profile.jpg' },
+                    ].map(preset => (
+                      <button
+                        key={preset.url}
+                        type="button"
+                        onClick={() => {
+                          setLogoUrlVal(preset.url);
+                          setLogoUploadError(null);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs border transition-all ${
+                          logoUrlVal === preset.url
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-800 dark:text-emerald-200 font-bold ring-1 ring-emerald-500/30'
+                            : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:border-stone-300'
+                        }`}
+                      >
+                        <img src={preset.url} alt={preset.label} className="w-4 h-4 rounded-md object-cover" />
+                        <span>{preset.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <p className="text-[10.5px] text-stone-400 dark:text-stone-500">
+                  Your logo appears on printable PDF tables, sales receipts, and official farm reports.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
                   <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
-                    Farm Name
+                    Farm Name <span className="text-emerald-600 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -464,7 +623,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div>
                   <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
-                    Manager / Owner Name
+                    Manager / Owner Name <span className="text-emerald-600 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -477,15 +636,60 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div>
                   <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
-                    Location / Region
+                    Country <span className="text-emerald-600 font-bold">*</span>
                   </label>
                   <input
                     type="text"
-                    value={locationVal}
-                    onChange={e => setLocationVal(e.target.value)}
-                    placeholder="e.g. Kiambu, Kenya"
-                    className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    value={countryVal}
+                    onChange={e => setCountryVal(e.target.value)}
+                    placeholder="e.g. Kenya, Uganda, Tanzania, USA"
+                    list="datalist-settings-countries"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium"
+                    required
                   />
+                  <datalist id="datalist-settings-countries">
+                    <option value="Kenya" />
+                    <option value="Uganda" />
+                    <option value="Tanzania" />
+                    <option value="Rwanda" />
+                    <option value="Nigeria" />
+                    <option value="South Africa" />
+                    <option value="United States" />
+                    <option value="United Kingdom" />
+                    <option value="Canada" />
+                    <option value="Australia" />
+                    <option value="India" />
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                    County <span className="text-emerald-600 font-bold">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={countyVal}
+                    onChange={e => setCountyVal(e.target.value)}
+                    placeholder="e.g. Kiambu, Nakuru, Nairobi, Meru"
+                    list="datalist-settings-counties"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium"
+                    required
+                  />
+                  <datalist id="datalist-settings-counties">
+                    <option value="Kiambu" />
+                    <option value="Nakuru" />
+                    <option value="Nairobi" />
+                    <option value="Meru" />
+                    <option value="Machakos" />
+                    <option value="Uasin Gishu" />
+                    <option value="Nyeri" />
+                    <option value="Kajiado" />
+                    <option value="Murang'a" />
+                    <option value="Kilifi" />
+                    <option value="Laikipia" />
+                    <option value="Kisumu" />
+                    <option value="Mombasa" />
+                  </datalist>
                 </div>
 
                 <div>
@@ -787,7 +991,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     </section>
   );
 
-  // Section 4: Units & Standards
+  // Section 4: Units
   const renderUnitsSection = () => (
     <section
       id="section-units"
@@ -796,8 +1000,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="border-b border-stone-100 dark:border-stone-800 pb-3">
         <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
           <Sliders className="w-5 h-5 text-teal-600" />
-          <span>Units &amp; Standards</span>
+          <span>Units</span>
         </h2>
+        <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+          Configured measurement units apply dynamically across the entire dashboard, herd records, charts, and sales ledger.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -806,13 +1013,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
             Financial Currency
           </label>
-          <div className="grid grid-cols-3 gap-1.5">
-            {['Ksh', 'USD', 'EUR'].map(cur => (
+          <div className="grid grid-cols-2 gap-1.5">
+            {['Ksh', 'USD', 'EUR', 'GBP'].map(cur => (
               <button
                 key={cur}
                 type="button"
+                id={`btn-unit-currency-${cur}`}
                 onClick={() => handleSetCurrency(cur)}
-                className={`py-2 px-1 text-xs font-bold rounded-lg border transition-all ${
+                className={`py-2 px-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                   currency === cur
                     ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs'
                     : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:border-stone-300'
@@ -837,14 +1045,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 key={w.val}
                 type="button"
+                id={`btn-unit-weight-${w.val}`}
                 onClick={() => handleSetWeightUnit(w.val)}
-                className={`py-2 px-1 text-xs font-bold rounded-lg border transition-all ${
+                className={`py-2 px-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                   weightUnit === w.val
                     ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs'
                     : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:border-stone-300'
                 }`}
               >
-                {w.val}
+                {w.label}
               </button>
             ))}
           </div>
@@ -863,18 +1072,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 key={m.val}
                 type="button"
+                id={`btn-unit-milk-${m.val}`}
                 onClick={() => handleSetMilkUnit(m.val)}
-                className={`py-2 px-1 text-xs font-bold rounded-lg border transition-all ${
+                className={`py-2 px-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                   milkUnit === m.val
                     ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs'
                     : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:border-stone-300'
                 }`}
               >
-                {m.val}
+                {m.label}
               </button>
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="p-3.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200/70 dark:border-teal-900/40 text-xs text-teal-900 dark:text-teal-200 flex items-center gap-2">
+        <Check className="w-4 h-4 text-teal-600 shrink-0" />
+        <span>
+          Current Active System Units: <strong>{currency}</strong> (Currency) • <strong>{weightUnit}</strong> (Weight) • <strong>{milkUnit}</strong> (Milk Yield). Any changes update all displays in real time.
+        </span>
       </div>
     </section>
   );
@@ -888,7 +1105,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="border-b border-stone-100 dark:border-stone-800 pb-3">
         <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
           <Info className="w-5 h-5 text-emerald-600" />
-          <span>About Smart Goat Manager</span>
+          <span>About</span>
         </h2>
       </div>
 
@@ -910,6 +1127,58 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     </section>
   );
 
+  // Section 6: Logout
+  const renderLogoutSection = () => (
+    <section
+      id="section-logout"
+      className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/80 dark:border-stone-800 p-5 sm:p-6 shadow-2xs space-y-5"
+    >
+      <div className="border-b border-stone-100 dark:border-stone-800 pb-3">
+        <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+          <LogOut className="w-5 h-5 text-rose-600" />
+          <span>Logout</span>
+        </h2>
+        <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+          Manage session access and sign out of your farm management account.
+        </p>
+      </div>
+
+      <div className="p-4 sm:p-5 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-800/40 space-y-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-stone-800 text-white font-bold flex items-center justify-center text-lg shadow-xs shrink-0">
+            {displayOwnerName.charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100 truncate">
+              {displayOwnerName} • {displayFarmName}
+            </div>
+            <div className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 truncate">
+              {displayEmail}
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+          {isDemoMode
+            ? 'You are currently exploring Smart Goat Manager in demo mode. Exiting will return you to the sign-in screen.'
+            : 'Signing out will securely close your active session on this device. All herd records, health logs, and financial entries are safely stored.'}
+        </p>
+
+        <div className="pt-2">
+          <button
+            type="button"
+            id="btn-settings-confirm-logout"
+            onClick={logout}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>{isDemoMode ? 'Exit Demo / Sign In' : 'Sign Out of Farm'}</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+
   // Master renderer for active section
   const renderActiveSection = (section: SettingsSection) => {
     switch (section) {
@@ -923,6 +1192,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         return renderUnitsSection();
       case 'about':
         return renderAboutSection();
+      case 'logout':
+        return renderLogoutSection();
       default:
         return renderYouAndFarmSection();
     }
@@ -1032,18 +1303,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </button>
                 );
               })}
-
-              <div className="pt-2 mt-2 border-t border-stone-100 dark:border-stone-800">
-                <button
-                  type="button"
-                  id="btn-desktop-settings-signout"
-                  onClick={() => setShowSignOutConfirm(true)}
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left"
-                >
-                  <LogOut className="w-4 h-4 shrink-0" />
-                  <span>Sign out of farm</span>
-                </button>
-              </div>
             </nav>
 
             {/* Desktop Right Content Pane */}
@@ -1261,29 +1520,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             {/* Mobile PWA Install & Offline Card */}
             <PWAInstallButton variant="card" />
-
-            {/* Mobile Sign Out Button */}
-            <div className="pt-1">
-              <button
-                type="button"
-                id="btn-mobile-settings-signout"
-                onClick={() => setShowSignOutConfirm(true)}
-                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-left shadow-2xs active:bg-rose-50 dark:active:bg-rose-950/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                    <LogOut className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs sm:text-sm font-bold">Sign out of farm</div>
-                    <div className="text-[11px] text-stone-400 dark:text-stone-500">
-                      Safely end session on this device
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-rose-400 shrink-0" />
-              </button>
-            </div>
           </div>
         ) : (
           /* ===================================================== */
@@ -1317,54 +1553,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         )}
       </div>
-
-      {/* Sign Out Confirmation Modal */}
-      {showSignOutConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 backdrop-blur-xs p-4 animate-in fade-in"
-          onClick={() => setShowSignOutConfirm(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 shadow-2xl space-y-4"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <LogOut className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
-                  Sign out of farm?
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  All local changes have been preserved. You can sign back in anytime.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowSignOutConfirm(false)}
-                className="px-4 py-2 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-              >
-                Stay Signed In
-              </button>
-              <button
-                type="button"
-                id="btn-confirm-signout"
-                onClick={() => {
-                  setShowSignOutConfirm(false);
-                  handleSignOut();
-                }}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-colors shadow-xs"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

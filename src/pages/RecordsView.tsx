@@ -39,6 +39,7 @@ import { PedigreeTreeModal } from '../components/PedigreeTreeModal';
 import { HerdRecordsHeaderTemplate } from '../components/HerdRecordsHeaderTemplate';
 import { GoatRecordsTableTemplate } from '../components/GoatRecordsTableTemplate';
 import { KidGrowthTracker } from '../components/KidGrowthTracker';
+import { useUnits } from '../context/UnitsContext';
 import {
   formatGoatsForExcel,
   formatBreedingForExcel,
@@ -49,15 +50,17 @@ import {
   downloadExcelFile,
   downloadCsvWithProperHeadings,
 } from '../utils/excelExport';
+import { exportTableToPDF } from '../utils/pdfExport';
 
 export type TabType = 'goats' | 'kids' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor';
 
 interface RecordsViewProps {
   onOpenAddModal: (type?: RecordType) => void;
   onNavigate?: (view: AppView) => void;
+  onOpenNotificationModal?: () => void;
 }
 
-export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavigate }) => {
+export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavigate, onOpenNotificationModal }) => {
   const {
     farmName,
     user,
@@ -81,6 +84,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     updateBreeding,
   } = useFarm();
   const { showToast } = useToast();
+  const { currency, weightUnit, milkUnit, formatCurrency, formatWeight, formatMilk } = useUnits();
 
   const [activeTab, setActiveTab] = useState<
     'goats' | 'kids' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor'
@@ -257,7 +261,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
             </span>
             {saleInfo && (
               <span className="text-[10px] text-stone-500 dark:text-stone-400 font-mono mt-0.5">
-                Ksh {Number(saleInfo.price).toLocaleString()}
+                {formatCurrency(saleInfo.price)}
               </span>
             )}
           </div>
@@ -612,10 +616,10 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       w.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // High quality Excel & CSV export with defined headings
+  // High quality Excel, CSV & PDF export with defined headings
   const handleExportData = (
     tab: TabType | 'selected-goats',
-    format: 'excel' | 'csv' = 'excel',
+    format: 'excel' | 'csv' | 'pdf' = 'excel',
     customData?: any[]
   ) => {
     let rows: Record<string, any>[] = [];
@@ -684,9 +688,32 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     if (format === 'excel') {
       downloadExcelFile(rows, sheetTitle, baseFilename);
       showToast(`Exported ${rows.length} ${sheetTitle} records to Excel (.xlsx) with defined headings.`, 'success');
-    } else {
+    } else if (format === 'csv') {
       downloadCsvWithProperHeadings(rows, baseFilename);
       showToast(`Exported ${rows.length} ${sheetTitle} records to CSV with defined headings.`, 'success');
+    } else if (format === 'pdf') {
+      const filterSummary =
+        tab === 'goats'
+          ? [
+              goatStatusFilter !== 'all' ? `Status: ${goatStatusFilter}` : '',
+              goatHealthFilter !== 'all' ? `Health: ${goatHealthFilter}` : '',
+              goatBreedFilter !== 'all' ? `Breed: ${goatBreedFilter}` : '',
+              searchQuery ? `Search: "${searchQuery}"` : '',
+            ].filter(Boolean).join(' • ')
+          : searchQuery ? `Search: "${searchQuery}"` : '';
+
+      exportTableToPDF({
+        title: `${sheetTitle} Document`,
+        subtitle: `Official Caprine Herd Registry • ${rows.length} Total Records`,
+        records: rows,
+        filename: baseFilename,
+        farmName: user?.farm_name || farmName || 'Smart Goat Manager Farm',
+        userEmail: user?.email || '',
+        farmLocation: user?.location || '',
+        farmLogo: user?.logo_url,
+        filtersApplied: filterSummary,
+      });
+      showToast(`Generating formatted PDF document for ${rows.length} ${sheetTitle} records...`, 'success');
     }
   };
 
@@ -706,6 +733,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         onOpenAddRecord={() => onOpenAddModal(activeTab === 'kids' ? 'kid_growth' : activeTab === 'advisor' ? 'goat' : (activeTab as RecordType))}
         onOpenExcelUpload={() => handleOpenTabExcelUpload(activeTab === 'advisor' ? 'goats' : (activeTab as any))}
         onOpenReport={() => setIsReportModalOpen(true)}
+        onOpenNotificationModal={onOpenNotificationModal}
         activeTab={activeTab}
         onSelectTab={(id) => {
           setActiveTab(id as any);
@@ -983,6 +1011,17 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                 >
                   <Download className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
                   <span>CSV</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="btn-export-pdf-tab"
+                  onClick={() => handleExportData(activeTab, 'pdf')}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
+                  title="Export records table as a formatted PDF document utilizing existing print styles"
+                >
+                  <Printer className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                  <span>PDF</span>
                 </button>
               </div>
             </div>
@@ -1383,6 +1422,20 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   <span className="hidden sm:inline">CSV</span>
                 </button>
 
+                <button
+                  type="button"
+                  id="btn-export-selected-pdf"
+                  onClick={() => {
+                    const selectedRecords = goats.filter(g => selectedGoatIds.includes(g.id));
+                    handleExportData('selected-goats', 'pdf', selectedRecords);
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-medium bg-rose-800 hover:bg-rose-700 text-rose-100 border border-rose-600 transition-colors flex items-center gap-1.5"
+                  title="Export only selected goats as a formatted PDF document"
+                >
+                  <Printer className="w-3.5 h-3.5 text-rose-300" />
+                  <span className="hidden sm:inline">PDF</span>
+                </button>
+
                 {/* Clear selection */}
                 <button
                   type="button"
@@ -1759,7 +1812,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Log Date</th>
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Morning Yield</th>
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Evening Yield</th>
-                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Total Daily Yield</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Total Daily Yield ({milkUnit})</th>
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Actions</th>
                 </tr>
               </thead>
@@ -1776,11 +1829,11 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                       >
                         <td className="px-6 py-[15px] font-bold text-stone-900 dark:text-stone-100">{m.goat_id}</td>
                         <td className="px-6 py-[15px] text-stone-600 dark:text-stone-400 font-mono text-xs">{m.date}</td>
-                        <td className="px-6 py-[15px] font-mono text-xs text-stone-700 dark:text-stone-300">{m.morning_liters} L</td>
-                        <td className="px-6 py-[15px] font-mono text-xs text-stone-700 dark:text-stone-300">{m.evening_liters} L</td>
+                        <td className="px-6 py-[15px] font-mono text-xs text-stone-700 dark:text-stone-300">{formatMilk(m.morning_liters)}</td>
+                        <td className="px-6 py-[15px] font-mono text-xs text-stone-700 dark:text-stone-300">{formatMilk(m.evening_liters)}</td>
                         <td className="px-6 py-[15px]">
                           <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-mono">
-                            {m.total_liters} Liters
+                            {formatMilk(m.total_liters)}
                           </span>
                         </td>
                         <td className="px-6 py-[15px] text-right">
@@ -1841,7 +1894,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Goat Tag</th>
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Buyer Name</th>
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Sale Date</th>
-                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Price (Ksh)</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Price ({currency})</th>
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Actions</th>
                 </tr>
               </thead>
@@ -1864,7 +1917,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                           {item.sale_date || <span className="italic text-[#b7bab2] text-xs font-normal">—</span>}
                         </td>
                         <td className="px-6 py-[15px] font-bold text-emerald-700 dark:text-emerald-400 font-mono text-right">
-                          Ksh {Number(item.price).toLocaleString()}
+                          {formatCurrency(item.price)}
                         </td>
                         <td className="px-6 py-[15px] text-right">
                           <button
@@ -1985,7 +2038,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                 <span>Total Recorded Revenue</span>
               </div>
               <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-2 font-mono">
-                Ksh {totalSalesRevenue.toLocaleString()}
+                {formatCurrency(totalSalesRevenue)}
               </div>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                 Cumulative livestock sales recorded in your farm ledger.

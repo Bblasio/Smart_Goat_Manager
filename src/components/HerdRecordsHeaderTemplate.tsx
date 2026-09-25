@@ -9,6 +9,7 @@ interface HerdRecordsHeaderTemplateProps {
   onOpenAddRecord: () => void;
   onOpenExcelUpload?: () => void;
   onOpenReport?: () => void;
+  onOpenNotificationModal?: () => void;
   activeTab: string;
   onSelectTab: (tabId: string) => void;
   tabs: { id: string; label: string; count?: number }[];
@@ -22,6 +23,7 @@ export const HerdRecordsHeaderTemplate: React.FC<HerdRecordsHeaderTemplateProps>
   onOpenAddRecord,
   onOpenExcelUpload,
   onOpenReport,
+  onOpenNotificationModal,
   activeTab,
   onSelectTab,
   tabs,
@@ -66,6 +68,7 @@ export const HerdRecordsHeaderTemplate: React.FC<HerdRecordsHeaderTemplateProps>
           {/* Notifications bell */}
           <button
             type="button"
+            onClick={onOpenNotificationModal}
             className="p-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 hover:bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors shadow-2xs"
             title="Notifications"
           >

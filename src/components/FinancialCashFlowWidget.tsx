@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useUnits } from '../context/UnitsContext';
 import {
   TrendingUp,
   TrendingDown,
@@ -42,6 +43,7 @@ export const FinancialCashFlowWidget: React.FC<FinancialCashFlowWidgetProps> = (
   onOpenAddExpenseModal,
 }) => {
   const { sales, expenses, goats } = useFarm();
+  const { formatCurrency } = useUnits();
 
   // Calculate high-level financial metrics
   const financialTotals = useMemo(() => {
@@ -121,15 +123,6 @@ export const FinancialCashFlowWidget: React.FC<FinancialCashFlowWidgetProps> = (
       Net: monthMap[m].income - monthMap[m].expense,
     }));
   }, [sales, expenses]);
-
-  // Format currency
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
 
   return (
     <div

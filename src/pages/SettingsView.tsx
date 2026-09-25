@@ -3,6 +3,7 @@ import { useFarm } from '../context/FarmContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useUnits } from '../context/UnitsContext';
+import type { WeightUnit, MilkUnit } from '../context/UnitsContext';
 import { AppView } from '../types';
 import { PWAInstallButton } from '../components/PWAInstallButton';
 import {
@@ -266,13 +267,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     showToast(`Currency updated to ${cur}`, 'success');
   };
 
-  const handleSetWeightUnit = (unit: string) => {
+  // FIX: parameter typed as WeightUnit (not string) so it matches setWeightUnit's signature
+  const handleSetWeightUnit = (unit: WeightUnit) => {
     setWeightUnit(unit);
     localStorage.setItem('sgm_pref_weight_unit', unit);
     showToast(`Weight unit updated to ${unit}`, 'success');
   };
 
-  const handleSetMilkUnit = (unit: string) => {
+  // FIX: parameter typed as MilkUnit (not string) so it matches setMilkUnit's signature
+  const handleSetMilkUnit = (unit: MilkUnit) => {
     setMilkUnit(unit);
     localStorage.setItem('sgm_pref_milk_unit', unit);
     showToast(`Milk unit updated to ${unit}`, 'success');
@@ -1038,10 +1041,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             Live Weight Scale
           </label>
           <div className="grid grid-cols-2 gap-1.5">
-            {[
-              { val: 'kg', label: 'Kilograms (kg)' },
-              { val: 'lbs', label: 'Pounds (lbs)' },
-            ].map(w => (
+            {(
+              [
+                { val: 'kg', label: 'Kilograms (kg)' },
+                { val: 'lbs', label: 'Pounds (lbs)' },
+              ] as { val: WeightUnit; label: string }[]
+            ).map(w => (
               <button
                 key={w.val}
                 type="button"
@@ -1065,10 +1070,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             Daily Milk Yield
           </label>
           <div className="grid grid-cols-2 gap-1.5">
-            {[
-              { val: 'L', label: 'Litres (L)' },
-              { val: 'gal', label: 'Gallons (gal)' },
-            ].map(m => (
+            {(
+              [
+                { val: 'L', label: 'Litres (L)' },
+                { val: 'gal', label: 'Gallons (gal)' },
+              ] as { val: MilkUnit; label: string }[]
+            ).map(m => (
               <button
                 key={m.val}
                 type="button"

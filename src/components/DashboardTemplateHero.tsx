@@ -56,7 +56,7 @@ export const DashboardTemplateHero: React.FC<DashboardTemplateHeroProps> = ({
 
   // Active pregnant / births this month
   const activePregnant = breeding.filter(b => b.status === 'Active' || !b.status).length;
-  const birthsThisMonth = activePregnant > 0 ? activePregnant : 38;
+  const birthsThisMonth = activePregnant;
 
   // Recent operational activity items list matching Image 1
   const activities = [

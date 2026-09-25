@@ -14,9 +14,11 @@ import {
   Plus,
   Sliders,
   ChevronRight,
-  Save
+  Save,
+  Baby
 } from 'lucide-react';
-import { GoatRecord, HealthRecord } from '../types';
+import { GoatRecord, HealthRecord, BreedingRecord } from '../types';
+import { RecordKiddingModal } from '../components/RecordKiddingModal';
 
 interface BreedPreset {
   name: string;
@@ -59,6 +61,16 @@ export const BreedingEstimatorView: React.FC = () => {
 
   // Save feedback state
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+
+  // Kidding & delivery state
+  const [selectedBreedingForDelivery, setSelectedBreedingForDelivery] = useState<BreedingRecord | null>(null);
+
+  // Check if currently selected doe has an active breeding schedule
+  const activeBreedingForSelectedDoe = breeding.find(
+    b =>
+      b.female_id.toUpperCase() === selectedDoeTag.toUpperCase() &&
+      (b.status === 'Active' || !b.status)
+  );
 
   // Filter health records that have pregnancy checkups
   const pregnancyHealthRecords = health.filter(
@@ -567,6 +579,27 @@ export const BreedingEstimatorView: React.FC = () => {
                 {trimesterAdvice}
               </p>
             </div>
+
+            {/* Quick Action: Enter Goat Gave Birth for Currently Selected Doe */}
+            {activeBreedingForSelectedDoe && (
+              <div className="p-3.5 rounded-xl bg-white/10 border border-white/20 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
+                <div className="text-xs text-emerald-100 flex items-center gap-2">
+                  <Baby className="w-4 h-4 text-emerald-300 shrink-0" />
+                  <span>
+                    Doe <strong>{selectedDoeTag}</strong> gave birth early or today?
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  id="btn-hero-goat-gave-birth"
+                  onClick={() => setSelectedBreedingForDelivery(activeBreedingForSelectedDoe)}
+                  className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                >
+                  <Baby className="w-3.5 h-3.5 text-stone-950" />
+                  <span>Enter Goat Gave Birth</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Clinical Milestones Timeline */}
@@ -649,70 +682,112 @@ export const BreedingEstimatorView: React.FC = () => {
                 <th className="px-5 py-3 text-right">Quick Action</th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-stone-900">
-              {breeding
-                .filter(b => b.status === 'Active' || !b.status)
-                .map(b => {
-                  const targetDate = new Date(b.expected_birth);
-                  const daysLeft = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                  const isDueSoon = daysLeft <= 7 && daysLeft >= 0;
-                  const isOverdue = daysLeft < 0;
+            <tbody className="bg-white dark:bg-stone-900 divide-y divide-stone-100 dark:divide-stone-800">
+              {breeding.filter(b => b.status === 'Active' || !b.status).length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-5 py-10 text-center">
+                    <div className="max-w-sm mx-auto space-y-2">
+                      <Baby className="w-8 h-8 text-stone-400 mx-auto opacity-60" />
+                      <p className="text-sm font-semibold text-stone-800 dark:text-stone-200">
+                        No expectant does currently in countdown
+                      </p>
+                      <p className="text-xs text-stone-500 dark:text-stone-400">
+                        When does are bred or confirmed pregnant, save them using the Gestation Predictor above to monitor active delivery countdowns.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                breeding
+                  .filter(b => b.status === 'Active' || !b.status)
+                  .map(b => {
+                    const targetDate = new Date(b.expected_birth);
+                    const daysLeft = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const isDueSoon = daysLeft <= 7 && daysLeft >= 0;
+                    const isOverdue = daysLeft < 0;
 
-                  return (
-                    <tr key={b.id} className="hover:bg-stone-50/50">
-                      <td className="px-5 py-3 font-bold text-stone-900">{b.female_id}</td>
-                      <td className="px-5 py-3 text-stone-600">{b.male_id}</td>
-                      <td className="px-5 py-3 font-mono text-xs text-stone-500">{b.mating_date}</td>
-                      <td className="px-5 py-3 font-mono text-xs text-stone-600">
-                        {b.gestation_days || 150} days
-                      </td>
-                      <td className="px-5 py-3 font-bold text-stone-900 font-mono text-xs">
-                        {targetDate.toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-bold font-mono ${
-                            isOverdue
-                              ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                              : isDueSoon
-                              ? 'bg-amber-100 text-amber-800 border border-amber-300 animate-pulse'
-                              : 'bg-emerald-50 text-emerald-800'
-                          }`}
-                        >
-                          {isOverdue
-                            ? `Overdue (${Math.abs(daysLeft)}d)`
-                            : daysLeft === 0
-                            ? 'Due Today!'
-                            : `${daysLeft} days left`}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDoeTag(b.female_id);
-                            setSelectedSireTag(b.male_id);
-                            setMatingDate(b.mating_date);
-                            setGestationDays(b.gestation_days || 150);
-                            setCalculationMode('mating_date');
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
-                        >
-                          Load in Calculator
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr key={b.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition-colors">
+                        <td className="px-5 py-3.5 font-bold text-stone-900 dark:text-stone-100 font-mono">
+                          {b.female_id}
+                        </td>
+                        <td className="px-5 py-3.5 text-stone-600 dark:text-stone-400 font-mono text-xs">
+                          {b.male_id}
+                        </td>
+                        <td className="px-5 py-3.5 font-mono text-xs text-stone-500 dark:text-stone-400">
+                          {b.mating_date}
+                        </td>
+                        <td className="px-5 py-3.5 font-mono text-xs text-stone-600 dark:text-stone-300">
+                          {b.gestation_days || 150} days
+                        </td>
+                        <td className="px-5 py-3.5 font-bold text-stone-900 dark:text-stone-100 font-mono text-xs">
+                          {targetDate.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-xs font-bold font-mono ${
+                              isOverdue
+                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+                                : isDueSoon
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-800 animate-pulse'
+                                : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            }`}
+                          >
+                            {isOverdue
+                              ? `Overdue (${Math.abs(daysLeft)}d)`
+                              : daysLeft === 0
+                              ? 'Due Today!'
+                              : `${daysLeft} days left`}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              id={`btn-birth-${b.id}`}
+                              onClick={() => setSelectedBreedingForDelivery(b)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-all active:scale-95 cursor-pointer"
+                              title={`Enter that doe ${b.female_id} gave birth`}
+                            >
+                              <Baby className="w-3.5 h-3.5" />
+                              <span>Goat Gave Birth</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDoeTag(b.female_id);
+                                setSelectedSireTag(b.male_id);
+                                setMatingDate(b.mating_date);
+                                setGestationDays(b.gestation_days || 150);
+                                setCalculationMode('mating_date');
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="text-xs font-semibold text-stone-600 dark:text-stone-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:underline px-2 py-1"
+                              title="Load parameters into gestation calculator"
+                            >
+                              Load
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Kidding & Newborn Kid Registration Modal */}
+      <RecordKiddingModal
+        isOpen={!!selectedBreedingForDelivery}
+        onClose={() => setSelectedBreedingForDelivery(null)}
+        breedingRecord={selectedBreedingForDelivery}
+      />
     </div>
   );
 };

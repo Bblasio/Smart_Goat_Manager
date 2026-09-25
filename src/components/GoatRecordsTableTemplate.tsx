@@ -120,7 +120,9 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
     if (goat.status === 'Dead') return 'Dead';
     if (goat.status === 'Quarantine') return 'Quarantine';
     const isCurrentlyBreeding = breeding.some(
-      b => b.female_id === goat.tag_number && (b.status === 'Active' || !b.status)
+      b =>
+        (b.female_id.toUpperCase() === goat.tag_number.toUpperCase() || b.female_id === goat.id) &&
+        (b.status === 'Active' || !b.status)
     );
     if (isCurrentlyBreeding && goat.gender === 'Female') return 'Pregnant';
     return goat.status || 'Active';
@@ -134,7 +136,9 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
     const latest = records[0];
 
     const isBreeding = breeding.some(
-      b => b.female_id === goat.tag_number && (b.status === 'Active' || !b.status)
+      b =>
+        (b.female_id.toUpperCase() === goat.tag_number.toUpperCase() || b.female_id === goat.id) &&
+        (b.status === 'Active' || !b.status)
     );
 
     if (latest) {
@@ -146,10 +150,11 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
         latest.condition?.toLowerCase().includes('mastitis');
 
       const isPreg =
-        latest.checkup_type === 'Pregnancy Check' ||
-        latest.is_pregnant ||
-        goat.status === 'Pregnant' ||
-        isBreeding;
+        (goat.status === 'Pregnant' || isBreeding) &&
+        (latest.checkup_type === 'Pregnancy Check' ||
+          latest.is_pregnant ||
+          goat.status === 'Pregnant' ||
+          isBreeding);
 
       if (isSick) {
         return {
@@ -362,7 +367,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                           </span>
                           {salePrice !== null && (
                             <span className="block text-[11px] font-mono text-amber-700 dark:text-amber-400 font-bold mt-0.5">
-                              {formatCurrency(salePrice)}
+                              {salePrice}
                             </span>
                           )}
                         </div>

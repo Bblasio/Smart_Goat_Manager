@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useToast } from '../context/ToastContext';
-import { RecordType, AppView, GoatRecord, SaleRecord, HealthRecord } from '../types';
+import { RecordType, AppView, GoatRecord, SaleRecord, HealthRecord, BreedingRecord } from '../types';
 import {
   Trash2,
   Plus,
@@ -39,6 +39,7 @@ import { PedigreeTreeModal } from '../components/PedigreeTreeModal';
 import { HerdRecordsHeaderTemplate } from '../components/HerdRecordsHeaderTemplate';
 import { GoatRecordsTableTemplate } from '../components/GoatRecordsTableTemplate';
 import { KidGrowthTracker } from '../components/KidGrowthTracker';
+import { RecordKiddingModal } from '../components/RecordKiddingModal';
 import { useUnits } from '../context/UnitsContext';
 import {
   formatGoatsForExcel,
@@ -96,27 +97,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [isBatchDeleteModalOpen, setIsBatchDeleteModalOpen] = useState(false);
   const [isBatchEditModalOpen, setIsBatchEditModalOpen] = useState(false);
-  const [kiddingModalState, setKiddingModalState] = useState<{
-    isOpen: boolean;
-    breedingId: string;
-    femaleId: string;
-    maleId: string;
-    breed: string;
-  } | null>(null);
-  const [kiddingForm, setKiddingForm] = useState<{
-    date: string;
-    kids: Array<{
-      tag: string;
-      name: string;
-      gender: 'Male' | 'Female';
-      birthWeight: string;
-    }>;
-  }>({
-    date: new Date().toISOString().split('T')[0],
-    kids: [
-      { tag: '', name: '', gender: 'Female', birthWeight: '3.5' }
-    ]
-  });
+  const [selectedBreedingForDelivery, setSelectedBreedingForDelivery] = useState<BreedingRecord | null>(null);
   const [batchEditForm, setBatchEditForm] = useState<{
     updateStatus: boolean;
     status: 'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead';
@@ -217,7 +198,14 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       return saleTarget === cleanTag || s.goat_id === goat.id || (cleanName && saleTarget === cleanName);
     });
     if (hasSaleRecord) return 'Sold';
-    return goat.status || 'Active';
+    if (goat.status === 'Quarantine') return 'Quarantine';
+    const isCurrentlyBreeding = breeding.some(
+      b =>
+        (b.female_id.toUpperCase() === cleanTag || b.female_id === goat.id) &&
+        (b.status === 'Active' || !b.status)
+    );
+    if (isCurrentlyBreeding && goat.gender === 'Female') return 'Pregnant';
+    return goat.status === 'Pregnant' ? 'Pregnant' : (goat.status || 'Active');
   };
 
   const getGoatSaleRecord = (goat: GoatRecord) => {
@@ -329,7 +317,16 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       if (latest.status === 'Observation' || effectiveHerdStatus === 'Quarantine') {
         return { status: 'Observation', condition: latest.condition || 'Quarantine protocol', treatment: latest.treatment, date: latest.checkup_date, isPregnant: latest.is_pregnant };
       }
-      if (latest.is_pregnant || latest.checkup_type === 'Pregnancy Check' || effectiveHerdStatus === 'Pregnant') {
+      const cleanTag = goat.tag_number.toUpperCase();
+      const isBreeding = breeding.some(
+        b =>
+          (b.female_id.toUpperCase() === cleanTag || b.female_id === goat.id) &&
+          (b.status === 'Active' || !b.status)
+      );
+      if (
+        effectiveHerdStatus === 'Pregnant' ||
+        (isBreeding && (latest.is_pregnant || latest.checkup_type === 'Pregnancy Check'))
+      ) {
         return { status: 'Pregnant', condition: latest.condition || 'Confirmed In-Kid', treatment: latest.treatment, date: latest.checkup_date, isPregnant: true };
       }
       return { status: 'Healthy', condition: latest.condition || 'Sound & Normal', treatment: latest.treatment, date: latest.checkup_date };
@@ -490,72 +487,8 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     return matchesSearch && matchesHerdStatus && matchesHealthStatus && matchesBreed;
   });
 
-  const handleOpenKiddingModal = (b: typeof breeding[0]) => {
-    const doe = goatMap.get(b.female_id.toUpperCase());
-    const randomTag = `KD-${Math.floor(100 + Math.random() * 900)}`;
-    setKiddingModalState({
-      isOpen: true,
-      breedingId: b.id,
-      femaleId: b.female_id,
-      maleId: b.male_id,
-      breed: doe?.breed || 'Boer'
-    });
-    setKiddingForm({
-      date: new Date().toISOString().split('T')[0],
-      kids: [
-        { tag: randomTag, name: '', gender: 'Female', birthWeight: '3.5' }
-      ]
-    });
-  };
-
-  const handleSaveKidding = async () => {
-    if (!kiddingModalState) return;
-    const { breedingId, femaleId, maleId, breed } = kiddingModalState;
-
-    for (let i = 0; i < kiddingForm.kids.length; i++) {
-      if (!kiddingForm.kids[i].tag.trim()) {
-        showToast(`Please enter an ear tag for Kid #${i + 1}`, 'error');
-        return;
-      }
-    }
-
-    try {
-      // 1. Update breeding record
-      await updateBreeding(breedingId, {
-        status: 'Delivered',
-        actual_birth_date: kiddingForm.date,
-        kids_born: kiddingForm.kids.length,
-        notes: `Kidding delivery confirmed: ${kiddingForm.kids.length} kid(s) born on ${kiddingForm.date}.`,
-      });
-
-      // 2. Update dam doe status to Active (no longer pregnant)
-      const doe = goats.find(g => g.tag_number.toUpperCase() === femaleId.toUpperCase());
-      if (doe) {
-        await updateGoat(doe.id, { status: 'Active' });
-      }
-
-      // 3. Register each newborn kid in Nursery & Growth Tracker
-      for (const kid of kiddingForm.kids) {
-        await addKidGrowthRecord({
-          kid_tag: kid.tag.trim().toUpperCase(),
-          kid_name: kid.name.trim() || undefined,
-          gender: kid.gender,
-          breed: breed || doe?.breed || 'Boer',
-          dob: kiddingForm.date,
-          dam_tag: femaleId,
-          sire_tag: maleId,
-          birth_weight_kg: parseFloat(kid.birthWeight) || 3.5,
-          target_weaning_weight_kg: 15.0,
-          status: 'Nursing',
-          notes: `Born via recorded delivery on ${kiddingForm.date}`,
-        });
-      }
-
-      showToast(`Kidding recorded! Registered ${kiddingForm.kids.length} newborn kid(s) in nursery.`, 'success');
-      setKiddingModalState(null);
-    } catch (err: any) {
-      showToast(err.message || 'Failed to record kidding delivery', 'error');
-    }
+  const handleOpenKiddingModal = (b: BreedingRecord) => {
+    setSelectedBreedingForDelivery(b);
   };
 
   const filteredBreeding = breeding.filter(b => {
@@ -2392,241 +2325,11 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
       )}
 
       {/* Kidding / Delivery Modal */}
-      {kiddingModalState?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-lg bg-white dark:bg-stone-900 rounded-3xl shadow-2xl border border-stone-200 dark:border-stone-800 p-6 space-y-5 my-8">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-400 flex items-center justify-center">
-                  <Baby className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
-                    Record Kidding Delivery
-                  </h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400">
-                    Dam: <span className="font-mono font-bold text-stone-800 dark:text-stone-200">{kiddingModalState.femaleId}</span> • Sire: <span className="font-mono font-bold text-stone-800 dark:text-stone-200">{kiddingModalState.maleId}</span>
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setKiddingModalState(null)}
-                className="p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Delivery Date */}
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Actual Delivery Date *
-                </label>
-                <input
-                  type="date"
-                  value={kiddingForm.date}
-                  onChange={(e) => setKiddingForm(prev => ({ ...prev, date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-stone-300 dark:border-stone-700 dark:bg-stone-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-stone-900 dark:text-stone-100"
-                  required
-                />
-              </div>
-
-              {/* Number of Kids Born Quick Select */}
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
-                  Number of Kids Born
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { count: 1, label: 'Single (1)' },
-                    { count: 2, label: 'Twins (2)' },
-                    { count: 3, label: 'Triplets (3)' },
-                    { count: 4, label: 'Quads (4)' },
-                  ].map(opt => (
-                    <button
-                      key={opt.count}
-                      type="button"
-                      onClick={() => {
-                        const currentCount = kiddingForm.kids.length;
-                        const newKids = [...kiddingForm.kids];
-                        if (opt.count > currentCount) {
-                          for (let i = currentCount; i < opt.count; i++) {
-                            newKids.push({
-                              tag: `KD-${Math.floor(100 + Math.random() * 900)}`,
-                              name: '',
-                              gender: i % 2 === 0 ? 'Female' : 'Male',
-                              birthWeight: '3.5'
-                            });
-                          }
-                        } else {
-                          newKids.splice(opt.count);
-                        }
-                        setKiddingForm(prev => ({ ...prev, kids: newKids }));
-                      }}
-                      className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all border ${
-                        kiddingForm.kids.length === opt.count
-                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                          : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Individual Kid Forms */}
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                {kiddingForm.kids.map((kid, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700 space-y-2.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 text-[10px] flex items-center justify-center font-bold">
-                          {idx + 1}
-                        </span>
-                        Kid #{idx + 1} Enrollment
-                      </span>
-                      {kiddingForm.kids.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = kiddingForm.kids.filter((_, i) => i !== idx);
-                            setKiddingForm(prev => ({ ...prev, kids: updated }));
-                          }}
-                          className="text-stone-400 hover:text-rose-600 text-xs"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
-                          Ear Tag *
-                        </label>
-                        <input
-                          type="text"
-                          value={kid.tag}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setKiddingForm(prev => {
-                              const updated = [...prev.kids];
-                              updated[idx].tag = val;
-                              return { ...prev, kids: updated };
-                            });
-                          }}
-                          className="w-full px-2.5 py-1.5 border border-stone-300 dark:border-stone-700 dark:bg-stone-800 rounded-lg text-xs font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-stone-900 dark:text-stone-100"
-                          placeholder="e.g. KD-108"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
-                          Name (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={kid.name}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setKiddingForm(prev => {
-                              const updated = [...prev.kids];
-                              updated[idx].name = val;
-                              return { ...prev, kids: updated };
-                            });
-                          }}
-                          className="w-full px-2.5 py-1.5 border border-stone-300 dark:border-stone-700 dark:bg-stone-800 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-stone-900 dark:text-stone-100"
-                          placeholder="e.g. Daisy"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
-                          Gender *
-                        </label>
-                        <select
-                          value={kid.gender}
-                          onChange={(e) => {
-                            const val = e.target.value as 'Male' | 'Female';
-                            setKiddingForm(prev => {
-                              const updated = [...prev.kids];
-                              updated[idx].gender = val;
-                              return { ...prev, kids: updated };
-                            });
-                          }}
-                          className="w-full px-2.5 py-1.5 border border-stone-300 dark:border-stone-700 dark:bg-stone-800 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-stone-900 dark:text-stone-100"
-                        >
-                          <option value="Female">Female (Doeling)</option>
-                          <option value="Male">Male (Buckling)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-stone-600 dark:text-stone-400 mb-0.5">
-                          Birth Weight (kg) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={kid.birthWeight}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setKiddingForm(prev => {
-                              const updated = [...prev.kids];
-                              updated[idx].birthWeight = val;
-                              return { ...prev, kids: updated };
-                            });
-                          }}
-                          className="w-full px-2.5 py-1.5 border border-stone-300 dark:border-stone-700 dark:bg-stone-800 rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500 text-stone-900 dark:text-stone-100"
-                          placeholder="3.5"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Automatic Enrollment Notice */}
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-1">
-                <div className="font-semibold flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
-                  Auto-Nursery Enrollment &amp; Dam Status Reset
-                </div>
-                <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-                  Saving delivery marks breeding as delivered, updates Dam ({kiddingModalState.femaleId}) back to Active, and enrolls each newborn kid directly into the Nursery &amp; Growth Tracker with creep feeding and weaning milestones.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-stone-100 dark:border-stone-800">
-              <button
-                type="button"
-                onClick={() => setKiddingModalState(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                id="btn-submit-kidding-delivery"
-                onClick={handleSaveKidding}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-xs flex items-center gap-1.5 active:scale-98"
-              >
-                <Baby className="w-4 h-4" />
-                <span>Save Delivery &amp; Enroll Kids ({kiddingForm.kids.length})</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RecordKiddingModal
+        isOpen={!!selectedBreedingForDelivery}
+        onClose={() => setSelectedBreedingForDelivery(null)}
+        breedingRecord={selectedBreedingForDelivery}
+      />
     </div>
   );
 };

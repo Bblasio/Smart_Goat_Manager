@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useToast } from '../context/ToastContext';
 import { RecordType, AppView, GoatRecord, SaleRecord, HealthRecord, BreedingRecord } from '../types';
@@ -60,9 +60,10 @@ interface RecordsViewProps {
   onOpenAddModal: (type?: RecordType) => void;
   onNavigate?: (view: AppView) => void;
   onOpenNotificationModal?: () => void;
+  initialTab?: TabType;
 }
 
-export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavigate, onOpenNotificationModal }) => {
+export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavigate, onOpenNotificationModal, initialTab }) => {
   const {
     farmName,
     user,
@@ -88,9 +89,13 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   const { showToast } = useToast();
   const { currency, weightUnit, milkUnit, formatCurrency, formatWeight, formatMilk } = useUnits();
 
-  const [activeTab, setActiveTab] = useState<
-    'goats' | 'kids' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor'
-  >('goats');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'goats');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [selectedGoatIds, setSelectedGoatIds] = useState<string[]>([]);
   const [bulkStatusTarget, setBulkStatusTarget] = useState<'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead'>('Quarantine');
@@ -206,7 +211,8 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         (b.status === 'Active' || !b.status)
     );
     if (isCurrentlyBreeding && goat.gender === 'Female') return 'Pregnant';
-    return goat.status === 'Pregnant' ? 'Pregnant' : (goat.status || 'Active');
+    if (goat.status === 'Pregnant' && !isCurrentlyBreeding) return 'Active';
+    return goat.status || 'Active';
   };
 
   const getGoatSaleRecord = (goat: GoatRecord) => {
@@ -862,13 +868,15 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                 <button
                   type="button"
                   id="btn-tab-add-manually"
-                  onClick={() => onOpenAddModal(activeTab as RecordType)}
+                  onClick={() => onOpenAddModal(activeTab === 'kids' ? 'kid_growth' : (activeTab as RecordType))}
                   className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>
                     {activeTab === 'goats'
                       ? 'Add Goat'
+                      : activeTab === 'kids'
+                      ? 'Register Kid'
                       : activeTab === 'breeding'
                       ? 'Add Breeding'
                       : activeTab === 'health'
@@ -1520,22 +1528,32 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                               type="button"
                               id={`btn-record-kidding-${item.id}`}
                               onClick={() => handleOpenKiddingModal(item)}
-                              className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-all shadow-2xs ring-2 ring-emerald-500/20 cursor-pointer"
-                              title="Due date reached! Record delivery of newborn kids"
+                              className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition-all shadow-2xs ring-2 ring-emerald-500/20 cursor-pointer animate-pulse"
+                              title="Expected kidding date reached! Click to record delivery & add kid"
                             >
                               <GoatKidIcon className="w-3.5 h-3.5" />
                               <span>Goat Gave Birth</span>
                             </button>
                           ) : (
-                            <button
-                              type="button"
-                              disabled
-                              className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 border border-stone-200 dark:border-stone-700 flex items-center gap-1.5 cursor-not-allowed opacity-75"
-                              title={`Gestation in progress (${diffDays} days remaining). Activates on due date (${item.expected_birth}).`}
-                            >
-                              <Lock className="w-3 h-3 text-stone-400 dark:text-stone-500" />
-                              <span>Active on Due Date ({diffDays}d)</span>
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled
+                                className="px-2 py-1 text-xs font-semibold rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 border border-stone-200 dark:border-stone-700 flex items-center gap-1.5 cursor-not-allowed opacity-80"
+                                title={`Gestation in progress (${diffDays} days remaining). Activates on due date (${item.expected_birth}).`}
+                              >
+                                <Lock className="w-3 h-3 text-stone-400 dark:text-stone-500" />
+                                <span>Active on Due Date ({diffDays}d)</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenKiddingModal(item)}
+                                className="text-[11px] text-emerald-600 dark:text-emerald-400 underline hover:text-emerald-700 dark:hover:text-emerald-300 cursor-pointer"
+                                title="Click to record delivery if goat gave birth early"
+                              >
+                                Early?
+                              </button>
+                            </div>
                           )}
                           {onNavigate && (
                             <button
@@ -2345,6 +2363,10 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         isOpen={!!selectedBreedingForDelivery}
         onClose={() => setSelectedBreedingForDelivery(null)}
         breedingRecord={selectedBreedingForDelivery}
+        onSuccess={() => {
+          setActiveTab('kids');
+          setSearchQuery('');
+        }}
       />
     </div>
   );

@@ -52,20 +52,27 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Helper to generate unique kid tag
-  const generateKidTag = (indexOffset = 0): string => {
+  const generateKidTag = (additionalExisting: string[] = []): string => {
     const existingTags = new Set([
       ...goats.map(g => g.tag_number.toUpperCase()),
-      ...kidGrowthRecords.map(k => k.kid_tag.toUpperCase())
+      ...kidGrowthRecords.map(k => k.kid_tag.toUpperCase()),
+      ...additionalExisting.map(t => t.toUpperCase()),
     ]);
 
-    // Try finding next sequential KD number
-    for (let num = 200 + indexOffset; num < 999; num++) {
-      const candidate = `KD-${num}`;
-      if (!existingTags.has(candidate)) {
-        return candidate;
+    let maxNum = 200;
+    for (const tag of existingTags) {
+      const match = tag.match(/KD[ -]?(\d+)/i);
+      if (match) {
+        const val = parseInt(match[1], 10);
+        if (val > maxNum) maxNum = val;
       }
     }
-    return `KD-${Math.floor(100 + Math.random() * 900)}`;
+
+    let nextNum = maxNum + 1;
+    while (existingTags.has(`KD-${nextNum}`)) {
+      nextNum++;
+    }
+    return `KD-${nextNum}`;
   };
 
   // Find Dam Doe and Sire Buck from herd records
@@ -94,7 +101,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
       setKids([
         {
           id: 'kid-' + Math.random().toString(36).slice(2, 7),
-          tag: generateKidTag(0),
+          tag: generateKidTag([]),
           name: '',
           gender: 'Female',
           birthWeight: '3.5',
@@ -109,12 +116,12 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
 
   // Add another kid (twins / triplets)
   const handleAddKid = () => {
-    const nextOffset = kids.length;
+    const currentTags = kids.map(k => k.tag);
     setKids(prev => [
       ...prev,
       {
         id: 'kid-' + Math.random().toString(36).slice(2, 7),
-        tag: generateKidTag(nextOffset),
+        tag: generateKidTag(currentTags),
         name: '',
         gender: prev.length % 2 === 1 ? 'Male' : 'Female',
         birthWeight: '3.5',
@@ -247,19 +254,6 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
         // Convert to standard kg if user entered in lbs
         const weightKg = weightUnit === 'lbs' ? Number((rawWeight / 2.20462).toFixed(2)) : rawWeight;
 
-        // Register in main Herd table
-        await addGoat({
-          tag_number: cleanTag,
-          name: cleanName,
-          breed: kidBreed,
-          gender: kid.gender,
-          dob: deliveryDate,
-          weight_kg: weightKg,
-          dam_tag: femaleTag,
-          sire_tag: maleTag,
-          status: 'Active',
-        });
-
         // Register in Nursery / Kid Growth Tracker
         await addKidGrowthRecord({
           kid_tag: cleanTag,
@@ -277,7 +271,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
       }
 
       showToast(
-        `Kidding confirmed! Dam ${femaleTag} is now Active. ${kids.length} newborn kid(s) enrolled in herd and nursery records.`,
+        `Kidding confirmed! Dam ${femaleTag} is now Active. ${kids.length} newborn kid(s) enrolled in nursery records.`,
         'success'
       );
 
@@ -417,6 +411,13 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
 
           {/* Kids List Section */}
           <div className="space-y-3">
+            <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl text-xs text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>
+                Mother <strong>({breedingRecord.female_id})</strong> and Father <strong>({breedingRecord.male_id})</strong> are linked automatically. Just confirm or enter the kid's <strong>Ear Tag</strong> below to enroll.
+              </span>
+            </div>
+
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
                 <GoatKidIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -463,12 +464,13 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
                     {/* Kid Tag */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-semibold text-stone-600 dark:text-stone-400">
-                          Ear Tag *
+                        <label className="text-[11px] font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1">
+                          <span>Ear Tag Number *</span>
+                          <span className="text-[10px] font-normal text-emerald-700 dark:text-emerald-400">(Auto-suggested)</span>
                         </label>
                         <button
                           type="button"
-                          onClick={() => handleUpdateKid(idx, 'tag', generateKidTag(idx))}
+                          onClick={() => handleUpdateKid(idx, 'tag', generateKidTag(kids.filter((_, i) => i !== idx).map(k => k.tag)))}
                           className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
                         >
                           <Sparkles className="w-2.5 h-2.5" />
@@ -479,10 +481,11 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
                         <Tag className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                         <input
                           type="text"
+                          autoFocus={idx === 0}
                           value={kid.tag}
                           onChange={e => handleUpdateKid(idx, 'tag', e.target.value.toUpperCase())}
                           placeholder="e.g. KD-105"
-                          className="w-full pl-8 pr-2.5 py-1.5 border border-stone-300 dark:border-stone-700 dark:bg-stone-800 rounded-lg text-xs font-mono uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500 text-stone-900 dark:text-stone-100"
+                          className="w-full pl-8 pr-2.5 py-1.5 border border-emerald-400 dark:border-emerald-600 dark:bg-stone-800 rounded-lg text-xs font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500 text-stone-900 dark:text-stone-100"
                           required
                         />
                       </div>

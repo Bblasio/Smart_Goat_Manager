@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useToast } from '../context/ToastContext';
+import { useUnits } from '../context/UnitsContext';
 import { KidGrowthRecord } from '../types';
 import {
   Baby,
@@ -40,10 +41,13 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
     addGoat
   } = useFarm();
   const { showToast } = useToast();
+  const { weightUnit, formatWeight } = useUnits();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Nursing' | 'Weaned' | 'Sold' | 'Retained'>('all');
   const [breedFilter, setBreedFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<'tag' | 'breed' | 'dob' | 'birth_weight' | 'status' | 'adg'>('tag');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showWeanModal, setShowWeanModal] = useState(false);
   const [selectedKid, setSelectedKid] = useState<KidGrowthRecord | null>(null);
@@ -145,6 +149,29 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
       return matchSearch && matchStatus && matchBreed;
     });
   }, [kidGrowthRecords, searchQuery, statusFilter, breedFilter]);
+
+  // Sorted and Filtered kids
+  const sortedKids = useMemo(() => {
+    return [...filteredKids].sort((a, b) => {
+      let comp = 0;
+      if (sortField === 'tag') comp = a.kid_tag.localeCompare(b.kid_tag);
+      else if (sortField === 'breed') comp = a.breed.localeCompare(b.breed);
+      else if (sortField === 'dob') comp = a.dob.localeCompare(b.dob);
+      else if (sortField === 'birth_weight') comp = (a.birth_weight_kg || 0) - (b.birth_weight_kg || 0);
+      else if (sortField === 'status') comp = (a.status || '').localeCompare(b.status || '');
+      else if (sortField === 'adg') comp = (a.adg_grams_per_day || 0) - (b.adg_grams_per_day || 0);
+      return sortOrder === 'asc' ? comp : -comp;
+    });
+  }, [filteredKids, sortField, sortOrder]);
+
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
 
   // Aggregate stats
   const totalKids = kidGrowthRecords.length;
@@ -418,19 +445,67 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
             <table className="w-full text-left text-xs record-table-grid">
               <thead>
                 <tr className="border-b border-stone-200 dark:border-stone-700 bg-stone-50/70 dark:bg-stone-800/40 text-[11px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Kid Identifier</th>
-                  <th className="py-3.5 px-4">Breed & Gender</th>
-                  <th className="py-3.5 px-4">Age / DOB</th>
+                  <th
+                    onClick={() => toggleSort('tag')}
+                    className="py-3.5 px-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Kid Identifier</span>
+                      <span className="text-stone-400 font-mono text-[10px]">⇅</span>
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => toggleSort('breed')}
+                    className="py-3.5 px-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Breed & Gender</span>
+                      <span className="text-stone-400 font-mono text-[10px]">⇅</span>
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => toggleSort('dob')}
+                    className="py-3.5 px-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Age / DOB</span>
+                      <span className="text-stone-400 font-mono text-[10px]">⇅</span>
+                    </div>
+                  </th>
                   <th className="py-3.5 px-4">Pedigree (Dam / Sire)</th>
-                  <th className="py-3.5 px-4">Birth Wt</th>
+                  <th
+                    onClick={() => toggleSort('birth_weight')}
+                    className="py-3.5 px-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Birth Wt ({weightUnit})</span>
+                      <span className="text-stone-400 font-mono text-[10px]">⇅</span>
+                    </div>
+                  </th>
                   <th className="py-3.5 px-4">30-Day Wt</th>
-                  <th className="py-3.5 px-4">Weaning Status</th>
-                  <th className="py-3.5 px-4">Daily Gain (ADG)</th>
+                  <th
+                    onClick={() => toggleSort('status')}
+                    className="py-3.5 px-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Weaning Status</span>
+                      <span className="text-stone-400 font-mono text-[10px]">⇅</span>
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => toggleSort('adg')}
+                    className="py-3.5 px-4 cursor-pointer hover:text-stone-900 dark:hover:text-white transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Daily Gain (ADG)</span>
+                      <span className="text-stone-400 font-mono text-[10px]">⇅</span>
+                    </div>
+                  </th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-stone-900">
-                {filteredKids.map(kid => {
+                {sortedKids.map(kid => {
                   const ageDays = calculateAgeDays(kid.dob);
                   const ageWeeks = (ageDays / 7).toFixed(1);
 

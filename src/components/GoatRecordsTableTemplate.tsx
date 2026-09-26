@@ -125,6 +125,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
         (b.status === 'Active' || !b.status)
     );
     if (isCurrentlyBreeding && goat.gender === 'Female') return 'Pregnant';
+    if (goat.status === 'Pregnant' && !isCurrentlyBreeding) return 'Active';
     return goat.status || 'Active';
   };
 

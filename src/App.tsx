@@ -140,12 +140,17 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  // Only trigger the lively loader where necessary (e.g. heavy calculations, forecasts)
-  const heavyTabs: AppView[] = ['breeding_estimator', 'reports'];
+  // Tabs with rich dataset rosters and calculations that trigger smooth loading feedback
+  const heavyTabs: AppView[] = ['records', 'breeding_estimator', 'reports', 'health_vet', 'tasks', 'feed_supply', 'dashboard', 'settings', 'profile'];
 
-  const handleNavigate = (newTab: AppView) => {
+  const [recordsInitialTab, setRecordsInitialTab] = useState<'goats' | 'kids' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor'>('goats');
+
+  const handleNavigate = (newTab: AppView, subTab?: string) => {
     setIsSettingsDrilledIn(false);
-    if (newTab === activeTab) return;
+    if (newTab === 'records' && subTab) {
+      setRecordsInitialTab(subTab as any);
+    }
+    if (newTab === activeTab && (!subTab || subTab === recordsInitialTab)) return;
     if (mobileSidebarOpen) setMobileSidebarOpen(false);
 
     if (heavyTabs.includes(newTab)) {
@@ -154,7 +159,7 @@ const MainLayout: React.FC = () => {
       setTimeout(() => {
         setActiveTab(newTab);
         setIsNavigating(false);
-      }, 260);
+      }, 240);
     } else {
       setActiveTab(newTab);
     }
@@ -284,64 +289,69 @@ const MainLayout: React.FC = () => {
 
         {/* Dynamic Main Views */}
         <main className="flex-1 w-full max-w-full overflow-x-hidden pb-24 md:pb-12">
-          {activeTab === 'dashboard' && (
-            <DashboardView
-              onNavigateToRecords={() => handleNavigate('records')}
-              onNavigateToReports={() => handleNavigate('reports')}
-              onNavigateToBreedingEstimator={() => handleNavigate('breeding_estimator')}
-              onNavigateToHealth={() => handleNavigate('health_vet')}
-              onNavigateToTasks={() => handleNavigate('tasks')}
-              onNavigateToFeedSupply={() => handleNavigate('feed_supply')}
-              onNavigateToProfile={() => handleNavigate('profile')}
-              onOpenAddHealthModal={() => handleOpenAddModal('health')}
-              onOpenAddSaleModal={() => handleOpenAddModal('sale')}
-              onOpenAddExpenseModal={() => handleOpenAddModal('expense')}
-              onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
-            />
-          )}
+          <div key={activeTab} className="animate-in fade-in slide-in-from-bottom-1 duration-200">
+            {activeTab === 'dashboard' && (
+              <DashboardView
+                onNavigateToRecords={() => handleNavigate('records')}
+                onNavigateToReports={() => handleNavigate('reports')}
+                onNavigateToBreedingEstimator={() => handleNavigate('breeding_estimator')}
+                onNavigateToHealth={() => handleNavigate('health_vet')}
+                onNavigateToTasks={() => handleNavigate('tasks')}
+                onNavigateToFeedSupply={() => handleNavigate('feed_supply')}
+                onNavigateToProfile={() => handleNavigate('profile')}
+                onOpenAddHealthModal={() => handleOpenAddModal('health')}
+                onOpenAddSaleModal={() => handleOpenAddModal('sale')}
+                onOpenAddExpenseModal={() => handleOpenAddModal('expense')}
+                onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
+              />
+            )}
 
-          {activeTab === 'tasks' && (
-            <TasksView
-              onNavigate={handleNavigate}
-              onOpenAddModal={handleOpenAddModal}
-            />
-          )}
+            {activeTab === 'tasks' && (
+              <TasksView
+                onNavigate={handleNavigate}
+                onOpenAddModal={handleOpenAddModal}
+              />
+            )}
 
-          {activeTab === 'feed_supply' && <FeedSupplyView />}
+            {activeTab === 'feed_supply' && <FeedSupplyView />}
 
-          {activeTab === 'breeding_estimator' && <BreedingEstimatorView />}
+            {activeTab === 'breeding_estimator' && (
+              <BreedingEstimatorView onNavigate={handleNavigate} />
+            )}
 
-          {activeTab === 'records' && (
-            <RecordsView
-              onOpenAddModal={handleOpenAddModal}
-              onNavigate={handleNavigate}
-              onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
-            />
-          )}
+            {activeTab === 'records' && (
+              <RecordsView
+                onOpenAddModal={handleOpenAddModal}
+                onNavigate={handleNavigate}
+                onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
+                initialTab={recordsInitialTab}
+              />
+            )}
 
-          {activeTab === 'health_vet' && (
-            <HealthCareView
-              onNavigate={handleNavigate}
-              onOpenAddModal={() => handleOpenAddModal('health')}
-            />
-          )}
+            {activeTab === 'health_vet' && (
+              <HealthCareView
+                onNavigate={handleNavigate}
+                onOpenAddModal={() => handleOpenAddModal('health')}
+              />
+            )}
 
-          {activeTab === 'reports' && <ReportsView />}
+            {activeTab === 'reports' && <ReportsView />}
 
-          {activeTab === 'settings' && (
-            <SettingsView
-              onNavigate={handleNavigate}
-              onMobileDrillChange={setIsSettingsDrilledIn}
-            />
-          )}
+            {activeTab === 'settings' && (
+              <SettingsView
+                onNavigate={handleNavigate}
+                onMobileDrillChange={setIsSettingsDrilledIn}
+              />
+            )}
 
-          {activeTab === 'profile' && (
-            <SettingsView
-              onNavigate={handleNavigate}
-              initialSection="you_and_farm"
-              onMobileDrillChange={setIsSettingsDrilledIn}
-            />
-          )}
+            {activeTab === 'profile' && (
+              <SettingsView
+                onNavigate={handleNavigate}
+                initialSection="you_and_farm"
+                onMobileDrillChange={setIsSettingsDrilledIn}
+              />
+            )}
+          </div>
         </main>
 
         {/* Mobile Bottom Navigation Bar (Hidden when drawer is open or when settings is drilled into a sub-page) */}

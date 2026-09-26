@@ -17,7 +17,7 @@ import {
   Save,
   Lock
 } from 'lucide-react';
-import { GoatRecord, HealthRecord, BreedingRecord } from '../types';
+import { AppView, GoatRecord, HealthRecord, BreedingRecord } from '../types';
 import { RecordKiddingModal } from '../components/RecordKiddingModal';
 import { GoatKidIcon } from '../components/GoatKidIcon';
 
@@ -37,7 +37,11 @@ const BREED_PRESETS: BreedPreset[] = [
   { name: 'East African Dwarf / Pygmy', defaultGestation: 145, description: 'Shorter gestation period (143-147 days)' },
 ];
 
-export const BreedingEstimatorView: React.FC = () => {
+interface BreedingEstimatorViewProps {
+  onNavigate?: (view: AppView, subTab?: string) => void;
+}
+
+export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ onNavigate }) => {
   const { goats, breeding, health, addBreeding, updateBreeding, addHealth } = useFarm();
 
   const does = goats.filter(g => g.gender === 'Female');
@@ -610,17 +614,31 @@ export const BreedingEstimatorView: React.FC = () => {
                       type="button"
                       id="btn-hero-goat-gave-birth"
                       onClick={() => setSelectedBreedingForDelivery(activeBreedingForSelectedDoe)}
-                      className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-300 animate-pulse"
+                      title="Expected kidding date reached! Click to record delivery & add kid"
                     >
                       <GoatKidIcon className="w-4 h-4 text-stone-950" />
                       <span>Enter Goat Gave Birth</span>
                     </button>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-semibold text-emerald-200/90 px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 flex items-center gap-1.5" title={`Activates on due date (${activeBreedingForSelectedDoe.expected_birth})`}>
-                        <Lock className="w-3 h-3 text-emerald-300" />
+                      <button
+                        type="button"
+                        disabled
+                        className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/20 text-emerald-200 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed opacity-80"
+                        title={`Activates on or after expected due date (${activeBreedingForSelectedDoe.expected_birth}). ${doeDaysLeft} days remaining.`}
+                      >
+                        <Lock className="w-3.5 h-3.5 text-emerald-300" />
                         <span>Active on Due Date ({doeDaysLeft}d)</span>
-                      </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBreedingForDelivery(activeBreedingForSelectedDoe)}
+                        className="text-[11px] text-emerald-200 underline hover:text-white transition-colors cursor-pointer"
+                        title="Click here if the doe delivered early before schedule"
+                      >
+                        Delivered early?
+                      </button>
                     </div>
                   )}
                 </div>
@@ -633,7 +651,7 @@ export const BreedingEstimatorView: React.FC = () => {
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-600" />
-                <span>Critical Gestation Milestones & Vet Protocol</span>
+                <span>Critical Gestation Milestones &amp; Vet Protocol</span>
               </h3>
               <span className="text-xs text-stone-400 font-mono">{gestationDays} Day Schedule</span>
             </div>
@@ -789,15 +807,25 @@ export const BreedingEstimatorView: React.FC = () => {
                                 <span>Goat Gave Birth</span>
                               </button>
                             ) : (
-                              <button
-                                type="button"
-                                disabled
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 border border-stone-200 dark:border-stone-700/80 cursor-not-allowed opacity-75"
-                                title={`Gestation in progress (${daysLeft} days remaining). Kidding registration activates on due date (${targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}).`}
-                              >
-                                <Lock className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0" />
-                                <span>Active on Due Date ({daysLeft}d)</span>
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500 border border-stone-200 dark:border-stone-700/80 cursor-not-allowed opacity-80"
+                                  title={`Gestation in progress (${daysLeft} days remaining). Activates on due date (${targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}).`}
+                                >
+                                  <Lock className="w-3 h-3 text-stone-400 dark:text-stone-500 shrink-0" />
+                                  <span>Active on Due Date ({daysLeft}d)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedBreedingForDelivery(b)}
+                                  className="text-[10px] text-emerald-600 dark:text-emerald-400 underline hover:text-emerald-700 dark:hover:text-emerald-300 cursor-pointer"
+                                  title="Record delivery if goat gave birth early"
+                                >
+                                  Early?
+                                </button>
+                              </div>
                             )}
                             <button
                               type="button"
@@ -830,6 +858,11 @@ export const BreedingEstimatorView: React.FC = () => {
         isOpen={!!selectedBreedingForDelivery}
         onClose={() => setSelectedBreedingForDelivery(null)}
         breedingRecord={selectedBreedingForDelivery}
+        onSuccess={() => {
+          if (onNavigate) {
+            onNavigate('records', 'kids');
+          }
+        }}
       />
     </div>
   );

@@ -86,10 +86,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const {
     currency,
     weightUnit,
-    milkUnit,
     setCurrency,
     setWeightUnit,
-    setMilkUnit,
   } = useUnits();
 
   // Desktop active section vs Mobile drill-down state
@@ -274,13 +272,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     showToast(`Weight unit updated to ${unit}`, 'success');
   };
 
-  // FIX: parameter typed as MilkUnit (not string) so it matches setMilkUnit's signature
-  const handleSetMilkUnit = (unit: MilkUnit) => {
-    setMilkUnit(unit);
-    localStorage.setItem('sgm_pref_milk_unit', unit);
-    showToast(`Milk unit updated to ${unit}`, 'success');
-  };
-
   const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -369,7 +360,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     {
       id: 'units',
       label: 'Units',
-      subtitle: `${currency} • ${weightUnit} • ${milkUnit}`,
+      subtitle: `${currency} • ${weightUnit}`,
       icon: Sliders,
       iconBgLight: 'bg-teal-100',
       iconColorLight: 'text-teal-700',
@@ -1064,40 +1055,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
-        {/* Milk Yield Unit */}
-        <div className="p-4 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 space-y-2">
-          <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
-            Daily Milk Yield
-          </label>
-          <div className="grid grid-cols-2 gap-1.5">
-            {(
-              [
-                { val: 'L', label: 'Litres (L)' },
-                { val: 'gal', label: 'Gallons (gal)' },
-              ] as { val: MilkUnit; label: string }[]
-            ).map(m => (
-              <button
-                key={m.val}
-                type="button"
-                id={`btn-unit-milk-${m.val}`}
-                onClick={() => handleSetMilkUnit(m.val)}
-                className={`py-2 px-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                  milkUnit === m.val
-                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs'
-                    : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:border-stone-300'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="p-3.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200/70 dark:border-teal-900/40 text-xs text-teal-900 dark:text-teal-200 flex items-center gap-2">
         <Check className="w-4 h-4 text-teal-600 shrink-0" />
         <span>
-          Current Active System Units: <strong>{currency}</strong> (Currency) • <strong>{weightUnit}</strong> (Weight) • <strong>{milkUnit}</strong> (Milk Yield). Any changes update all displays in real time.
+          Current Active System Units: <strong>{currency}</strong> (Currency) • <strong>{weightUnit}</strong> (Weight). Any changes update all displays in real time.
         </span>
       </div>
     </section>

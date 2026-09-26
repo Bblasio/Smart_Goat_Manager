@@ -187,8 +187,27 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   });
 
-  // Herd and farm records
+  // Herd and farm records helper for cached local data
+  const getInitialSaved = (field: string) => {
+    try {
+      const isDemo = localStorage.getItem('sgm_is_demo') === 'true';
+      const key = isDemo ? 'sgm_records_usr-demo-farm' : 'sgm_records_offline';
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed[field])) {
+          return parsed[field];
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+
   const [goats, setGoats] = useState<GoatRecord[]>(() => {
+    const saved = getInitialSaved('goats');
+    if (saved) return saved;
     if (localStorage.getItem('sgm_is_demo') === 'true') {
       return initialGoats;
     }
@@ -196,6 +215,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [breeding, setBreeding] = useState<BreedingRecord[]>(() => {
+    const saved = getInitialSaved('breeding');
+    if (saved) return saved;
     if (localStorage.getItem('sgm_is_demo') === 'true') {
       return initialBreeding;
     }
@@ -203,6 +224,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [health, setHealth] = useState<HealthRecord[]>(() => {
+    const saved = getInitialSaved('health');
+    if (saved) return saved;
     if (localStorage.getItem('sgm_is_demo') === 'true') {
       return initialHealth;
     }
@@ -210,6 +233,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [sales, setSales] = useState<SaleRecord[]>(() => {
+    const saved = getInitialSaved('sales');
+    if (saved) return saved;
     if (localStorage.getItem('sgm_is_demo') === 'true') {
       return initialSales;
     }
@@ -277,12 +302,62 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return initialMedications;
   });
 
+  // Helper to validate and sanitize kid growth records, eliminating corrupt phantom rows
+  const sanitizeKidRecords = (records: any[]): KidGrowthRecord[] => {
+    if (!Array.isArray(records)) return [];
+    return records
+      .filter(k => k && typeof k === 'object')
+      .map(val => {
+        const kidTag = (val.kid_tag || val.tag_number || val.tag || '').trim().toUpperCase();
+        if (!kidTag) return null; // strictly exclude records with no tag!
+
+        const dob = val.dob || val.date_of_birth || val.birth_date || new Date().toISOString().split('T')[0];
+        return {
+          id: val.id || 'kid-' + Math.random().toString(36).slice(2, 7),
+          kid_tag: kidTag,
+          kid_name: val.kid_name || val.name || '',
+          gender: (val.gender === 'Female' ? 'Female' : 'Male') as ('Male' | 'Female'),
+          breed: val.breed || 'Boer',
+          dob: dob,
+          dam_tag: val.dam_tag || '',
+          dam_name: val.dam_name || '',
+          sire_tag: val.sire_tag || '',
+          sire_name: val.sire_name || '',
+          birth_weight_kg: Number(val.birth_weight_kg) || Number(val.weight_kg) || 3.5,
+          thirty_day_weight_kg:
+            val.thirty_day_weight_kg !== undefined && val.thirty_day_weight_kg !== null && !isNaN(Number(val.thirty_day_weight_kg))
+              ? Number(val.thirty_day_weight_kg)
+              : undefined,
+          weaning_date: val.weaning_date || '',
+          weaning_weight_kg:
+            val.weaning_weight_kg !== undefined && val.weaning_weight_kg !== null && !isNaN(Number(val.weaning_weight_kg))
+              ? Number(val.weaning_weight_kg)
+              : undefined,
+          target_weaning_weight_kg:
+            val.target_weaning_weight_kg !== undefined && val.target_weaning_weight_kg !== null && !isNaN(Number(val.target_weaning_weight_kg))
+              ? Number(val.target_weaning_weight_kg)
+              : 15.0,
+          adg_grams_per_day:
+            val.adg_grams_per_day !== undefined && val.adg_grams_per_day !== null && !isNaN(Number(val.adg_grams_per_day))
+              ? Number(val.adg_grams_per_day)
+              : undefined,
+          status: (['Nursing', 'Weaned', 'Sold', 'Retained'].includes(val.status) ? val.status : 'Nursing') as ('Nursing' | 'Weaned' | 'Sold' | 'Retained'),
+          notes: val.notes || '',
+          created_at: val.created_at || new Date().toISOString(),
+        };
+      })
+      .filter(Boolean) as KidGrowthRecord[];
+  };
+
   const [kidGrowthRecords, setKidGrowthRecords] = useState<KidGrowthRecord[]>(() => {
     const saved = localStorage.getItem('sgm_kid_growth');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          const sanitized = sanitizeKidRecords(parsed);
+          if (sanitized.length > 0) return sanitized;
+        }
       } catch {
         // ignore
       }
@@ -473,12 +548,21 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           })();
           setUser(savedDemoUser || initialFarmUser);
-          setGoats(initialGoats);
-          setBreeding(initialBreeding);
-          setHealth(initialHealth);
-          setSales(initialSales);
-          setWorkers(initialWorkers);
-          setMilk(initialMilk);
+          const savedGoats = getInitialSaved('goats');
+          const savedBreeding = getInitialSaved('breeding');
+          const savedHealth = getInitialSaved('health');
+          const savedSales = getInitialSaved('sales');
+          const savedWorkers = getInitialSaved('workers');
+          const savedMilk = getInitialSaved('milk');
+          const savedKidGrowth = getInitialSaved('kid_growth');
+
+          setGoats(savedGoats || initialGoats);
+          setBreeding(savedBreeding || initialBreeding);
+          setHealth(savedHealth || initialHealth);
+          setSales(savedSales || initialSales);
+          setWorkers(savedWorkers || initialWorkers);
+          setMilk(savedMilk || initialMilk);
+          if (savedKidGrowth) setKidGrowthRecords(savedKidGrowth);
           setSyncStatus('local_fallback');
           setRecordsLoaded(true);
         } else {
@@ -724,27 +808,13 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Kid Growth
     if (recordsContainer.kid_growth) {
       const rawKids = recordsContainer.kid_growth;
-      const parsedKids: KidGrowthRecord[] = Object.entries(rawKids).map(([id, val]: [string, any]) => ({
-        id,
-        kid_tag: val.kid_tag || '',
-        kid_name: val.kid_name || '',
-        gender: val.gender || 'Male',
-        breed: val.breed || '',
-        dob: val.dob || '',
-        dam_tag: val.dam_tag || '',
-        dam_name: val.dam_name || '',
-        sire_tag: val.sire_tag || '',
-        sire_name: val.sire_name || '',
-        birth_weight_kg: Number(val.birth_weight_kg) || 0,
-        thirty_day_weight_kg: val.thirty_day_weight_kg !== undefined ? Number(val.thirty_day_weight_kg) : undefined,
-        weaning_date: val.weaning_date || '',
-        weaning_weight_kg: val.weaning_weight_kg !== undefined ? Number(val.weaning_weight_kg) : undefined,
-        target_weaning_weight_kg: val.target_weaning_weight_kg !== undefined ? Number(val.target_weaning_weight_kg) : undefined,
-        adg_grams_per_day: val.adg_grams_per_day !== undefined ? Number(val.adg_grams_per_day) : undefined,
-        status: val.status || 'Nursing',
-        notes: val.notes || '',
-        created_at: val.created_at || new Date().toISOString(),
-      }));
+      const rawList = Array.isArray(rawKids)
+        ? rawKids
+        : Object.entries(rawKids).map(([id, val]) =>
+            typeof val === 'object' && val !== null ? { ...val, id: (val as any).id || id } : null
+          );
+
+      const parsedKids: KidGrowthRecord[] = sanitizeKidRecords(rawList);
       setKidGrowthRecords(parsedKids);
       localStorage.setItem('sgm_kid_growth', JSON.stringify(parsedKids));
     } else {
@@ -1325,18 +1395,27 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   ) => {
     try {
-      const key = uid ? `sgm_records_${uid}` : 'sgm_records_offline';
+      const isDemo = localStorage.getItem('sgm_is_demo') === 'true';
+      const key = isDemo ? 'sgm_records_usr-demo-farm' : (uid ? `sgm_records_${uid}` : 'sgm_records_offline');
+      let existing: any = {};
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) existing = JSON.parse(raw);
+      } catch {
+        existing = {};
+      }
+
       const payload = {
-        goats: overrides?.goats !== undefined ? overrides.goats : goats,
-        breeding: overrides?.breeding !== undefined ? overrides.breeding : breeding,
-        health: overrides?.health !== undefined ? overrides.health : health,
-        sales: overrides?.sales !== undefined ? overrides.sales : sales,
-        expenses: overrides?.expenses !== undefined ? overrides.expenses : expenses,
-        workers: overrides?.workers !== undefined ? overrides.workers : workers,
-        milk: overrides?.milk !== undefined ? overrides.milk : milk,
-        feeds: overrides?.feeds !== undefined ? overrides.feeds : feeds,
-        medications: overrides?.medications !== undefined ? overrides.medications : medications,
-        kid_growth: overrides?.kid_growth !== undefined ? overrides.kid_growth : kidGrowthRecords,
+        goats: overrides?.goats !== undefined ? overrides.goats : (existing.goats || goats || []),
+        breeding: overrides?.breeding !== undefined ? overrides.breeding : (existing.breeding || breeding || []),
+        health: overrides?.health !== undefined ? overrides.health : (existing.health || health || []),
+        sales: overrides?.sales !== undefined ? overrides.sales : (existing.sales || sales || []),
+        expenses: overrides?.expenses !== undefined ? overrides.expenses : (existing.expenses || expenses || []),
+        workers: overrides?.workers !== undefined ? overrides.workers : (existing.workers || workers || []),
+        milk: overrides?.milk !== undefined ? overrides.milk : (existing.milk || milk || []),
+        feeds: overrides?.feeds !== undefined ? overrides.feeds : (existing.feeds || feeds || []),
+        medications: overrides?.medications !== undefined ? overrides.medications : (existing.medications || medications || []),
+        kid_growth: overrides?.kid_growth !== undefined ? overrides.kid_growth : (existing.kid_growth || kidGrowthRecords || []),
         saved_at: new Date().toISOString(),
       };
       localStorage.setItem(key, JSON.stringify(payload));
@@ -1403,6 +1482,12 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (newGoat.photo_url) {
           goatPayload.photo_url = newGoat.photo_url;
+        }
+        if (newGoat.dam_tag) {
+          goatPayload.dam_tag = newGoat.dam_tag;
+        }
+        if (newGoat.sire_tag) {
+          goatPayload.sire_tag = newGoat.sire_tag;
         }
         await set(itemRef, goatPayload);
         setSyncStatus('connected');

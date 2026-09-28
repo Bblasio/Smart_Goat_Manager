@@ -57,6 +57,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     resetToSampleData,
     feeds,
     medications,
+    breeding,
+    kidGrowthRecords,
   } = useFarm();
 
   const [logoFailed, setLogoFailed] = useState(false);
@@ -68,6 +70,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const lowStockCount =
     (feeds?.filter(f => f.quantity <= f.min_threshold).length || 0) +
     (medications?.filter(m => m.quantity <= m.min_threshold).length || 0);
+
+  const dueBreedingCount = (breeding || []).filter(b => {
+    if (b.status === 'Delivered') return false;
+    const target = new Date(b.expected_birth);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+    return target.getTime() <= today.getTime();
+  }).length;
+
+  const activeGestationCount = (breeding || []).filter(b => b.status === 'Active' || !b.status).length;
+  const kidsCount = kidGrowthRecords?.length || 0;
 
   // Group 1 — Overview: Dashboard, Task
   const group1Items: NavItemConfig[] = [
@@ -98,11 +112,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'breeding_estimator',
       label: 'Breeding Estimator',
       icon: Calendar,
+      badge: dueBreedingCount > 0 ? `${dueBreedingCount} DUE` : activeGestationCount > 0 ? `${activeGestationCount}` : undefined,
+      badgeClass: dueBreedingCount > 0 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
     },
     {
       id: 'records',
       label: 'Farm records',
       icon: ClipboardList,
+      badge: kidsCount > 0 ? `${kidsCount} KIDS` : undefined,
+      badgeClass: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
     },
     {
       id: 'health_vet',

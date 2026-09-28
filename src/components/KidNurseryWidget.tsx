@@ -2,10 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { KidGrowthRecord } from '../types';
 import {
-  Baby,
+  PawPrint,
   TrendingUp,
   AlertTriangle,
-  Sparkles,
   ChevronRight,
   LineChart as LineChartIcon,
   Scale,
@@ -104,15 +103,15 @@ export const KidNurseryWidget: React.FC<KidNurseryWidgetProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-950/70 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0">
-            <Baby className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041] flex items-center justify-center shrink-0">
+            <PawPrint className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="text-base font-bold text-stone-900 dark:text-white">
+              <h4 className="text-base font-medium text-stone-900 dark:text-white">
                 Kid Nursery & Average Daily Gain (ADG) Benchmark
               </h4>
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300">
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
                 {stats.nursingCount} Nursing Kids
               </span>
             </div>

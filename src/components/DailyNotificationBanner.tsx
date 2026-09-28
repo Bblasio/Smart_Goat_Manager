@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Baby, Syringe, ChevronRight, X, Sparkles } from 'lucide-react';
+import { Bell, Activity, Syringe, ChevronRight, X } from 'lucide-react';
 import { FarmNotification } from '../utils/notificationHelper';
 
 interface DailyNotificationBannerProps {
@@ -23,35 +23,35 @@ export const DailyNotificationBanner: React.FC<DailyNotificationBannerProps> = (
   const vaccineCount = activeToday.filter(n => n.type === 'vaccination').length;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rose-500/10 via-purple-500/10 to-amber-500/10 dark:from-rose-950/40 dark:via-purple-950/30 dark:to-amber-950/30 border border-rose-300 dark:border-rose-800/80 p-4 shadow-sm animate-fade-in">
+    <div className="relative overflow-hidden rounded-2xl bg-[#FCEBEB] dark:bg-[#501313] border border-[#E3E1D8] dark:border-[#33322E] p-4 shadow-none">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-            <Bell className="w-5 h-5 animate-bounce" />
+          <div className="w-9 h-9 rounded-xl bg-[#A32D2D] dark:bg-[#F09595] text-white dark:text-[#501313] flex items-center justify-center shrink-0">
+            <Bell className="w-5 h-5" />
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-0.5">
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-600 text-white shadow-2xs">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#A32D2D] text-white">
                 Today&apos;s Farm Alert: {activeToday.length} Scheduled Task{activeToday.length > 1 ? 's' : ''}
               </span>
               {breedingCount > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/60 px-2 py-0.5 rounded-md">
-                  <Baby className="w-3 h-3" />
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#0F6E56] dark:text-[#5DCAA5] bg-[#E7F4EE] dark:bg-[#04342C] border border-[#C3E6D6] dark:border-[#085041] px-2 py-0.5 rounded-md">
+                  <Activity className="w-3 h-3" />
                   <span>{breedingCount} Kidding / Breeding</span>
                 </span>
               )}
               {vaccineCount > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/60 px-2 py-0.5 rounded-md">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#A32D2D] dark:text-[#F09595] bg-[#FCEBEB] dark:bg-[#501313] border border-[#A32D2D]/30 px-2 py-0.5 rounded-md">
                   <Syringe className="w-3 h-3" />
                   <span>{vaccineCount} Vaccination</span>
                 </span>
               )}
             </div>
 
-            <p className="text-xs font-medium text-stone-800 dark:text-stone-200 mt-1 leading-relaxed">
+            <p className="text-xs font-normal text-[#1F1F1D] dark:text-[#F1F0EA] mt-1 leading-relaxed">
               {activeToday[0].title}
               {activeToday.length > 1 && (
-                <span className="text-stone-500 dark:text-stone-400 ml-1">
+                <span className="text-[#5F5E5A] dark:text-[#B4B2A9] ml-1">
                   (and {activeToday.length - 1} other item{activeToday.length - 1 > 1 ? 's' : ''} scheduled for today)
                 </span>
               )}
@@ -64,7 +64,7 @@ export const DailyNotificationBanner: React.FC<DailyNotificationBannerProps> = (
             type="button"
             id="btn-open-today-notifications-banner"
             onClick={onOpenModal}
-            className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-2 bg-[#A32D2D] hover:bg-[#822424] dark:bg-[#F09595] dark:hover:bg-[#f3abab] text-white dark:text-[#501313] font-medium text-xs rounded-xl shadow-none transition-colors flex items-center gap-1.5"
           >
             <span>Review Alerts</span>
             <ChevronRight className="w-3.5 h-3.5" />

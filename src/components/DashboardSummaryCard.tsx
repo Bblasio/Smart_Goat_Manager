@@ -1,14 +1,12 @@
 import React from 'react';
 import {
-  Users,
-  Baby,
-  HeartPulse,
-  Milk,
+  PawPrint,
+  Activity,
+  Droplet,
   AlertTriangle,
   ChevronRight,
   ShieldCheck,
   TrendingUp,
-  Activity,
   ArrowUpRight
 } from 'lucide-react';
 import { GoatRecord, BreedingRecord, HealthRecord, MilkRecord } from '../types';
@@ -138,18 +136,18 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
           label="Total Herd Count"
           value={totalHerdCount}
           unit={`${activeGoats} active`}
-          icon={<Users className="w-4 h-4" />}
-          iconBgColor="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+          icon={<PawPrint className="w-4 h-4" />}
+          iconBgColor="bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5]"
           footer={
             <>
-              <div className="flex items-center justify-between text-stone-600 dark:text-stone-300 font-medium">
+              <div className="flex items-center justify-between text-[#5F5E5A] dark:text-[#B4B2A9] font-normal">
                 <span>{females} Does • {males} Bucks</span>
-                <span className="text-stone-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center">
+                <span className="text-[#8A897F] dark:text-[#7C7A72] group-hover:text-[#0F6E56] dark:group-hover:text-[#5DCAA5] transition-colors flex items-center">
                   Records <ArrowUpRight className="w-3 h-3 ml-0.5" />
                 </span>
               </div>
               {quarantineGoats > 0 && (
-                <div className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                <div className="mt-1.5 text-[11px] text-[#854F0B] dark:text-[#EF9F27] font-medium">
                   ⚠️ {quarantineGoats} in quarantine bay
                 </div>
               )}
@@ -157,36 +155,37 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
           }
         />
 
-        {/* Metric 2: Active Pregnancies */}
+        {/* Metric 2: Active Pregnancies (Uses brand green per Theme Spec) */}
         <StatCard
           id="summary-active-pregnancies"
           onClick={onNavigateToBreedingEstimator}
-          variant="purple"
+          variant="brand"
           label="Active Pregnancies"
           value={activePregnanciesCount}
           unit="expectant does"
-          icon={<Baby className="w-4 h-4" />}
+          icon={<Activity className="w-4 h-4" />}
+          iconBgColor="bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5]"
           footer={
             <>
               {nextExpectedKid ? (
-                <div className="text-purple-900 dark:text-purple-200 font-medium flex items-center justify-between">
+                <div className="text-[#085041] dark:text-[#5DCAA5] font-medium flex items-center justify-between">
                   <span className="truncate">
                     Doe {nextExpectedKid.female_id}:{' '}
                     {nextDeliveryDays !== null && nextDeliveryDays >= 0
                       ? `Due in ${nextDeliveryDays}d`
                       : 'Due now'}
                   </span>
-                  <span className="text-purple-600 dark:text-purple-400 group-hover:underline shrink-0 ml-1">
+                  <span className="text-[#0F6E56] dark:text-[#5DCAA5] group-hover:underline shrink-0 ml-1">
                     Predictor →
                   </span>
                 </div>
               ) : (
-                <div className="text-stone-500 dark:text-stone-400">
+                <div className="text-[#8A897F] dark:text-[#7C7A72]">
                   No active gestations logged
                 </div>
               )}
               {birthsDueWithin7Days > 0 && (
-                <div className="mt-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                <div className="mt-1 text-[11px] font-medium text-[#854F0B] dark:text-[#EF9F27]">
                   ⚡ {birthsDueWithin7Days} kidding(s) due within 7 days
                 </div>
               )}
@@ -203,22 +202,22 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
           value={totalHealthAlertsCount}
           unit={totalHealthAlertsCount > 0 ? 'active flags' : 'all healthy'}
           icon={totalHealthAlertsCount > 0 ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-          iconBgColor={totalHealthAlertsCount > 0 ? 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300' : 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300'}
+          iconBgColor={totalHealthAlertsCount > 0 ? 'bg-[#FCEBEB] dark:bg-[#501313] text-[#A32D2D] dark:text-[#F09595]' : 'bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5]'}
           footer={
             totalHealthAlertsCount > 0 ? (
-              <div className="text-rose-900 dark:text-rose-200 font-medium flex items-center justify-between">
+              <div className="text-[#A32D2D] dark:text-[#F09595] font-medium flex items-center justify-between">
                 <span className="truncate">
                   {quarantineGoats > 0 ? `${quarantineGoats} quarantined • ` : ''}
                   {activeHealthAlerts.length > 0 ? `${activeHealthAlerts.length} medical issues` : 'Isolation active'}
                 </span>
-                <span className="text-rose-600 dark:text-rose-400 group-hover:underline shrink-0 ml-1">
+                <span className="text-[#A32D2D] dark:text-[#F09595] group-hover:underline shrink-0 ml-1">
                   Tasks →
                 </span>
               </div>
             ) : (
-              <div className="text-emerald-800 dark:text-emerald-300 font-medium flex items-center justify-between">
+              <div className="text-[#3B6D11] dark:text-[#97C459] font-medium flex items-center justify-between">
                 <span>100% Herd bio-security clear</span>
-                <span className="text-emerald-600 dark:text-emerald-400 group-hover:underline">
+                <span className="text-[#0F6E56] dark:text-[#5DCAA5] group-hover:underline">
                   Tasks →
                 </span>
               </div>
@@ -229,15 +228,16 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
         {/* Metric 4: Daily Milk Yield & Production */}
         <StatCard
           id="summary-milk-yield-companion"
-          variant="blue"
+          variant="default"
           label="Daily Milk Yield"
           value={formatMilk(todayMilkYield)}
           unit="today"
-          icon={<Milk className="w-4 h-4" />}
+          icon={<Droplet className="w-4 h-4" />}
+          iconBgColor="bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5]"
           footer={
-            <div className="text-sky-900 dark:text-sky-200 font-medium flex items-center justify-between">
+            <div className="text-[#5F5E5A] dark:text-[#B4B2A9] font-normal flex items-center justify-between">
               <span>Dairy Doe Group</span>
-              <span className="text-sky-600 dark:text-sky-400 font-semibold">
+              <span className="text-[#0F6E56] dark:text-[#5DCAA5] font-medium">
                 {females > 0 ? `${females} potential does` : '—'}
               </span>
             </div>

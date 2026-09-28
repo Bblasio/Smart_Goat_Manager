@@ -9,8 +9,7 @@ import {
   Tag,
   ChevronRight,
   Info,
-  Award,
-  Sparkles
+  Award
 } from 'lucide-react';
 import { GoatRecord } from '../types';
 

@@ -5,7 +5,7 @@ import { FinancialTrackingModule } from '../components/FinancialTrackingModule';
 import { FarmReportModal } from '../components/FarmReportModal';
 import { StatCard } from '../components/StatCard';
 import {
-  Sparkles,
+  PawPrint,
   ChevronDown,
   ChevronUp,
   Award,
@@ -1037,14 +1037,14 @@ export const ReportsView: React.FC = () => {
               <StatCard
                 label="Total Goats"
                 value={goats.length}
-                icon={<ClipboardList className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+                icon={<PawPrint className="w-5 h-5 text-[#0F6E56] dark:text-[#5DCAA5]" />}
                 subtext="Registered herd"
               />
               <StatCard
                 label="Breeding Records"
                 value={breeding.length}
-                icon={<Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
-                variant="purple"
+                icon={<Calendar className="w-5 h-5 text-[#0F6E56] dark:text-[#5DCAA5]" />}
+                variant="brand"
                 subtext="Matings & gestations"
               />
               <StatCard

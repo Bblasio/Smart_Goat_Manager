@@ -113,7 +113,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
     setExpectedBirth(calculated);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -143,20 +143,42 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           setErrorMsg('Kid Ear Tag and Breed are required.');
           return;
         }
-        addKidGrowthRecord({
-          kid_tag: kidTag.trim().toUpperCase(),
-          kid_name: kidName.trim() || undefined,
+        const cleanTag = kidTag.trim().toUpperCase();
+        const cleanName = kidName.trim() || undefined;
+        const cleanBreed = kidBreed.trim();
+        const birthWeight = parseFloat(kidBirthWeight) || 3.5;
+
+        await addKidGrowthRecord({
+          kid_tag: cleanTag,
+          kid_name: cleanName,
           gender: kidGender,
-          breed: kidBreed.trim(),
+          breed: cleanBreed,
           dob: kidDob,
           dam_tag: kidDamTag.trim() || undefined,
           sire_tag: kidSireTag.trim() || undefined,
-          birth_weight_kg: parseFloat(kidBirthWeight) || 3.5,
+          birth_weight_kg: birthWeight,
           target_weaning_weight_kg: 15.0,
           status: kidStatus,
           notes: kidNotes.trim() || undefined,
         });
-        setSuccessMsg(`Kid ${kidTag.trim().toUpperCase()}${kidName ? ` (${kidName})` : ''} enrolled in nursery successfully!`);
+
+        // Also enroll in general herd records if not already added
+        const existingGoat = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
+        if (!existingGoat) {
+          await addGoat({
+            tag_number: cleanTag,
+            name: cleanName,
+            breed: cleanBreed,
+            gender: kidGender,
+            dob: kidDob,
+            weight_kg: birthWeight,
+            status: 'Active',
+            dam_tag: kidDamTag.trim() || undefined,
+            sire_tag: kidSireTag.trim() || undefined,
+          });
+        }
+
+        setSuccessMsg(`Kid ${cleanTag}${cleanName ? ` (${cleanName})` : ''} enrolled in nursery and herd records successfully!`);
         setKidTag('');
         setKidName('');
         setKidNotes('');

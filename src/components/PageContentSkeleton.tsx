@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { AppView } from '../types';
 import {
   LayoutDashboard,
@@ -88,11 +87,8 @@ export const PageContentSkeleton: React.FC<PageContentSkeletonProps> = ({ target
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in fade-in duration-200 select-none pb-12">
       {/* Top Velocity Progress Bar */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-stone-200/50 dark:bg-stone-800/50 overflow-hidden z-50 pointer-events-none">
-        <motion.div
-          className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300"
-          initial={{ width: '15%' }}
-          animate={{ width: ['15%', '70%', '95%'] }}
-          transition={{ duration: 0.35, ease: 'easeInOut' }}
+        <div
+          className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 animate-pulse w-4/5 transition-all duration-300"
         />
       </div>
 

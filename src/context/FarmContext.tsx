@@ -94,6 +94,7 @@ interface FarmContextType {
   logout: () => Promise<void>;
   enterDemoMode: () => void;
   addGoat: (goat: Omit<GoatRecord, 'id' | 'created_at'>) => Promise<void>;
+  addMultipleGoats: (goats: Omit<GoatRecord, 'id' | 'created_at'>[]) => Promise<GoatRecord[]>;
   updateGoat: (id: string, updates: Partial<GoatRecord>) => Promise<void>;
   bulkUpdateGoats: (ids: string[], updates: Partial<GoatRecord>) => Promise<void>;
   bulkDeleteGoats: (ids: string[]) => Promise<void>;
@@ -124,6 +125,7 @@ interface FarmContextType {
   consumeMedication: (id: string, amount: number, goatId?: string, notes?: string) => Promise<void>;
   restockMedication: (id: string, amount: number, cost?: number) => Promise<void>;
   addKidGrowthRecord: (record: Omit<KidGrowthRecord, 'id' | 'created_at'>) => Promise<void>;
+  addMultipleKidGrowthRecords: (records: Omit<KidGrowthRecord, 'id' | 'created_at'>[]) => Promise<KidGrowthRecord[]>;
   updateKidGrowthRecord: (id: string, updates: Partial<KidGrowthRecord>) => Promise<void>;
   deleteKidGrowthRecord: (id: string) => Promise<void>;
   clearAllKidGrowthRecords: () => Promise<void>;
@@ -350,10 +352,15 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const [kidGrowthRecords, setKidGrowthRecords] = useState<KidGrowthRecord[]>(() => {
-    const saved = localStorage.getItem('sgm_kid_growth');
-    if (saved) {
+    const saved = getInitialSaved('kid_growth');
+    if (saved && Array.isArray(saved)) {
+      const sanitized = sanitizeKidRecords(saved);
+      if (sanitized.length > 0) return sanitized;
+    }
+    const legacySaved = localStorage.getItem('sgm_kid_growth');
+    if (legacySaved) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(legacySaved);
         if (Array.isArray(parsed)) {
           const sanitized = sanitizeKidRecords(parsed);
           if (sanitized.length > 0) return sanitized;
@@ -562,7 +569,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSales(savedSales || initialSales);
           setWorkers(savedWorkers || initialWorkers);
           setMilk(savedMilk || initialMilk);
-          if (savedKidGrowth) setKidGrowthRecords(savedKidGrowth);
+          setKidGrowthRecords(savedKidGrowth && savedKidGrowth.length > 0 ? sanitizeKidRecords(savedKidGrowth) : initialKidGrowthRecords);
           setSyncStatus('local_fallback');
           setRecordsLoaded(true);
         } else {
@@ -573,6 +580,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSales([]);
           setWorkers([]);
           setMilk([]);
+          setKidGrowthRecords([]);
           setSyncStatus('local_fallback');
           setRecordsLoaded(true);
         }
@@ -636,12 +644,15 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const parsedGoats: GoatRecord[] = Object.entries(rawGoats).map(([key, val]: [string, any]) => ({
         id: key,
         tag_number: val.tag_number || val.tagNumber || val.tag || val.tag_no || key,
+        name: val.name || '',
         breed: val.breed || 'Boer',
         gender: val.gender || val.sex || 'Female',
         dob: val.dob || val.date_of_birth || new Date().toISOString().split('T')[0],
         created_at: val.created_at || val.createdAt || new Date().toISOString(),
         weight_kg: val.weight_kg != null ? Number(val.weight_kg) : (val.weight != null ? Number(val.weight) : 45),
         status: val.status || 'Active',
+        dam_tag: val.dam_tag || undefined,
+        sire_tag: val.sire_tag || undefined,
         photo_url: val.photo_url || val.photoUrl || undefined,
         quarantine_start_date: val.status === 'Quarantine' ? (val.quarantine_start_date || new Date().toISOString()) : undefined,
       }));
@@ -664,6 +675,12 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         notes: val.notes || '',
         actual_birth_date: val.actual_birth_date || val.actualBirthDate || undefined,
         kids_born: val.kids_born != null ? Number(val.kids_born) : undefined,
+        kid_tags: Array.isArray(val.kid_tags)
+          ? val.kid_tags
+          : (val.kid_tags && typeof val.kid_tags === 'object' ? Object.values(val.kid_tags) : undefined),
+        registered_kids: Array.isArray(val.registered_kids)
+          ? val.registered_kids
+          : (val.registered_kids && typeof val.registered_kids === 'object' ? Object.values(val.registered_kids) : undefined),
       }));
       setBreeding(parsedBreeding);
     } else {
@@ -818,8 +835,13 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setKidGrowthRecords(parsedKids);
       localStorage.setItem('sgm_kid_growth', JSON.stringify(parsedKids));
     } else {
-      setKidGrowthRecords([]);
-      localStorage.setItem('sgm_kid_growth', JSON.stringify([]));
+      const savedLocal = getInitialSaved('kid_growth');
+      if (savedLocal && savedLocal.length > 0) {
+        setKidGrowthRecords(sanitizeKidRecords(savedLocal));
+      } else {
+        setKidGrowthRecords([]);
+        localStorage.setItem('sgm_kid_growth', JSON.stringify([]));
+      }
     }
   };
 
@@ -1500,6 +1522,75 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const addMultipleGoats = async (goatsData: Omit<GoatRecord, 'id' | 'created_at'>[]): Promise<GoatRecord[]> => {
+    if (!goatsData || goatsData.length === 0) return [];
+    const activeUid = firebaseUser?.uid;
+    const createdAt = new Date().toISOString();
+
+    const createdGoats: GoatRecord[] = [];
+    const firebasePayload: Record<string, any> = {};
+
+    for (let i = 0; i < goatsData.length; i++) {
+      const data = goatsData[i];
+      let id = 'gt-' + Date.now().toString(36) + '-' + i + '-' + Math.random().toString(36).slice(2, 6);
+      if (activeUid) {
+        try {
+          const goatsRef = ref(rtdb, `users/${activeUid}/records/goats`);
+          const newRef = push(goatsRef);
+          if (newRef.key) id = newRef.key;
+        } catch (err) {
+          console.warn('Could not generate goat key:', err);
+        }
+      }
+
+      const newGoat: GoatRecord = {
+        ...data,
+        name: data.name || '',
+        id,
+        created_at: createdAt,
+        quarantine_start_date: data.status === 'Quarantine' ? (data.quarantine_start_date || createdAt) : undefined,
+      };
+      createdGoats.push(newGoat);
+
+      if (activeUid) {
+        const payload: Record<string, any> = {
+          tag_number: newGoat.tag_number,
+          name: newGoat.name || '',
+          breed: newGoat.breed,
+          gender: newGoat.gender,
+          dob: newGoat.dob,
+          created_at: createdAt,
+          weight_kg: newGoat.weight_kg || 45,
+          status: newGoat.status || 'Active',
+        };
+        if (newGoat.quarantine_start_date) payload.quarantine_start_date = newGoat.quarantine_start_date;
+        if (newGoat.photo_url) payload.photo_url = newGoat.photo_url;
+        if (newGoat.dam_tag) payload.dam_tag = newGoat.dam_tag;
+        if (newGoat.sire_tag) payload.sire_tag = newGoat.sire_tag;
+
+        firebasePayload[`users/${activeUid}/records/goats/${id}`] = payload;
+      }
+    }
+
+    setGoats(prev => {
+      const updated = [...createdGoats, ...prev];
+      persistRecordsLocally(activeUid, { goats: updated });
+      return updated;
+    });
+
+    if (activeUid && Object.keys(firebasePayload).length > 0) {
+      try {
+        await update(ref(rtdb), firebasePayload);
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Firebase addMultipleGoats error:', err);
+      }
+    }
+
+    return createdGoats;
+  };
+
   const updateGoat = async (id: string, updates: Partial<GoatRecord>) => {
     const activeUid = firebaseUser?.uid;
     const nowIso = new Date().toISOString();
@@ -1680,7 +1771,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/breeding/${id}`);
-        await set(itemRef, {
+        const payload: Record<string, any> = {
           female_id: newRecord.female_id,
           male_id: newRecord.male_id,
           mating_date: newRecord.mating_date,
@@ -1690,7 +1781,14 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           notes: newRecord.notes || '',
           actual_birth_date: newRecord.actual_birth_date || '',
           kids_born: newRecord.kids_born != null ? newRecord.kids_born : 0,
-        });
+        };
+        if (newRecord.kid_tags && newRecord.kid_tags.length > 0) {
+          payload.kid_tags = newRecord.kid_tags;
+        }
+        if (newRecord.registered_kids && newRecord.registered_kids.length > 0) {
+          payload.registered_kids = newRecord.registered_kids;
+        }
+        await set(itemRef, payload);
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -1713,10 +1811,16 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/breeding/${id}`);
         const snap = await get(itemRef);
+        const sanitized: Record<string, any> = {};
+        Object.entries(updates).forEach(([k, v]) => {
+          if (v !== undefined) {
+            sanitized[k] = v;
+          }
+        });
         if (snap.exists()) {
-          await set(itemRef, { ...snap.val(), ...updates });
+          await set(itemRef, { ...snap.val(), ...sanitized });
         } else {
-          await set(itemRef, updates);
+          await set(itemRef, sanitized);
         }
         setSyncStatus('connected');
         setSyncError(null);
@@ -2537,7 +2641,29 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/kid_growth/${id}`);
-        await set(itemRef, newRecord);
+        const payload: Record<string, any> = {
+          id: newRecord.id,
+          kid_tag: newRecord.kid_tag,
+          gender: newRecord.gender,
+          breed: newRecord.breed,
+          dob: newRecord.dob,
+          birth_weight_kg: newRecord.birth_weight_kg,
+          target_weaning_weight_kg: newRecord.target_weaning_weight_kg || 15.0,
+          status: newRecord.status || 'Nursing',
+          created_at: newRecord.created_at,
+        };
+        if (newRecord.kid_name) payload.kid_name = newRecord.kid_name;
+        if (newRecord.dam_tag) payload.dam_tag = newRecord.dam_tag;
+        if (newRecord.dam_name) payload.dam_name = newRecord.dam_name;
+        if (newRecord.sire_tag) payload.sire_tag = newRecord.sire_tag;
+        if (newRecord.sire_name) payload.sire_name = newRecord.sire_name;
+        if (newRecord.thirty_day_weight_kg != null) payload.thirty_day_weight_kg = newRecord.thirty_day_weight_kg;
+        if (newRecord.weaning_date) payload.weaning_date = newRecord.weaning_date;
+        if (newRecord.weaning_weight_kg != null) payload.weaning_weight_kg = newRecord.weaning_weight_kg;
+        if (newRecord.adg_grams_per_day != null) payload.adg_grams_per_day = newRecord.adg_grams_per_day;
+        if (newRecord.notes) payload.notes = newRecord.notes;
+
+        await set(itemRef, payload);
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -2546,6 +2672,93 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSyncError(err.message || 'Failed to save kid growth record to database');
       }
     }
+  };
+
+  const addMultipleKidGrowthRecords = async (records: Omit<KidGrowthRecord, 'id' | 'created_at'>[]): Promise<KidGrowthRecord[]> => {
+    if (!records || records.length === 0) return [];
+    const activeUid = firebaseUser?.uid;
+    const createdAt = new Date().toISOString();
+
+    const createdRecords: KidGrowthRecord[] = [];
+    const firebasePayload: Record<string, any> = {};
+
+    for (let i = 0; i < records.length; i++) {
+      const data = records[i];
+      let id = 'kid-' + Date.now().toString(36) + '-' + i + '-' + Math.random().toString(36).slice(2, 6);
+      if (activeUid) {
+        try {
+          const kidsRef = ref(rtdb, `users/${activeUid}/records/kid_growth`);
+          const newRef = push(kidsRef);
+          if (newRef.key) id = newRef.key;
+        } catch (err) {
+          console.warn('Could not generate kid_growth key:', err);
+        }
+      }
+
+      let calculatedAdg = data.adg_grams_per_day;
+      if (!calculatedAdg) {
+        if (data.weaning_weight_kg && data.birth_weight_kg && data.weaning_date && data.dob) {
+          const days = Math.max(1, Math.round((new Date(data.weaning_date).getTime() - new Date(data.dob).getTime()) / (1000 * 60 * 60 * 24)));
+          calculatedAdg = Math.round(((data.weaning_weight_kg - data.birth_weight_kg) / days) * 1000);
+        } else if (data.thirty_day_weight_kg && data.birth_weight_kg) {
+          calculatedAdg = Math.round(((data.thirty_day_weight_kg - data.birth_weight_kg) / 30) * 1000);
+        }
+      }
+
+      const newRec: KidGrowthRecord = {
+        ...data,
+        adg_grams_per_day: calculatedAdg,
+        id,
+        created_at: createdAt,
+      };
+      createdRecords.push(newRec);
+
+      if (activeUid) {
+        const payload: Record<string, any> = {
+          id: newRec.id,
+          kid_tag: newRec.kid_tag,
+          gender: newRec.gender,
+          breed: newRec.breed,
+          dob: newRec.dob,
+          birth_weight_kg: newRec.birth_weight_kg,
+          target_weaning_weight_kg: newRec.target_weaning_weight_kg || 15.0,
+          status: newRec.status || 'Nursing',
+          created_at: newRec.created_at,
+        };
+        if (newRec.kid_name) payload.kid_name = newRec.kid_name;
+        if (newRec.dam_tag) payload.dam_tag = newRec.dam_tag;
+        if (newRec.dam_name) payload.dam_name = newRec.dam_name;
+        if (newRec.sire_tag) payload.sire_tag = newRec.sire_tag;
+        if (newRec.sire_name) payload.sire_name = newRec.sire_name;
+        if (newRec.thirty_day_weight_kg != null) payload.thirty_day_weight_kg = newRec.thirty_day_weight_kg;
+        if (newRec.weaning_date) payload.weaning_date = newRec.weaning_date;
+        if (newRec.weaning_weight_kg != null) payload.weaning_weight_kg = newRec.weaning_weight_kg;
+        if (newRec.adg_grams_per_day != null) payload.adg_grams_per_day = newRec.adg_grams_per_day;
+        if (newRec.notes) payload.notes = newRec.notes;
+
+        firebasePayload[`users/${activeUid}/records/kid_growth/${id}`] = payload;
+      }
+    }
+
+    setKidGrowthRecords(prev => {
+      const updated = [...createdRecords, ...prev];
+      persistRecordsLocally(activeUid, { kid_growth: updated });
+      return updated;
+    });
+
+    if (activeUid && Object.keys(firebasePayload).length > 0) {
+      try {
+        await update(ref(rtdb), firebasePayload);
+        setSyncStatus('connected');
+        setSyncError(null);
+      } catch (err: any) {
+        console.warn('Firebase addMultipleKidGrowthRecords error:', err);
+        setSyncStatus('error');
+        setSyncError(err.message || 'Failed to save kid growth records');
+      }
+    }
+
+    return createdRecords;
   };
 
   const updateKidGrowthRecord = async (id: string, updates: Partial<KidGrowthRecord>) => {
@@ -2568,7 +2781,13 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeUid) {
       try {
         const targetRef = ref(rtdb, `users/${activeUid}/records/kid_growth/${id}`);
-        await update(targetRef, updates);
+        const sanitizedUpdates: Record<string, any> = {};
+        Object.entries(updates).forEach(([k, v]) => {
+          if (v !== undefined) {
+            sanitizedUpdates[k] = v;
+          }
+        });
+        await update(targetRef, sanitizedUpdates);
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -3247,6 +3466,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         enterDemoMode,
         addGoat,
+        addMultipleGoats,
         updateGoat,
         bulkUpdateGoats,
         bulkDeleteGoats,
@@ -3277,6 +3497,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         consumeMedication,
         restockMedication,
         addKidGrowthRecord,
+        addMultipleKidGrowthRecords,
         updateKidGrowthRecord,
         deleteKidGrowthRecord,
         clearAllKidGrowthRecords,

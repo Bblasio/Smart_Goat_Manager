@@ -14,6 +14,16 @@ export interface GoatRecord {
   photo_url?: string;
 }
 
+export interface RegisteredKidSummary {
+  id?: string;
+  tag: string;
+  name?: string;
+  gender: 'Female' | 'Male';
+  birthWeight: string | number;
+  breed?: string;
+  notes?: string;
+}
+
 export interface BreedingRecord {
   id: string;
   female_id: string;
@@ -24,6 +34,8 @@ export interface BreedingRecord {
   status?: 'Active' | 'Delivered' | 'Failed';
   actual_birth_date?: string;
   kids_born?: number;
+  kid_tags?: string[];
+  registered_kids?: RegisteredKidSummary[];
   notes?: string;
 }
 

@@ -32,7 +32,6 @@ import {
   MapPin,
   Maximize2,
   Award,
-  Sparkles,
   Save,
   Volume2,
   VolumeX,
@@ -461,7 +460,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="p-3.5 sm:p-4 bg-white dark:bg-stone-900 hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition-colors">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center shrink-0 overflow-hidden border border-purple-200 dark:border-purple-800/80">
+              <div className="w-10 h-10 rounded-xl bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] flex items-center justify-center shrink-0 overflow-hidden border border-[#C3E6D6] dark:border-[#085041]">
                 {user?.logo_url ? (
                   <img src={user.logo_url} alt={displayFarmName} className="w-full h-full object-cover" />
                 ) : (

@@ -4,7 +4,7 @@ import { useToast } from '../context/ToastContext';
 import { useUnits } from '../context/UnitsContext';
 import { KidGrowthRecord } from '../types';
 import {
-  Baby,
+  PawPrint,
   Scale,
   Calendar,
   TrendingUp,
@@ -17,7 +17,6 @@ import {
   AlertCircle,
   Heart,
   ChevronRight,
-  Sparkles,
   ArrowUpRight,
   ShieldCheck,
   Award,
@@ -154,7 +153,7 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
   const sortedKids = useMemo(() => {
     return [...filteredKids].sort((a, b) => {
       let comp = 0;
-      if (sortField === 'tag') comp = a.kid_tag.localeCompare(b.kid_tag);
+      if (sortField === 'tag') comp = a.kid_tag.localeCompare(b.kid_tag, undefined, { numeric: true });
       else if (sortField === 'breed') comp = a.breed.localeCompare(b.breed);
       else if (sortField === 'dob') comp = a.dob.localeCompare(b.dob);
       else if (sortField === 'birth_weight') comp = (a.birth_weight_kg || 0) - (b.birth_weight_kg || 0);
@@ -196,22 +195,43 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
     e.preventDefault();
     if (!newTag.trim() || !newBreed.trim()) return;
 
+    const cleanTag = newTag.trim().toUpperCase();
+    const cleanName = newName.trim() || undefined;
+    const cleanBreed = newBreed.trim();
+    const birthWeight = parseFloat(newBirthWeight) || 3.5;
+
     await addKidGrowthRecord({
-      kid_tag: newTag.trim().toUpperCase(),
-      kid_name: newName.trim() || undefined,
+      kid_tag: cleanTag,
+      kid_name: cleanName,
       gender: newGender,
-      breed: newBreed.trim(),
+      breed: cleanBreed,
       dob: newDob,
       dam_tag: newDamTag.trim() || undefined,
       dam_name: newDamName.trim() || undefined,
       sire_tag: newSireTag.trim() || undefined,
       sire_name: newSireName.trim() || undefined,
-      birth_weight_kg: parseFloat(newBirthWeight) || 3.5,
+      birth_weight_kg: birthWeight,
       thirty_day_weight_kg: newThirtyDayWeight ? parseFloat(newThirtyDayWeight) : undefined,
       target_weaning_weight_kg: newTargetWeaningWeight ? parseFloat(newTargetWeaningWeight) : 15.0,
       status: newStatus,
       notes: newNotes.trim() || undefined,
     });
+
+    // Also register in main herd records if not already present
+    const existingGoat = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
+    if (!existingGoat) {
+      await addGoat({
+        tag_number: cleanTag,
+        name: cleanName,
+        breed: cleanBreed,
+        gender: newGender,
+        dob: newDob,
+        weight_kg: birthWeight,
+        status: 'Active',
+        dam_tag: newDamTag.trim() || undefined,
+        sire_tag: newSireTag.trim() || undefined,
+      });
+    }
 
     // Reset Form
     setNewTag('');
@@ -291,10 +311,10 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-800 flex items-center justify-center text-amber-700 dark:text-amber-400">
-              <Baby className="w-5 h-5" />
+              <PawPrint className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-stone-900 dark:text-white">
+              <h2 className="text-xl font-medium text-stone-900 dark:text-white">
                 Kid Growth & Weaning Tracker
               </h2>
               <p className="text-xs text-stone-500 dark:text-stone-400">
@@ -422,8 +442,8 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
       <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl overflow-hidden shadow-xs">
         {filteredKids.length === 0 ? (
           <div className="text-center py-16 px-4 space-y-3">
-            <Baby className="w-12 h-12 text-stone-300 dark:text-stone-600 mx-auto" />
-            <h4 className="text-base font-bold text-stone-700 dark:text-stone-300">
+            <PawPrint className="w-12 h-12 text-stone-300 dark:text-stone-600 mx-auto" />
+            <h4 className="text-base font-medium text-stone-700 dark:text-stone-300">
               No kid records found
             </h4>
             <p className="text-xs text-stone-400 max-w-sm mx-auto">
@@ -562,14 +582,14 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
 
                       <td className="py-3.5 px-4">
                         <span className="font-mono font-bold text-stone-900 dark:text-white">
-                          {kid.birth_weight_kg} kg
+                          {formatWeight(kid.birth_weight_kg)}
                         </span>
                       </td>
 
                       <td className="py-3.5 px-4">
                         {kid.thirty_day_weight_kg ? (
                           <span className="font-mono font-bold text-stone-800 dark:text-stone-200">
-                            {kid.thirty_day_weight_kg} kg
+                            {formatWeight(kid.thirty_day_weight_kg)}
                           </span>
                         ) : (
                           <span className="text-stone-400 italic text-[11px]">Not logged</span>
@@ -679,8 +699,8 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 my-8">
             <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
               <div className="flex items-center gap-2">
-                <Baby className="w-5 h-5 text-amber-600" />
-                <h3 className="text-lg font-black text-stone-900 dark:text-white">
+                <PawPrint className="w-5 h-5 text-amber-600" />
+                <h3 className="text-lg font-medium text-stone-900 dark:text-white">
                   Register Newborn or Nursery Kid
                 </h3>
               </div>

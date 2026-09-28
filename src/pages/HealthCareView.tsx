@@ -9,7 +9,6 @@ import {
   HeartPulse,
   ShieldCheck,
   ArrowRight,
-  Sparkles,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -222,7 +221,7 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
 
                   <div className="flex flex-col items-end gap-1">
                     {item.is_pregnant || item.fetal_age_days ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E7F4EE] text-[#0F6E56] dark:bg-[#04342C] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
                         Pregnant
                       </span>
                     ) : isCritical ? (
@@ -278,7 +277,7 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
                         <span className="text-stone-400 text-[10px] uppercase block">Gestation / Fetal Age</span>
                         {item.fetal_age_days ? (
                           <div className="mt-0.5">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E7F4EE] text-[#0F6E56] dark:bg-[#04342C] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
                               {item.fetal_age_days}d gestation
                             </span>
                           </div>
@@ -360,7 +359,7 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
                             {item.condition || <span className="italic text-[#b7bab2] font-normal">—</span>}
                           </div>
                           {item.is_pregnant || item.fetal_age_days ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-200">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-[#E7F4EE] text-[#0F6E56] dark:bg-[#04342C] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
                               Pregnant
                             </span>
                           ) : isCritical ? (
@@ -387,7 +386,7 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
                       <td className="px-6 py-[15px]">
                         {item.fetal_age_days ? (
                           <div className="space-y-1">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E7F4EE] text-[#0F6E56] dark:bg-[#04342C] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
                               {item.fetal_age_days}d gestation
                             </span>
                             <button

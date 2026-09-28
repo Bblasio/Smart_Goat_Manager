@@ -1,17 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import {
+  PawPrint,
   Users,
   Baby,
   Activity,
   AlertTriangle,
+  AlertCircle,
   TrendingUp,
   PieChart as PieIcon,
   BarChart3,
   Calendar,
-  Sparkles,
   ChevronRight,
-  Milk,
+  Droplet,
   Stethoscope,
   ArrowUpRight,
   FileSpreadsheet,
@@ -452,26 +453,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div>
         {/* Farmer Profile Completion Notification for Newly Created / Incomplete Accounts */}
         {isProfileIncomplete && (
-          <div className="mt-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-amber-950/40 border border-amber-300 dark:border-amber-800/80 shadow-xs">
+          <div className="mt-6 p-5 sm:p-6 rounded-2xl bg-[#FAEEDA] dark:bg-[#412402] border border-[#E3E1D8] dark:border-[#33322E] shadow-none">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1.5 max-w-2xl">
                 <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-xl bg-amber-500 text-white shadow-2xs">
-                    <Sparkles className="w-4 h-4" />
+                  <span className="p-1.5 rounded-xl bg-[#854F0B] dark:bg-[#EF9F27] text-white">
+                    <AlertCircle className="w-4 h-4" />
                   </span>
-                  <span className="text-xs font-black tracking-wide uppercase text-amber-900 dark:text-amber-200">
+                  <span className="text-xs font-medium tracking-wide uppercase text-[#854F0B] dark:text-[#EF9F27]">
                     Action Required: Complete Farm Profile ({filledCount}/{profileFields.length} Completed • {completionPercentage}%)
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-stone-900 dark:text-white">
+                <h3 className="text-base font-medium text-[#1F1F1D] dark:text-[#F1F0EA]">
                   Finish setting up your farm details to unlock full reports & certificates
                 </h3>
-                <p className="text-xs text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
+                <p className="text-xs text-[#5F5E5A] dark:text-[#B4B2A9] leading-relaxed">
                   Your account is created, but key farm profile details ({missingFields.map(f => f.label).join(', ')}) are not filled yet. Complete your profile to ensure official pedigree export sheets, veterinary receipts, and sales contracts show verified farm contact information.
                 </p>
-                <div className="w-full sm:w-72 bg-amber-200 dark:bg-amber-900/60 rounded-full h-2 overflow-hidden mt-2">
+                <div className="w-full sm:w-72 bg-[#E3E1D8] dark:bg-[#33322E] rounded-full h-2 overflow-hidden mt-2">
                   <div
-                    className="bg-amber-600 dark:bg-amber-500 h-2 rounded-full transition-all duration-500"
+                    className="bg-[#854F0B] dark:bg-[#EF9F27] h-2 rounded-full transition-all duration-500"
                     style={{ width: `${completionPercentage}%` }}
                   />
                 </div>
@@ -481,7 +482,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   type="button"
                   id="btn-dashboard-complete-profile"
                   onClick={onNavigateToProfile}
-                  className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 flex items-center gap-1.5"
+                  className="px-4 py-2.5 bg-[#854F0B] hover:bg-[#6e4109] dark:bg-[#EF9F27] dark:hover:bg-[#db8f1f] text-white dark:text-[#161615] rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5"
                 >
                   <span>Complete Farm Profile</span>
                   <ChevronRight className="w-4 h-4" />
@@ -636,16 +637,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       )}
 
       {/* Featured Banner: Breeding & Kidding Predictor Widget */}
-      <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-stone-900 rounded-2xl p-6 text-white shadow-xs relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-[#0F6E56] dark:bg-[#04342C] rounded-2xl p-6 text-white border border-[#E3E1D8] dark:border-[#33322E] shadow-none relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2 max-w-xl">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#085041] dark:bg-[#085041] text-[#C3E6D6] border border-[#1D9E75]/30">
+            <Activity className="w-3.5 h-3.5 text-[#5DCAA5]" />
             <span>Caprine Gestation Tracker</span>
           </div>
-          <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
+          <h3 className="text-[22px] font-medium leading-[1.3] tracking-tight">
             Breeding & Kidding Date Predictor
           </h3>
-          <p className="text-xs sm:text-sm text-stone-300 leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#E7F4EE]/90 leading-relaxed">
             Input mating dates or veterinarian ultrasound gestation age to forecast delivery windows (±3 days),
             clinical trimester care milestones, and CD/T booster vaccine dates.
           </p>
@@ -653,11 +654,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0">
           {nextDelivery && (
-            <div className="p-3.5 bg-white/10 rounded-xl backdrop-blur-xs border border-white/10 text-left">
-              <div className="text-[11px] text-emerald-200 uppercase font-semibold">
+            <div className="p-3.5 bg-black/20 rounded-xl border border-white/10 text-left">
+              <div className="text-[11px] text-[#C3E6D6] uppercase font-medium">
                 Next Expected Kid ({nextDelivery.female_id})
               </div>
-              <div className="text-lg font-mono font-bold text-white mt-0.5">
+              <div className="text-[18px] font-mono tabular-nums font-medium text-white mt-0.5">
                 {nextDeliveryDays !== null && nextDeliveryDays >= 0
                   ? `In ${nextDeliveryDays} days (${nextDelivery.expected_birth})`
                   : `Overdue: ${nextDelivery.expected_birth}`}
@@ -669,26 +670,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             type="button"
             id="btn-banner-estimator"
             onClick={onNavigateToBreedingEstimator}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-emerald-900 font-bold text-sm hover:bg-stone-100 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-[#0F6E56] font-medium text-sm hover:bg-[#E7F4EE] transition-colors shadow-none"
           >
             <span>Launch Predictor</span>
-            <ArrowUpRight className="w-4 h-4 text-emerald-700" />
+            <ArrowUpRight className="w-4 h-4 text-[#0F6E56]" />
           </button>
         </div>
       </div>
 
       {/* Daily Farm Operations & Bio-Security Protocol (Companion module) */}
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 shadow-xs transition-colors">
+      <div className="bg-white dark:bg-[#1F1F1D] border border-[#E3E1D8] dark:border-[#33322E] rounded-2xl p-6 shadow-none transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] flex items-center justify-center">
               <Activity className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-base font-bold text-stone-900 dark:text-white">
+              <h4 className="text-[18px] font-medium text-[#1F1F1D] dark:text-[#F1F0EA]">
                 Daily Herd Operations & Bio-Security Protocol
               </h4>
-              <p className="text-xs text-stone-500 dark:text-stone-400">
+              <p className="text-[13px] text-[#5F5E5A] dark:text-[#B4B2A9]">
                 Morning & evening livestock management standards
               </p>
             </div>
@@ -697,7 +698,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={onNavigateToTasks}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041] hover:bg-[#C3E6D6] dark:hover:bg-[#085041] text-xs font-medium transition-colors"
             >
               <span>Go to Tasks Hub</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -706,42 +707,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/70 dark:border-stone-700/60">
-            <div className="flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+          <div className="p-4 rounded-xl bg-[#F7F6F2] dark:bg-[#161615] border border-[#E3E1D8] dark:border-[#33322E]">
+            <div className="flex items-center justify-between text-xs font-medium text-[#1F1F1D] dark:text-[#F1F0EA] mb-1">
               <span>🌾 Rumen Nutrition</span>
-              <span className="text-emerald-600 dark:text-emerald-400">Optimal</span>
+              <span className="text-[#3B6D11] dark:text-[#97C459]">Optimal</span>
             </div>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+            <p className="text-[11px] text-[#5F5E5A] dark:text-[#B4B2A9] leading-relaxed">
               Legume hay + dry roughage for rumen flora. Salt lick blocks accessible.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/70 dark:border-stone-700/60">
-            <div className="flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+          <div className="p-4 rounded-xl bg-[#F7F6F2] dark:bg-[#161615] border border-[#E3E1D8] dark:border-[#33322E]">
+            <div className="flex items-center justify-between text-xs font-medium text-[#1F1F1D] dark:text-[#F1F0EA] mb-1">
               <span>💧 Fresh Water Supply</span>
-              <span className="text-teal-600 dark:text-teal-400">Inspected</span>
+              <span className="text-[#0F6E56] dark:text-[#5DCAA5]">Inspected</span>
             </div>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+            <p className="text-[11px] text-[#5F5E5A] dark:text-[#B4B2A9] leading-relaxed">
               Troughs scrubbed & refilled. Clean water stimulates higher daily lactation.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/70 dark:border-stone-700/60">
-            <div className="flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+          <div className="p-4 rounded-xl bg-[#F7F6F2] dark:bg-[#161615] border border-[#E3E1D8] dark:border-[#33322E]">
+            <div className="flex items-center justify-between text-xs font-medium text-[#1F1F1D] dark:text-[#F1F0EA] mb-1">
               <span>🛡️ Biosecurity Protocol</span>
-              <span className="text-emerald-600 dark:text-emerald-400">Active</span>
+              <span className="text-[#0F6E56] dark:text-[#5DCAA5]">Active</span>
             </div>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+            <p className="text-[11px] text-[#5F5E5A] dark:text-[#B4B2A9] leading-relaxed">
               Footbaths at barn entryways. Isolation pens ready for new stock quarantine.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/70 dark:border-stone-700/60">
-            <div className="flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+          <div className="p-4 rounded-xl bg-[#F7F6F2] dark:bg-[#161615] border border-[#E3E1D8] dark:border-[#33322E]">
+            <div className="flex items-center justify-between text-xs font-medium text-[#1F1F1D] dark:text-[#F1F0EA] mb-1">
               <span>🍼 Colostrum Bank</span>
-              <span className="text-purple-600 dark:text-purple-400">Prepared</span>
+              <span className="text-[#0F6E56] dark:text-[#5DCAA5]">Prepared</span>
             </div>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+            <p className="text-[11px] text-[#5F5E5A] dark:text-[#B4B2A9] leading-relaxed">
               Frozen quality colostrum available for newborn kids within first 2-4 hours.
             </p>
           </div>
@@ -750,35 +751,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Farm Overview Metrics */}
       <div>
-        <h3 className="text-base font-bold text-stone-900 dark:text-white mb-4 flex items-center gap-2">
-          <span>🧮 Farm Overview</span>
+        <h3 className="text-[18px] font-medium text-[#1F1F1D] dark:text-[#F1F0EA] mb-4 flex items-center gap-2">
+          <span>Farm Overview</span>
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           {/* Total Goats */}
           <div
             id="metric-total-goats"
             onClick={onNavigateToRecords}
-            className="cursor-pointer bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all shadow-xs"
+            className="cursor-pointer bg-white dark:bg-[#1F1F1D] p-5 rounded-2xl border border-[#E3E1D8] dark:border-[#33322E] hover:border-[#0F6E56] dark:hover:border-[#5DCAA5] transition-all shadow-none"
           >
-            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
+            <div className="text-[12px] font-medium text-[#5F5E5A] dark:text-[#B4B2A9] uppercase tracking-[0.03em] mb-1">
               Total Goats
             </div>
-            <div className="text-3xl font-extrabold text-stone-900 dark:text-white">{totalGoats}</div>
-            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2 flex items-center gap-1">
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium">● In active herd</span>
+            <div className="text-[26px] font-medium font-mono tabular-nums leading-[1.2] text-[#1F1F1D] dark:text-[#F1F0EA]">{totalGoats}</div>
+            <div className="text-[11px] text-[#8A897F] dark:text-[#7C7A72] mt-2 flex items-center gap-1">
+              <span className="text-[#0F6E56] dark:text-[#5DCAA5] font-normal">● In active herd</span>
             </div>
           </div>
 
           {/* Male Goats */}
           <div
             id="metric-male-goats"
-            className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs"
+            className="bg-white dark:bg-[#1F1F1D] p-5 rounded-2xl border border-[#E3E1D8] dark:border-[#33322E] shadow-none"
           >
-            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
+            <div className="text-[12px] font-medium text-[#5F5E5A] dark:text-[#B4B2A9] uppercase tracking-[0.03em] mb-1">
               Male Goats
             </div>
-            <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400">{males}</div>
-            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2">
+            <div className="text-[26px] font-medium font-mono tabular-nums leading-[1.2] text-[#1F1F1D] dark:text-[#F1F0EA]">{males}</div>
+            <div className="text-[11px] text-[#8A897F] dark:text-[#7C7A72] mt-2">
               {totalGoats > 0 ? `${Math.round((males / totalGoats) * 100)}% of herd` : '0%'}
             </div>
           </div>
@@ -786,42 +787,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Female Goats */}
           <div
             id="metric-female-goats"
-            className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs"
+            className="bg-white dark:bg-[#1F1F1D] p-5 rounded-2xl border border-[#E3E1D8] dark:border-[#33322E] shadow-none"
           >
-            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
+            <div className="text-[12px] font-medium text-[#5F5E5A] dark:text-[#B4B2A9] uppercase tracking-[0.03em] mb-1">
               Female Goats
             </div>
-            <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{females}</div>
-            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2">
+            <div className="text-[26px] font-medium font-mono tabular-nums leading-[1.2] text-[#0F6E56] dark:text-[#5DCAA5]">{females}</div>
+            <div className="text-[11px] text-[#8A897F] dark:text-[#7C7A72] mt-2">
               {totalGoats > 0 ? `${Math.round((females / totalGoats) * 100)}% of herd` : '0%'}
             </div>
           </div>
 
-          {/* Active Gestation */}
+          {/* Active Gestation (Replaced purple with brand green per Theme Spec) */}
           <div
             id="metric-pregnant-goats"
             onClick={onNavigateToBreedingEstimator}
-            className="cursor-pointer bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all shadow-xs"
+            className="cursor-pointer bg-white dark:bg-[#1F1F1D] p-5 rounded-2xl border border-[#E3E1D8] dark:border-[#33322E] hover:border-[#0F6E56] dark:hover:border-[#5DCAA5] transition-all shadow-none"
           >
-            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
+            <div className="text-[12px] font-medium text-[#5F5E5A] dark:text-[#B4B2A9] uppercase tracking-[0.03em] mb-1">
               Expectant Does
             </div>
-            <div className="text-3xl font-extrabold text-purple-600 dark:text-purple-400">{pregnantCount}</div>
-            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2 flex items-center gap-1">
-              <span className="text-purple-600 dark:text-purple-400 font-medium">● Gestation active</span>
+            <div className="text-[26px] font-medium font-mono tabular-nums leading-[1.2] text-[#0F6E56] dark:text-[#5DCAA5]">{pregnantCount}</div>
+            <div className="text-[11px] text-[#8A897F] dark:text-[#7C7A72] mt-2 flex items-center gap-1">
+              <span className="text-[#0F6E56] dark:text-[#5DCAA5] font-normal">● Gestation active</span>
             </div>
           </div>
 
           {/* Daily Milk */}
-          <div className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs">
-            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
+          <div className="bg-white dark:bg-[#1F1F1D] p-5 rounded-2xl border border-[#E3E1D8] dark:border-[#33322E] shadow-none">
+            <div className="text-[12px] font-medium text-[#5F5E5A] dark:text-[#B4B2A9] uppercase tracking-[0.03em] mb-1">
               Milk Yield
             </div>
-            <div className="text-3xl font-extrabold text-teal-600 dark:text-teal-400 font-mono">
+            <div className="text-[26px] font-medium text-[#0F6E56] dark:text-[#5DCAA5] font-mono tabular-nums leading-[1.2]">
               {todayMilk > 0 ? `${todayMilk.toFixed(1)}L` : '0.0L'}
             </div>
-            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2 flex items-center gap-1">
-              <Milk className="w-3 h-3 text-teal-500" />
+            <div className="text-[11px] text-[#8A897F] dark:text-[#7C7A72] mt-2 flex items-center gap-1">
+              <Droplet className="w-3 h-3 text-[#0F6E56] dark:text-[#5DCAA5]" />
               <span>Daily production</span>
             </div>
           </div>
@@ -829,14 +830,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Farm Staff */}
           <div
             id="metric-farm-workers"
-            className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs"
+            className="bg-white dark:bg-[#1F1F1D] p-5 rounded-2xl border border-[#E3E1D8] dark:border-[#33322E] shadow-none"
           >
-            <div className="text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider mb-1">
+            <div className="text-[12px] font-medium text-[#5F5E5A] dark:text-[#B4B2A9] uppercase tracking-[0.03em] mb-1">
               Farm Staff
             </div>
-            <div className="text-3xl font-extrabold text-amber-600 dark:text-amber-400">{totalWorkers}</div>
-            <div className="text-xs text-stone-400 dark:text-stone-500 mt-2 flex items-center gap-1">
-              <Users className="w-3 h-3 text-amber-500" />
+            <div className="text-[26px] font-medium font-mono tabular-nums leading-[1.2] text-[#1F1F1D] dark:text-[#F1F0EA]">{totalWorkers}</div>
+            <div className="text-[11px] text-[#8A897F] dark:text-[#7C7A72] mt-2 flex items-center gap-1">
+              <Users className="w-3 h-3 text-[#5F5E5A] dark:text-[#B4B2A9]" />
               <span>Personnel</span>
             </div>
           </div>

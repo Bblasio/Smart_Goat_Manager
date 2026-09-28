@@ -10,7 +10,7 @@ import {
   Plus,
   Filter,
   ArrowRight,
-  Sparkles,
+  Activity,
   Calendar,
   Check,
   RotateCcw,
@@ -421,9 +421,9 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
           type="button"
           id="tab-pending-vac"
           onClick={() => setActiveCategory('vaccination')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
             activeCategory === 'vaccination'
-              ? 'bg-purple-600 text-white shadow-xs'
+              ? 'bg-[#0F6E56] text-white shadow-none'
               : 'text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800'
           }`}
         >
@@ -431,7 +431,7 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
           <span>Vaccinations</span>
           {vacCount > 0 && (
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-              activeCategory === 'vaccination' ? 'bg-purple-800 text-white' : 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
+              activeCategory === 'vaccination' ? 'bg-[#085041] text-white' : 'bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5]'
             }`}>
               {vacCount}
             </span>
@@ -508,14 +508,14 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
             onClick={() => setActiveCategory('breeding')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
               activeCategory === 'breeding'
-                ? 'bg-indigo-600 text-white shadow-xs'
+                ? 'bg-[#0F6E56] text-white shadow-none'
                 : 'text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Activity className="w-3.5 h-3.5" />
             <span>Gestation & Kidding</span>
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-              activeCategory === 'breeding' ? 'bg-indigo-800 text-white' : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+              activeCategory === 'breeding' ? 'bg-[#085041] text-white' : 'bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5]'
             }`}>
               {breedingCount}
             </span>
@@ -541,8 +541,8 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
             const isLogging = isLoggingId === task.id;
 
             // Distinct badge icon and styling by category
-            let categoryIcon = <Syringe className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
-            let categoryBg = 'bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800/80';
+            let categoryIcon = <Syringe className="w-4 h-4 text-[#0F6E56] dark:text-[#5DCAA5]" />;
+            let categoryBg = 'bg-[#E7F4EE] dark:bg-[#04342C] border-[#C3E6D6] dark:border-[#085041]';
             let categoryLabel = 'Vaccination';
 
             if (task.category === 'deworming') {
@@ -558,8 +558,8 @@ export const PendingTasksSection: React.FC<PendingTasksSectionProps> = ({
               categoryBg = 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800/80';
               categoryLabel = 'Clinical Care';
             } else if (task.category === 'breeding') {
-              categoryIcon = <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
-              categoryBg = 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800/80';
+              categoryIcon = <Activity className="w-4 h-4 text-[#0F6E56] dark:text-[#5DCAA5]" />;
+              categoryBg = 'bg-[#E7F4EE] dark:bg-[#04342C] border-[#C3E6D6] dark:border-[#085041]';
               categoryLabel = 'Gestation';
             }
 

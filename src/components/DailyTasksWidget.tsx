@@ -12,7 +12,6 @@ import {
   X,
   AlertCircle,
   RotateCcw,
-  Sparkles,
   ArrowRight,
   Filter,
   Check,
@@ -637,7 +636,7 @@ export const DailyTasksWidget: React.FC<DailyTasksWidgetProps> = ({
                       )}
 
                       {task.isCustom && (
-                        <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-medium text-[#0F6E56] dark:text-[#5DCAA5] bg-[#E7F4EE] dark:bg-[#04342C] border border-[#C3E6D6] dark:border-[#085041] px-1.5 py-0.5 rounded">
                           Custom
                         </span>
                       )}

@@ -11,7 +11,6 @@ import {
   Plus,
   Search,
   RotateCcw,
-  Sparkles,
   Baby,
   Stethoscope,
   Syringe,
@@ -759,7 +758,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
                           )}
 
                           {task.tag === 'Gestation' && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300/60 dark:border-purple-800 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041] flex items-center gap-1">
                               <span>🤰</span>
                               <span>Gestation</span>
                             </span>
@@ -885,7 +884,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
           <div className="space-y-4">
             <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-300 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                <CheckSquare className="w-4 h-4 text-[#0F6E56] dark:text-[#5DCAA5] shrink-0" />
                 <span>
                   <strong>Important Farm Records History:</strong> Displays critical clinical interventions, kidding births, herd sales, and completed high-priority management tasks.
                 </span>
@@ -1059,10 +1058,10 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
                   <button
                     type="button"
                     onClick={() => setNewTag('Gestation')}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-2.5 rounded-xl text-xs font-medium border transition-all text-center flex items-center justify-center gap-1.5 ${
                       newTag === 'Gestation'
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
-                        : 'bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800/70 hover:border-purple-400'
+                        ? 'bg-[#0F6E56] text-white border-[#0F6E56]'
+                        : 'bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border-[#C3E6D6] dark:border-[#085041] hover:border-[#0F6E56]'
                     }`}
                   >
                     <span>🤰</span>
@@ -1073,30 +1072,30 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
 
               {/* Automatic Tag and Protocol Suggestion Banner */}
               {taskSuggestion && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/50 dark:via-teal-950/40 dark:to-emerald-950/50 border border-emerald-300/80 dark:border-emerald-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="p-3.5 rounded-2xl bg-[#E7F4EE] dark:bg-[#04342C] border border-[#C3E6D6] dark:border-[#085041] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-none">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black tracking-wider uppercase text-emerald-800 dark:text-emerald-300">
+                      <span className="text-[10px] font-medium tracking-wider uppercase text-[#0F6E56] dark:text-[#5DCAA5]">
                         ⚡ Auto-Detected Suggestion:
                       </span>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
                           taskSuggestion.suggestedTag === 'Gestation'
-                            ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300/70'
+                            ? 'bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]'
                             : 'bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-300/70'
                         }`}
                       >
                         {taskSuggestion.suggestedTag === 'Gestation' ? '🤰 Gestation' : '🩺 Health Check'}
                       </span>
                     </div>
-                    <p className="text-[11px] text-emerald-900 dark:text-emerald-200 font-medium">
+                    <p className="text-[11px] text-[#085041] dark:text-[#C3E6D6] font-normal">
                       {taskSuggestion.reason}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => applySuggestion(taskSuggestion)}
-                    className="self-start sm:self-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shrink-0 transition-colors shadow-2xs"
+                    className="self-start sm:self-center px-3 py-1.5 bg-[#0F6E56] hover:bg-[#085041] text-white rounded-xl text-xs font-medium shrink-0 transition-colors shadow-none"
                   >
                     Apply Suggestion
                   </button>

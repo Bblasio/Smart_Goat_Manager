@@ -2,137 +2,241 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Brand green ramp */
+  --color-brand-50: #E7F4EE;
+  --color-brand-100: #C3E6D6;
+  --color-brand-400: #1D9E75;
+  --color-brand-600: #0F6E56;
+  --color-brand-800: #085041;
+  --color-brand-900: #04342C;
+}
+
 :root {
-  /* Font Family - Pure Inter */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Theme Tokens — Light Mode */
+  --page-bg: #F7F6F2;
+  --card-surface: #FFFFFF;
+  --border-hairline: #E3E1D8;
+  --text-primary: #1F1F1D;
+  --text-secondary: #5F5E5A;
+  --text-muted: #8A897F;
+  --brand-accent: #0F6E56;
+  --brand-tint-bg: #E7F4EE;
 
-  /* Fixed Type Scale Tokens */
-  --text-xs: 12px;    /* timestamps, tag metadata, captions */
-  --text-sm: 13px;    /* body text, table cells, descriptions */
-  --text-base: 14px;  /* default UI text, form inputs */
-  --text-md: 16px;    /* card titles, nav items */
-  --text-lg: 20px;    /* section headers */
-  --text-xl: 28px;    /* hero stat numbers — e.g. "500", "24°C" */
-  --text-2xl: 32px;   /* page titles */
+  /* Semantic Tokens — Light Mode */
+  --status-success-text: #3B6D11;
+  --status-success-bg: #EAF3DE;
+  --status-warning-text: #854F0B;
+  --status-warning-bg: #FAEEDA;
+  --status-danger-text: #A32D2D;
+  --status-danger-bg: #FCEBEB;
+}
 
-  /* Spacing Scale (4px base unit) */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --space-8: 32px;
+.dark {
+  /* Theme Tokens — Dark Mode */
+  --page-bg: #161615;
+  --card-surface: #1F1F1D;
+  --border-hairline: #33322E;
+  --text-primary: #F1F0EA;
+  --text-secondary: #B4B2A9;
+  --text-muted: #7C7A72;
+  --brand-accent: #5DCAA5;
+  --brand-tint-bg: #04342C;
+
+  /* Semantic Tokens — Dark Mode */
+  --status-success-text: #97C459;
+  --status-success-bg: #173404;
+  --status-warning-text: #EF9F27;
+  --status-warning-bg: #412402;
+  --status-danger-text: #F09595;
+  --status-danger-bg: #501313;
 }
 
 @layer base {
+  *, ::before, ::after {
+    border-color: var(--border-hairline);
+  }
+
   html, body {
-    font-family: var(--font-sans);
-    font-size: var(--text-base);
-    line-height: 1.5;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
     font-weight: 400;
+    background-color: var(--page-bg);
+    color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-feature-settings: 'tnum' 1, 'cv02', 'cv03', 'cv04', 'cv11';
     overflow-x: hidden;
     max-width: 100vw;
     width: 100%;
   }
 
-  /* Consistent Font Weight Standards: 400 (body), 500 (labels/nav), 600 (card titles), 700 (hero numbers, page titles) */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-sans);
+  /* Two weights only: 400 (regular) and 500 (medium). Avoid 300 and 700 bold entirely */
+  b, strong, th, h1, h2, h3, h4, h5, h6 {
+    font-weight: 500;
   }
+
+  /* Universal typography discipline: enforce 500 max weight */
+  .font-bold, .font-semibold, .font-black, .font-extrabold {
+    font-weight: 500 !important;
+  }
+  .font-normal {
+    font-weight: 400 !important;
+  }
+  .font-medium {
+    font-weight: 500 !important;
+  }
+
+  /* Numbers & IDs tabular alignment */
+  .tabular-nums, .font-mono, [data-tabular] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  /* Icon stroke weight discipline (1.5 - 1.75px) */
+  svg.lucide {
+    stroke-width: 1.75px;
+  }
+}
+
+/* Typography Scale Classes per Theme Spec */
+.text-page-title {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.text-section-header {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.text-card-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.text-big-stat {
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.text-body-text {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.text-secondary-text {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.text-micro {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
 }
 
 /* Single StatCard and stat grid utility */
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-4);
+  gap: 16px;
 }
 
 @media (max-width: 640px) {
   .stat-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--space-3);
+    gap: 12px;
   }
 }
 
 @media (max-width: 440px) {
   .stat-grid {
     grid-template-columns: 1fr;
-    gap: var(--space-3);
+    gap: 12px;
   }
 }
 
-/* Consistent Hero Stat Number token across entire app */
 .hero-stat-number {
-  font-size: var(--text-xl) !important;
-  line-height: 1.15 !important;
-  font-weight: 700 !important;
-  font-feature-settings: 'tnum' 1, 'cv05' 1 !important;
+  font-size: 26px !important;
+  line-height: 1.2 !important;
+  font-weight: 500 !important;
   font-variant-numeric: tabular-nums !important;
-  letter-spacing: -0.02em !important;
+  font-feature-settings: 'tnum' 1 !important;
+  letter-spacing: -0.01em !important;
 }
 
-/* Consistent Card Padding standard */
-.standard-card {
-  padding: var(--space-4);
-}
-@media (min-width: 640px) {
-  .standard-card {
-    padding: var(--space-5, 20px);
-  }
-}
-@media (min-width: 1024px) {
-  .standard-card-lg {
-    padding: var(--space-6);
-  }
-}
-
-/* Table row height: min 48px */
-.record-table-grid tr {
-  min-height: 48px;
-}
-.record-table-grid th,
-.record-table-grid td {
-  min-height: 48px;
-  font-size: var(--text-sm);
-  padding-top: var(--space-3);
-  padding-bottom: var(--space-3);
-}
-
-/* Clearly visible spreadsheet grid lines for all records tables */
+/* Table row height: min 48px & hairline borders */
 .record-table-grid {
   border-collapse: collapse !important;
   width: 100%;
-  border: 2px solid #94a3b8 !important;
+  border: 1px solid var(--border-hairline) !important;
+}
+
+.record-table-grid tr {
+  min-height: 48px;
 }
 
 .record-table-grid th {
-  border: 1.5px solid #94a3b8 !important;
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
+  border: 1px solid var(--border-hairline) !important;
+  background-color: var(--page-bg) !important;
+  color: var(--text-primary) !important;
+  font-size: 12px;
+  font-weight: 500;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .record-table-grid td {
-  border: 1.5px solid #cbd5e1 !important;
+  border: 1px solid var(--border-hairline) !important;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
-.dark .record-table-grid {
-  border: 2px solid #64748b !important;
+/* High contrast badge utilities adhering to Theme Spec */
+.badge-success {
+  background-color: var(--status-success-bg);
+  color: var(--status-success-text);
+  border: 1px solid var(--status-success-text);
 }
 
-.dark .record-table-grid th {
-  border: 1.5px solid #64748b !important;
-  background-color: #1e293b !important;
-  color: #f8fafc !important;
+.badge-warning {
+  background-color: var(--status-warning-bg);
+  color: var(--status-warning-text);
+  border: 1px solid var(--status-warning-text);
 }
 
-.dark .record-table-grid td {
-  border: 1.5px solid #475569 !important;
+.badge-danger {
+  background-color: var(--status-danger-bg);
+  color: var(--status-danger-text);
+  border: 1px solid var(--status-danger-text);
 }
 
+.badge-brand {
+  background-color: var(--brand-tint-bg);
+  color: var(--brand-accent);
+  border: 1px solid var(--brand-accent);
+}
+
+/* Print styles */
 @media print {
   @page {
     size: A4 portrait;
@@ -143,7 +247,7 @@
     max-width: 210mm !important;
     background: white !important;
     color: #111 !important;
-    font-size: 10.5pt !important;
+    font-size: 10pt !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -157,18 +261,9 @@
   .record-table-grid {
     border-collapse: collapse !important;
     width: 100% !important;
-    border: 2px solid #334155 !important;
+    border: 1px solid #000 !important;
   }
-  .record-table-grid th {
-    border: 1.5px solid #334155 !important;
-    background-color: #f1f5f9 !important;
-    color: #0f172a !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  .record-table-grid td {
-    border: 1px solid #475569 !important;
-    color: #0f172a !important;
+  .record-table-grid th, .record-table-grid td {
+    border: 1px solid #333 !important;
   }
 }
-

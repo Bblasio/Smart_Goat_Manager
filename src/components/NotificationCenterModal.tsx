@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Bell,
   X,
-  Baby,
+  Activity,
   Syringe,
   Calendar,
   CheckCircle2,
@@ -130,13 +130,13 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               type="button"
               id="filter-notif-breeding"
               onClick={() => setActiveFilter('breeding')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1 transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium inline-flex items-center gap-1 transition-all ${
                 activeFilter === 'breeding'
-                  ? 'bg-purple-600 text-white shadow-2xs'
+                  ? 'bg-[#0F6E56] text-white shadow-none'
                   : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
               }`}
             >
-              <Baby className="w-3.5 h-3.5" />
+              <Activity className="w-3.5 h-3.5" />
               <span>Breeding & Kidding</span>
             </button>
             <button
@@ -172,8 +172,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           {/* SECTION 1: SCHEDULED FOR TODAY */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+              <h4 className="text-xs font-medium uppercase tracking-wider text-[#A32D2D] dark:text-[#F09595] flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#A32D2D] dark:bg-[#F09595]" />
                 <span>Scheduled for Today</span>
                 <span className="text-stone-400 font-normal">({filteredToday.length})</span>
               </h4>
@@ -199,10 +199,10 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   return (
                     <div
                       key={notif.id}
-                      className={`p-4 rounded-2xl border transition-all shadow-xs ${
+                      className={`p-4 rounded-2xl border transition-all shadow-none ${
                         isBreeding
-                          ? 'bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/60'
-                          : 'bg-rose-50/60 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/60'
+                          ? 'bg-[#E7F4EE] dark:bg-[#04342C] border-[#C3E6D6] dark:border-[#085041]'
+                          : 'bg-[#FCEBEB] dark:bg-[#501313] border-[#FCEBEB] dark:border-[#501313]'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -210,12 +210,12 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                           <div
                             className={`p-2.5 rounded-xl shrink-0 mt-0.5 ${
                               isBreeding
-                                ? 'bg-purple-600 text-white shadow-2xs'
-                                : 'bg-rose-600 text-white shadow-2xs'
+                                ? 'bg-[#0F6E56] text-white shadow-none'
+                                : 'bg-[#A32D2D] text-white shadow-none'
                             }`}
                           >
                             {isBreeding ? (
-                              <Baby className="w-5 h-5" />
+                              <Activity className="w-5 h-5" />
                             ) : (
                               <Syringe className="w-5 h-5" />
                             )}
@@ -223,10 +223,10 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                           <div>
                             <div className="flex flex-wrap items-center gap-2 mb-1">
                               <span
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider ${
                                   isBreeding
-                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/80 dark:text-purple-200'
-                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-900/80 dark:text-rose-200'
+                                    ? 'bg-[#C3E6D6] text-[#085041] dark:bg-[#085041] dark:text-[#C3E6D6]'
+                                    : 'bg-[#FCEBEB] text-[#A32D2D] dark:bg-[#501313] dark:text-[#F09595]'
                                 }`}
                               >
                                 {notif.badge}
@@ -306,11 +306,11 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                         <div
                           className={`p-2 rounded-lg shrink-0 ${
                             isBreeding
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300'
+                              ? 'bg-[#E7F4EE] text-[#0F6E56] dark:bg-[#04342C] dark:text-[#5DCAA5]'
                               : 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300'
                           }`}
                         >
-                          {isBreeding ? <Baby className="w-4 h-4" /> : <Syringe className="w-4 h-4" />}
+                          {isBreeding ? <Activity className="w-4 h-4" /> : <Syringe className="w-4 h-4" />}
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-0.5">

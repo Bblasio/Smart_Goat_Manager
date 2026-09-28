@@ -14,7 +14,6 @@ import {
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
-  Sparkles,
   Stethoscope,
   Wrench,
   Tag,
@@ -329,8 +328,8 @@ export const FinancialTrackingModule: React.FC = () => {
         );
       case 'Equipment':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-900 border border-purple-200">
-            <Wrench className="w-3 h-3 text-purple-600" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-100 text-stone-800 border border-stone-200">
+            <Wrench className="w-3 h-3 text-stone-600" />
             Equipment
           </span>
         );
@@ -486,15 +485,15 @@ export const FinancialTrackingModule: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-3.5 bg-purple-50/60 rounded-xl border border-purple-200/80">
-          <div className="flex items-center gap-1.5 text-purple-900 text-xs font-semibold">
-            <Wrench className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+        <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
+          <div className="flex items-center gap-1.5 text-stone-800 text-xs font-medium">
+            <Wrench className="w-3.5 h-3.5 text-stone-600 shrink-0" />
             <span className="truncate">Equipment &amp; Tools</span>
           </div>
-          <div className="text-base font-bold text-purple-950 font-mono mt-1">
+          <div className="text-base font-medium text-stone-900 font-mono tabular-nums mt-1">
             {formatCurrency(categoryTotals.Equipment)}
           </div>
-          <div className="text-[11px] text-purple-700 mt-0.5">
+          <div className="text-[11px] text-stone-500 mt-0.5">
             {totalExpenses > 0 ? Math.round((categoryTotals.Equipment / totalExpenses) * 100) : 0}% of expenses
           </div>
         </div>
@@ -586,9 +585,9 @@ export const FinancialTrackingModule: React.FC = () => {
               type="button"
               id="filter-equipment-only"
               onClick={() => setActiveFilter('equipment')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
                 activeFilter === 'equipment'
-                  ? 'bg-purple-700 text-white shadow-xs'
+                  ? 'bg-[#0F6E56] text-white shadow-xs'
                   : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
               }`}
             >

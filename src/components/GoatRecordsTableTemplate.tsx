@@ -234,7 +234,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
   // Sorting
   const sortedGoats = [...goats].sort((a, b) => {
     let comp = 0;
-    if (sortField === 'tag') comp = a.tag_number.localeCompare(b.tag_number);
+    if (sortField === 'tag') comp = a.tag_number.localeCompare(b.tag_number, undefined, { numeric: true });
     else if (sortField === 'status') comp = (a.status || '').localeCompare(b.status || '');
     else if (sortField === 'breed') comp = a.breed.localeCompare(b.breed);
     else if (sortField === 'gender') comp = a.gender.localeCompare(b.gender);
@@ -311,7 +311,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                       </span>
                     )}
                     {healthInfo.status === 'Pregnant' && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E7F4EE] text-[#0F6E56] dark:bg-[#04342C] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
                         Pregnant
                       </span>
                     )}
@@ -356,7 +356,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                               effectiveStatus === 'Active'
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300'
                                 : effectiveStatus === 'Pregnant'
-                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300'
+                                ? 'bg-[#E7F4EE] text-[#0F6E56] dark:bg-[#04342C] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]'
                                 : effectiveStatus === 'Sold'
                                 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300'
                                 : effectiveStatus === 'Quarantine'
@@ -595,8 +595,8 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                             </span>
                           )}
                           {effectiveStatus === 'Pregnant' && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300 dark:border-purple-800 shadow-2xs">
-                              <span className="w-2 h-2 rounded-full bg-purple-500" />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#E7F4EE] text-[#0F6E56] dark:bg-[#04342C] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041] shadow-none">
+                              <span className="w-2 h-2 rounded-full bg-[#0F6E56] dark:bg-[#5DCAA5]" />
                               Pregnant
                             </span>
                           )}

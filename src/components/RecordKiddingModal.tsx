@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useToast } from '../context/ToastContext';
 import { useUnits } from '../context/UnitsContext';
-import { BreedingRecord, GoatRecord } from '../types';
+import { BreedingRecord, GoatRecord, KidGrowthRecord } from '../types';
 import {
   X,
   Calendar,
@@ -11,7 +11,6 @@ import {
   Lock,
   Plus,
   Trash2,
-  Sparkles,
   Scale,
   Dna,
   Heart
@@ -41,7 +40,19 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
   breedingRecord,
   onSuccess,
 }) => {
-  const { goats, breeding, updateBreeding, updateGoat, addGoat, addKidGrowthRecord, addHealth, kidGrowthRecords } = useFarm();
+  const {
+    goats,
+    breeding,
+    updateBreeding,
+    updateGoat,
+    addGoat,
+    addMultipleGoats,
+    addKidGrowthRecord,
+    addMultipleKidGrowthRecords,
+    updateKidGrowthRecord,
+    addHealth,
+    kidGrowthRecords
+  } = useFarm();
   const { showToast } = useToast();
   const { weightUnit } = useUnits();
 
@@ -94,10 +105,74 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
 
   const defaultBreed = damGoat?.breed || sireGoat?.breed || 'Boer';
 
-  // Initialize form whenever modal opens with a new breeding record
+  // Initialize form whenever modal opens with a breeding record: KEEP all registered kids intact
   useEffect(() => {
     if (isOpen && breedingRecord) {
-      setDeliveryDate(todayStr);
+      const actualOrToday = breedingRecord.actual_birth_date || todayStr;
+      setDeliveryDate(actualOrToday);
+
+      const femaleTag = breedingRecord.female_id.trim().toUpperCase();
+
+      // Priority 1: breedingRecord has registered_kids array
+      if (breedingRecord.registered_kids && breedingRecord.registered_kids.length > 0) {
+        setKids(
+          breedingRecord.registered_kids.map((k, idx) => ({
+            id: k.id || `kid-reg-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+            tag: k.tag,
+            name: k.name || '',
+            gender: (k.gender === 'Male' ? 'Male' : 'Female') as ('Male' | 'Female'),
+            birthWeight: String(k.birthWeight || '3.5'),
+            breed: k.breed || defaultBreed,
+            notes: k.notes || '',
+          }))
+        );
+        return;
+      }
+
+      // Priority 2: breedingRecord has kid_tags array
+      if (breedingRecord.kid_tags && breedingRecord.kid_tags.length > 0) {
+        const found = breedingRecord.kid_tags.map((tag, idx) => {
+          const matchedNursery = kidGrowthRecords.find(k => k.kid_tag.toUpperCase() === tag.toUpperCase());
+          const matchedGoat = goats.find(g => g.tag_number.toUpperCase() === tag.toUpperCase());
+          return {
+            id: matchedNursery?.id || matchedGoat?.id || `kid-tag-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+            tag: tag,
+            name: matchedNursery?.kid_name || matchedGoat?.name || '',
+            gender: (matchedNursery?.gender || matchedGoat?.gender || (idx % 2 === 1 ? 'Male' : 'Female')) as ('Male' | 'Female'),
+            birthWeight: String(matchedNursery?.birth_weight_kg || matchedGoat?.weight_kg || '3.5'),
+            breed: matchedNursery?.breed || matchedGoat?.breed || defaultBreed,
+            notes: matchedNursery?.notes || '',
+          };
+        });
+        setKids(found);
+        return;
+      }
+
+      // Priority 3: Match from kidGrowthRecords by dam_tag and delivery/expected date
+      const matchedKidsFromNursery = kidGrowthRecords.filter(k => {
+        if (!k.dam_tag) return false;
+        if (k.dam_tag.toUpperCase() !== femaleTag) return false;
+        if (breedingRecord.actual_birth_date && k.dob === breedingRecord.actual_birth_date) return true;
+        if (k.dob === breedingRecord.expected_birth) return true;
+        return false;
+      });
+
+      if (matchedKidsFromNursery.length > 0) {
+        setKids(
+          matchedKidsFromNursery.map((k, idx) => ({
+            id: k.id || `kid-match-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+            tag: k.kid_tag,
+            name: k.kid_name || '',
+            gender: k.gender,
+            birthWeight: String(k.birth_weight_kg || '3.5'),
+            breed: k.breed || defaultBreed,
+            notes: k.notes || '',
+          }))
+        );
+        return;
+      }
+
+      // Priority 4: Fresh enrollment with 1 newborn kid
       setKids([
         {
           id: 'kid-' + Math.random().toString(36).slice(2, 7),
@@ -209,12 +284,24 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
     try {
       const femaleTag = breedingRecord.female_id.trim().toUpperCase();
       const maleTag = breedingRecord.male_id.trim().toUpperCase();
+      const kidTags = kids.map(k => k.tag.trim().toUpperCase());
+      const registeredKidsSummary = kids.map(k => ({
+        id: k.id,
+        tag: k.tag.trim().toUpperCase(),
+        name: k.name.trim() || undefined,
+        gender: k.gender,
+        birthWeight: k.birthWeight,
+        breed: k.breed.trim() || defaultBreed,
+        notes: k.notes.trim() || undefined,
+      }));
 
-      // 1. Update Breeding Record to 'Delivered'
+      // 1. Update Breeding Record to 'Delivered' with complete kid details preserved
       await updateBreeding(breedingRecord.id, {
         status: 'Delivered',
         actual_birth_date: deliveryDate,
         kids_born: kids.length,
+        kid_tags: kidTags,
+        registered_kids: registeredKidsSummary,
         notes: `Delivery recorded on ${deliveryDate}. ${kids.length} newborn kid(s) born: ${kids
           .map(k => `${k.tag.trim().toUpperCase()}${k.name ? ` (${k.name})` : ''} [${k.gender}]`)
           .join(', ')}. ${gestationVarianceInfo}`,
@@ -243,9 +330,12 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
         vet_name: 'Attended Kidding',
       });
 
-      // 4. Register each newborn kid into:
-      // A) Herd Records (`addGoat`) - so they appear in Herd & Farm Records table & cards with Sire & Dam
-      // B) Nursery & Growth Tracker (`addKidGrowthRecord`) - so they appear in Nursery tracking
+      // 4. Register EVERY newborn kid into BOTH:
+      // A) Herd Records (`addGoat` / `addMultipleGoats`) - so they appear in Herd & Farm Records table & cards with Sire & Dam
+      // B) Nursery & Growth Tracker (`addKidGrowthRecord` / `addMultipleKidGrowthRecords`) - so they appear in Nursery tracking
+      const newGoatsToEnroll: Omit<GoatRecord, 'id' | 'created_at'>[] = [];
+      const newKidsToEnroll: Omit<KidGrowthRecord, 'id' | 'created_at'>[] = [];
+
       for (const kid of kids) {
         const cleanTag = kid.tag.trim().toUpperCase();
         const cleanName = kid.name.trim() || undefined;
@@ -254,24 +344,72 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
         // Convert to standard kg if user entered in lbs
         const weightKg = weightUnit === 'lbs' ? Number((rawWeight / 2.20462).toFixed(2)) : rawWeight;
 
-        // Register in Nursery / Kid Growth Tracker
-        await addKidGrowthRecord({
-          kid_tag: cleanTag,
-          kid_name: cleanName,
-          gender: kid.gender,
-          breed: kidBreed,
-          dob: deliveryDate,
-          dam_tag: femaleTag,
-          sire_tag: maleTag,
-          birth_weight_kg: weightKg,
-          target_weaning_weight_kg: 15.0,
-          status: 'Nursing',
-          notes: kid.notes.trim() || `Born via confirmed delivery on ${deliveryDate} from Dam ${femaleTag} & Sire ${maleTag}`,
-        });
+        // Check if kid already exists in goats
+        const existingGoat = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
+        if (existingGoat) {
+          await updateGoat(existingGoat.id, {
+            name: cleanName || existingGoat.name,
+            breed: kidBreed,
+            gender: kid.gender,
+            dob: deliveryDate,
+            weight_kg: weightKg,
+            dam_tag: femaleTag,
+            sire_tag: maleTag,
+          });
+        } else {
+          newGoatsToEnroll.push({
+            tag_number: cleanTag,
+            name: cleanName,
+            breed: kidBreed,
+            gender: kid.gender,
+            dob: deliveryDate,
+            weight_kg: weightKg,
+            status: 'Active',
+            dam_tag: femaleTag,
+            sire_tag: maleTag,
+          });
+        }
+
+        // Check if kid already exists in kidGrowthRecords
+        const existingKidGrowth = kidGrowthRecords.find(k => k.kid_tag.toUpperCase() === cleanTag);
+        if (existingKidGrowth) {
+          await updateKidGrowthRecord(existingKidGrowth.id, {
+            kid_name: cleanName,
+            gender: kid.gender,
+            breed: kidBreed,
+            dob: deliveryDate,
+            dam_tag: femaleTag,
+            sire_tag: maleTag,
+            birth_weight_kg: weightKg,
+            notes: kid.notes.trim() || `Born via confirmed delivery on ${deliveryDate} from Dam ${femaleTag} & Sire ${maleTag}`,
+          });
+        } else {
+          newKidsToEnroll.push({
+            kid_tag: cleanTag,
+            kid_name: cleanName,
+            gender: kid.gender,
+            breed: kidBreed,
+            dob: deliveryDate,
+            dam_tag: femaleTag,
+            sire_tag: maleTag,
+            birth_weight_kg: weightKg,
+            target_weaning_weight_kg: 15.0,
+            status: 'Nursing',
+            notes: kid.notes.trim() || `Born via confirmed delivery on ${deliveryDate} from Dam ${femaleTag} & Sire ${maleTag}`,
+          });
+        }
+      }
+
+      // Batch enroll new goats and nursery kids
+      if (newGoatsToEnroll.length > 0) {
+        await addMultipleGoats(newGoatsToEnroll);
+      }
+      if (newKidsToEnroll.length > 0) {
+        await addMultipleKidGrowthRecords(newKidsToEnroll);
       }
 
       showToast(
-        `Kidding confirmed! Dam ${femaleTag} is now Active. ${kids.length} newborn kid(s) enrolled in nursery records.`,
+        `Kidding confirmed! Dam ${femaleTag} is now Active. ${kids.length} newborn kid(s) saved and enrolled in both Herd & Nursery records.`,
         'success'
       );
 
@@ -412,7 +550,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
           {/* Kids List Section */}
           <div className="space-y-3">
             <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl text-xs text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>
                 Mother <strong>({breedingRecord.female_id})</strong> and Father <strong>({breedingRecord.male_id})</strong> are linked automatically. Just confirm or enter the kid's <strong>Ear Tag</strong> below to enroll.
               </span>
@@ -473,7 +611,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
                           onClick={() => handleUpdateKid(idx, 'tag', generateKidTag(kids.filter((_, i) => i !== idx).map(k => k.tag)))}
                           className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
                         >
-                          <Sparkles className="w-2.5 h-2.5" />
+                          <Tag className="w-2.5 h-2.5" />
                           <span>Generate</span>
                         </button>
                       </div>

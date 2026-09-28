@@ -228,23 +228,23 @@ export const FeedSupplyAlertWidget: React.FC<FeedSupplyAlertWidgetProps> = ({
             <div
               key={`exp-${m.id}`}
               onClick={onNavigateToFeedSupply}
-              className="cursor-pointer p-3 rounded-xl bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 flex items-center justify-between hover:bg-purple-100/70 transition-colors"
+              className="cursor-pointer p-3 rounded-xl bg-[#FAEEDA] dark:bg-[#412402] border border-[#E3E1D8] dark:border-[#33322E] flex items-center justify-between hover:border-[#854F0B] dark:hover:border-[#EF9F27] transition-colors"
             >
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-lg bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-300">
+                <div className="p-1.5 rounded-lg bg-[#FAEEDA] dark:bg-[#412402] text-[#854F0B] dark:text-[#EF9F27]">
                   <Clock className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                  <div className="text-xs font-medium text-[#1F1F1D] dark:text-[#F1F0EA]">
                     {m.name} Expiring Soon
                   </div>
-                  <div className="text-[11px] text-purple-700 dark:text-purple-300">
+                  <div className="text-[11px] text-[#854F0B] dark:text-[#EF9F27]">
                     Expires on {m.expiry_date} (Batch: {m.batch_number || 'N/A'})
                   </div>
                 </div>
               </div>
 
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 dark:text-purple-300">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-[#854F0B] dark:text-[#EF9F27]">
                 <span>Review</span>
                 <ArrowRight className="w-3 h-3" />
               </span>

@@ -7,12 +7,11 @@ import {
   Bell,
   ChevronRight,
   ChevronDown,
-  Sparkles,
-  ClipboardList,
-  HeartPulse,
-  Milk,
+  PawPrint,
+  Stethoscope,
+  Droplet,
+  Activity,
   DollarSign,
-  Baby,
   Building2,
   Settings
 } from 'lucide-react';
@@ -75,10 +74,10 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   };
 
   const addOptions: { label: string; type: RecordType; icon: React.ComponentType<{ className?: string }> }[] = [
-    { label: 'Goat / Kid', type: 'goat', icon: ClipboardList },
-    { label: 'Health Record', type: 'health', icon: HeartPulse },
-    { label: 'Daily Milk Yield', type: 'milk', icon: Milk },
-    { label: 'Breeding Mating', type: 'breeding', icon: Baby },
+    { label: 'Goat / Kid', type: 'goat', icon: PawPrint },
+    { label: 'Health Record', type: 'health', icon: Stethoscope },
+    { label: 'Daily Milk Yield', type: 'milk', icon: Droplet },
+    { label: 'Breeding Mating', type: 'breeding', icon: Activity },
     { label: 'Goat Sale', type: 'sale', icon: DollarSign },
     { label: 'Expense', type: 'expense', icon: DollarSign },
   ];

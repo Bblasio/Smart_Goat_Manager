@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import { Loader2 } from 'lucide-react';
 
 interface AppLaunchLoaderProps {
@@ -59,21 +58,14 @@ export const AppLaunchLoader: React.FC<AppLaunchLoaderProps> = ({
       <div className="fixed inset-0 z-50 pointer-events-none flex items-start justify-center pt-8">
         {/* Top Progress bar */}
         <div className="fixed top-0 left-0 right-0 h-1 bg-stone-200/50 dark:bg-stone-800/50 overflow-hidden z-50">
-          <motion.div
-            className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300"
-            initial={{ width: '0%' }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
+          <div
+            className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 transition-all duration-300 ease-out"
+            style={{ width: `${progress}%` }}
           />
         </div>
 
         {/* Floating Pill with rotating loader */}
-        <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -15, scale: 0.95 }}
-          className="pointer-events-auto bg-stone-900/95 text-white px-5 py-2.5 rounded-2xl shadow-2xl border border-emerald-500/40 backdrop-blur-md flex items-center gap-3"
-        >
+        <div className="pointer-events-auto bg-stone-900/95 text-white px-5 py-2.5 rounded-2xl shadow-2xl border border-emerald-500/40 backdrop-blur-md flex items-center gap-3 transition-all duration-200">
           {/* Rotating Circular Spinner */}
           <div className="relative flex items-center justify-center w-6 h-6 shrink-0">
             <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
@@ -84,7 +76,7 @@ export const AppLaunchLoader: React.FC<AppLaunchLoaderProps> = ({
               {statusMessage || 'Loading Farm Records...'}
             </span>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -100,54 +92,36 @@ export const AppLaunchLoader: React.FC<AppLaunchLoaderProps> = ({
         {/* Elegant Multi-Ring Rotating Loading Animation */}
         <div className="relative flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28">
           {/* Subtle Ambient Pulse */}
-          <motion.div
-            animate={{
-              scale: [1, 1.25, 1],
-              opacity: [0.15, 0.35, 0.15],
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: 2,
-              ease: 'easeInOut',
-            }}
-            className="absolute -inset-3 rounded-full bg-emerald-500/20 blur-xl pointer-events-none"
-          />
+          <div className="absolute -inset-3 rounded-full bg-emerald-500/20 blur-xl pointer-events-none animate-pulse" />
 
           {/* Outer Rotating Dashed Ring */}
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-            className="absolute inset-0 rounded-full border-2 border-dashed border-emerald-500/40"
+          <div
+            className="absolute inset-0 rounded-full border-2 border-dashed border-emerald-500/40 animate-spin"
+            style={{ animationDuration: '6s' }}
           />
 
           {/* Middle Rotating Gradient Ring (Reverse direction) */}
-          <motion.div
-            animate={{ rotate: -360 }}
-            transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-            className="absolute inset-2 rounded-full border-2 border-t-emerald-400 border-r-teal-400 border-b-transparent border-l-transparent shadow-lg"
+          <div
+            className="absolute inset-2 rounded-full border-2 border-t-emerald-400 border-r-teal-400 border-b-transparent border-l-transparent shadow-lg animate-spin"
+            style={{ animationDirection: 'reverse', animationDuration: '2.5s' }}
           />
 
-          {/* Inner Glowing Core with Jamunapari System Emblem */}
-          <motion.div
-            animate={{ scale: [0.92, 1.06, 0.92] }}
-            transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
-            className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-400/80 flex items-center justify-center shadow-lg bg-stone-900"
-          >
+          {/* Inner Glowing Core with Farm Emblem */}
+          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-400/80 flex items-center justify-center shadow-lg bg-stone-900">
             <img
               src={logoUrl || "/app.png"}
-              alt="Smart Goat Management"
+              alt={farmName || "Smart Goat Management"}
               className="w-full h-full object-cover"
             />
-          </motion.div>
+          </div>
         </div>
 
         {/* Smooth Animated Progress Bar */}
         <div className="w-full space-y-2 pt-2">
           <div className="w-full h-2 bg-stone-800 rounded-full overflow-hidden border border-stone-700/60 p-0.5 shadow-inner">
-            <motion.div
-              className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 rounded-full"
+            <div
+              className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
-              transition={{ duration: 0.3 }}
             />
           </div>
 

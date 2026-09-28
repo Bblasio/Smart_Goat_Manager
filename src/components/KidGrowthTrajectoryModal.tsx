@@ -7,7 +7,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Award,
-  Sparkles,
   Printer,
   Info
 } from 'lucide-react';
@@ -206,7 +205,7 @@ export const KidGrowthTrajectoryModal: React.FC<KidGrowthTrajectoryModalProps> =
             <div className="text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-400">
               Projected Weaning (90d)
             </div>
-            <div className="text-xl font-black text-purple-600 dark:text-purple-400 mt-1">
+            <div className="text-[24px] font-medium font-mono tabular-nums leading-[1.2] text-[#0F6E56] dark:text-[#5DCAA5] mt-1">
               {projectedWeaningWeight} <span className="text-xs font-normal text-stone-500">kg</span>
             </div>
             <div className="text-[10px] text-stone-400 mt-0.5">Target: 16.0+ kg</div>

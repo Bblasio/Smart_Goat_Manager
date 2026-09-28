@@ -213,11 +213,12 @@ export const generateRecordsPrintableHTML = (options: PDFExportOptions): string 
       font-size: 9px;
       font-weight: 600;
     }
-    .badge-emerald { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-    .badge-amber { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-    .badge-rose { background: #ffe4e6; color: #9f1239; border: 1px solid #fecdd3; }
-    .badge-purple { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-    .badge-blue { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+    .badge-brand { background: #E7F4EE; color: #0F6E56; border: 1px solid #C3E6D6; }
+    .badge-emerald { background: #E7F4EE; color: #0F6E56; border: 1px solid #C3E6D6; }
+    .badge-amber { background: #FAEEDA; color: #854F0B; border: 1px solid #FAEEDA; }
+    .badge-rose { background: #FCEBEB; color: #A32D2D; border: 1px solid #FCEBEB; }
+    .badge-purple { background: #E7F4EE; color: #0F6E56; border: 1px solid #C3E6D6; }
+    .badge-blue { background: #E7F4EE; color: #0F6E56; border: 1px solid #C3E6D6; }
 
     .summary-strip {
       display: flex;
@@ -330,10 +331,10 @@ export const generateRecordsPrintableHTML = (options: PDFExportOptions): string 
                       const str = val !== null && val !== undefined ? String(val) : '—';
                       // Highlight common statuses
                       if (str === 'Healthy' || str === 'Active') {
-                        return `<td><span class="badge-pill badge-emerald">${escapeHTML(str)}</span></td>`;
+                        return `<td><span class="badge-pill badge-brand">${escapeHTML(str)}</span></td>`;
                       }
                       if (str === 'Pregnant' || str === 'Female (Doe)') {
-                        return `<td><span class="badge-pill badge-purple">${escapeHTML(str)}</span></td>`;
+                        return `<td><span class="badge-pill badge-brand">${escapeHTML(str)}</span></td>`;
                       }
                       if (str === 'Male (Buck)') {
                         return `<td><span class="badge-pill badge-blue">${escapeHTML(str)}</span></td>`;

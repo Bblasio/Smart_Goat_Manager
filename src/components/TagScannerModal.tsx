@@ -10,8 +10,7 @@ import {
   AlertCircle,
   Search,
   Tag,
-  ArrowRight,
-  Sparkles
+  ArrowRight
 } from 'lucide-react';
 import { GoatRecord } from '../types';
 

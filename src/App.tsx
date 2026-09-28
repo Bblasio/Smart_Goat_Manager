@@ -25,7 +25,8 @@ import { AppFooter } from './components/AppFooter';
 import { RecordType, AppView } from './types';
 import { getFarmNotifications } from './utils/notificationHelper';
 import { UnitsProvider } from './context/UnitsContext';
-import { Menu, Sparkles, X, Bell, Search, WifiOff } from 'lucide-react';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { Menu, X, Bell, Search, WifiOff } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
   const { isAuthenticated, authLoading, isDemoMode, farmName, user, logout, goats, breeding, health, isOnline } = useFarm();
@@ -407,15 +408,17 @@ const MainLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <FarmProvider>
-        <UnitsProvider>
-          <ToastProvider>
-            <MainLayout />
-          </ToastProvider>
-        </UnitsProvider>
-      </FarmProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <FarmProvider>
+          <UnitsProvider>
+            <ToastProvider>
+              <MainLayout />
+            </ToastProvider>
+          </UnitsProvider>
+        </FarmProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -6,7 +6,6 @@ import {
   Trash2,
   Plus,
   Search,
-  Sparkles,
   AlertCircle,
   CheckCircle2,
   DollarSign,
@@ -236,7 +235,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         );
       case 'Pregnant':
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700 shadow-2xs">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041] shadow-none">
             <span>Pregnant</span>
           </span>
         );
@@ -381,20 +380,20 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         );
       case 'Pregnant':
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700 shadow-2xs">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041] shadow-none">
             <span>Pregnant</span>
           </span>
         );
       case 'Deceased':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border border-stone-300 dark:border-stone-700 shadow-2xs">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border border-stone-300 dark:border-stone-700 shadow-none">
             <span className="w-2 h-2 rounded-full bg-stone-400 shrink-0" />
             <span>Deceased</span>
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
             <span>{healthInfo.status}</span>
           </span>
         );
@@ -404,17 +403,17 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   const getGoatStatusDotClass = (status?: string) => {
     switch (status) {
       case 'Pregnant':
-        return 'bg-purple-500 ring-2 ring-purple-200 dark:ring-purple-900';
+        return 'bg-[#0F6E56] dark:bg-[#5DCAA5]';
       case 'Quarantine':
-        return 'bg-amber-500 ring-2 ring-amber-200 dark:ring-amber-900';
+        return 'bg-[#854F0B] dark:bg-[#EF9F27]';
       case 'Sold':
-        return 'bg-stone-400 ring-2 ring-stone-200 dark:ring-stone-700';
+        return 'bg-stone-400';
       case 'Dead':
       case 'Deceased':
-        return 'bg-rose-500 ring-2 ring-rose-200 dark:ring-rose-900';
+        return 'bg-[#A32D2D] dark:bg-[#F09595]';
       case 'Active':
       default:
-        return 'bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900';
+        return 'bg-[#0F6E56] dark:bg-[#5DCAA5]';
     }
   };
 
@@ -983,7 +982,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                     { id: 'Under Treatment', label: 'Under Treatment', count: goats.filter(g => getGoatHealthStatus(g).status === 'Under Treatment').length, dot: 'bg-amber-500' },
                     { id: 'Critical', label: 'Critical', count: goats.filter(g => getGoatHealthStatus(g).status === 'Critical').length, dot: 'bg-rose-500' },
                     { id: 'Observation', label: 'Observation', count: goats.filter(g => getGoatHealthStatus(g).status === 'Observation').length, dot: 'bg-yellow-500' },
-                    { id: 'Pregnant', label: 'Pregnant', count: goats.filter(g => getGoatHealthStatus(g).status === 'Pregnant' || getGoatHealthStatus(g).isPregnant || getGoatEffectiveStatus(g) === 'Pregnant').length, dot: 'bg-purple-500' },
+                    { id: 'Pregnant', label: 'Pregnant', count: goats.filter(g => getGoatHealthStatus(g).status === 'Pregnant' || getGoatHealthStatus(g).isPregnant || getGoatEffectiveStatus(g) === 'Pregnant').length, dot: 'bg-[#0F6E56] dark:bg-[#5DCAA5]' },
                   ].map(pill => (
                     <button
                       key={pill.id}
@@ -1519,10 +1518,21 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                         </td>
                         <td className="px-6 py-[15px] text-right flex items-center justify-end gap-2">
                           {item.status === 'Delivered' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Delivered ({item.kids_born || 1} {item.kids_born === 1 ? 'kid' : 'kids'})</span>
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Delivered ({item.kids_born || item.registered_kids?.length || (item.kid_tags ? item.kid_tags.length : 1)} {((item.kids_born || item.registered_kids?.length || (item.kid_tags ? item.kid_tags.length : 1)) === 1 ? 'kid' : 'kids')})</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenKiddingModal(item)}
+                                className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 transition-all cursor-pointer inline-flex items-center gap-1"
+                                title="View and edit registered kids for this delivery"
+                              >
+                                <GoatKidIcon className="w-3.5 h-3.5" />
+                                <span>Kids ({item.kids_born || item.registered_kids?.length || (item.kid_tags ? item.kid_tags.length : 1)})</span>
+                              </button>
+                            </div>
                           ) : isDue ? (
                             <button
                               type="button"
@@ -1696,11 +1706,11 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                         </td>
                         <td className="px-6 py-[15px]">
                           {item.fetal_age_days ? (
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
                               {item.fetal_age_days}d fetal age
                             </span>
                           ) : item.is_pregnant ? (
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
                               Pregnant
                             </span>
                           ) : (

@@ -11,7 +11,7 @@ export interface StatCardProps {
   badge?: React.ReactNode;
   onClick?: () => void;
   className?: string;
-  variant?: 'default' | 'emerald' | 'purple' | 'amber' | 'blue' | 'rose';
+  variant?: 'default' | 'brand' | 'emerald' | 'purple' | 'amber' | 'blue' | 'rose';
   footer?: React.ReactNode;
 }
 
@@ -29,27 +29,28 @@ export const StatCard: React.FC<StatCardProps> = ({
   variant = 'default',
   footer,
 }) => {
-  // Border and background variants (keeping existing visual identity intact)
-  let variantStyles = 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100';
-  let defaultIconBg = 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400';
-  let labelColor = 'text-stone-500 dark:text-stone-400';
+  // Theme Spec styles: clean card surface with hairline border (#E3E1D8 / #33322E)
+  let variantStyles = 'bg-white dark:bg-[#1F1F1D] border-[#E3E1D8] dark:border-[#33322E] text-[#1F1F1D] dark:text-[#F1F0EA]';
+  let defaultIconBg = 'bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5]';
+  let labelColor = 'text-[#5F5E5A] dark:text-[#B4B2A9]';
 
-  if (variant === 'purple') {
-    variantStyles = 'bg-purple-50/40 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/70 hover:border-purple-500/80';
-    defaultIconBg = 'bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300';
-    labelColor = 'text-purple-800 dark:text-purple-300';
+  // Strict anti-AI & brand green specification: replace purple with brand green
+  if (variant === 'purple' || variant === 'emerald' || variant === 'brand') {
+    variantStyles = 'bg-white dark:bg-[#1F1F1D] border-[#E3E1D8] dark:border-[#33322E] text-[#1F1F1D] dark:text-[#F1F0EA]';
+    defaultIconBg = 'bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5]';
+    labelColor = 'text-[#0F6E56] dark:text-[#5DCAA5]';
   } else if (variant === 'amber') {
-    variantStyles = 'bg-amber-50/40 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/70 hover:border-amber-500/80';
-    defaultIconBg = 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300';
-    labelColor = 'text-amber-800 dark:text-amber-300';
-  } else if (variant === 'blue') {
-    variantStyles = 'bg-sky-50/40 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800/70 hover:border-sky-500/80';
-    defaultIconBg = 'bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300';
-    labelColor = 'text-sky-800 dark:text-sky-300';
+    variantStyles = 'bg-white dark:bg-[#1F1F1D] border-[#E3E1D8] dark:border-[#33322E] text-[#1F1F1D] dark:text-[#F1F0EA]';
+    defaultIconBg = 'bg-[#FAEEDA] dark:bg-[#412402] text-[#854F0B] dark:text-[#EF9F27]';
+    labelColor = 'text-[#854F0B] dark:text-[#EF9F27]';
   } else if (variant === 'rose') {
-    variantStyles = 'bg-rose-50/40 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/70 hover:border-rose-500/80';
-    defaultIconBg = 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300';
-    labelColor = 'text-rose-800 dark:text-rose-300';
+    variantStyles = 'bg-white dark:bg-[#1F1F1D] border-[#E3E1D8] dark:border-[#33322E] text-[#1F1F1D] dark:text-[#F1F0EA]';
+    defaultIconBg = 'bg-[#FCEBEB] dark:bg-[#501313] text-[#A32D2D] dark:text-[#F09595]';
+    labelColor = 'text-[#A32D2D] dark:text-[#F09595]';
+  } else if (variant === 'blue') {
+    variantStyles = 'bg-white dark:bg-[#1F1F1D] border-[#E3E1D8] dark:border-[#33322E] text-[#1F1F1D] dark:text-[#F1F0EA]';
+    defaultIconBg = 'bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5]';
+    labelColor = 'text-[#5F5E5A] dark:text-[#B4B2A9]';
   }
 
   const isClickable = Boolean(onClick);
@@ -61,28 +62,24 @@ export const StatCard: React.FC<StatCardProps> = ({
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
       onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } } : undefined}
-      className={`group relative rounded-2xl border p-4 sm:p-5 shadow-xs transition-all flex flex-col justify-between ${variantStyles} ${
+      className={`group relative rounded-xl border p-4 shadow-none transition-colors flex flex-col justify-between ${variantStyles} ${
         isClickable
-          ? 'cursor-pointer hover:shadow-sm hover:border-emerald-500/80 dark:hover:border-emerald-500/80'
+          ? 'cursor-pointer hover:border-[#0F6E56] dark:hover:border-[#5DCAA5]'
           : ''
       } ${className}`}
-      style={{
-        padding: 'var(--space-4, 16px)',
-      }}
     >
       <div>
-        {/* Top Header: Label + Icon */}
+        {/* Top Header: Eyebrow Label (12px, 500, 1.4, tracking 0.03em) + Icon */}
         <div className="flex items-center justify-between mb-2">
           <span
-            className={`font-semibold uppercase tracking-wider ${labelColor}`}
-            style={{ fontSize: 'var(--text-xs, 12px)' }}
+            className={`text-[12px] font-medium uppercase tracking-[0.03em] leading-[1.4] ${labelColor}`}
           >
             {label}
           </span>
           {badge && <div className="ml-auto mr-2">{badge}</div>}
           {icon && (
             <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+              className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                 iconBgColor || defaultIconBg
               }`}
             >
@@ -91,41 +88,29 @@ export const StatCard: React.FC<StatCardProps> = ({
           )}
         </div>
 
-        {/* Hero Stat Number: strictly unified with --text-xl (28px) */}
+        {/* Big Stat Number: 26px, 500, 1.2, tabular figures */}
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span
-            className="hero-stat-number text-stone-900 dark:text-stone-100 font-bold"
-            style={{
-              fontSize: 'var(--text-xl, 28px)',
-              lineHeight: 1.15,
-            }}
-          >
+          <span className="text-[26px] font-medium leading-[1.2] font-mono tabular-nums text-[#1F1F1D] dark:text-[#F1F0EA]">
             {value}
           </span>
           {unit && (
-            <span
-              className="text-stone-500 dark:text-stone-400 font-medium"
-              style={{ fontSize: 'var(--text-xs, 12px)' }}
-            >
+            <span className="text-[12px] font-normal text-[#8A897F] dark:text-[#7C7A72]">
               {unit}
             </span>
           )}
         </div>
 
-        {/* Optional subtext */}
+        {/* Optional subtext: 13px, 400, 1.5 */}
         {subtext && (
-          <div
-            className="mt-1 text-stone-500 dark:text-stone-400 font-normal"
-            style={{ fontSize: 'var(--text-xs, 12px)' }}
-          >
+          <div className="mt-1 text-[13px] font-normal leading-[1.5] text-[#5F5E5A] dark:text-[#B4B2A9]">
             {subtext}
           </div>
         )}
       </div>
 
-      {/* Optional Card Footer */}
+      {/* Optional Card Footer: 13px, 400, 1.5 */}
       {footer && (
-        <div className="mt-3 pt-2.5 border-t border-stone-200/60 dark:border-stone-800/80 text-xs">
+        <div className="mt-3 pt-2.5 border-t border-[#E3E1D8] dark:border-[#33322E] text-[13px] font-normal leading-[1.5]">
           {footer}
         </div>
       )}

@@ -16,15 +16,15 @@ import {
   Database,
   Columns,
   Layers,
-  Sparkles,
-  Baby,
+  Activity,
   Stethoscope,
   Milk,
   Check,
   RefreshCw,
   Info,
   SlidersHorizontal,
-  Tag
+  Tag,
+  PawPrint
 } from 'lucide-react';
 
 interface ExcelImportModalProps {
@@ -813,10 +813,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-stone-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-base font-medium text-stone-900 dark:text-white flex items-center gap-2">
                 <span>Smart Spreadsheet Inspector & Master Herd Uploader</span>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-                  <Sparkles className="w-3 h-3" />
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
+                  <CheckCircle2 className="w-3 h-3" />
                   Auto-Routing Enabled
                 </span>
               </h3>
@@ -839,7 +839,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           {/* Success Banner */}
           {importSummary !== null && (
             <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100 space-y-3">
-              <div className="flex items-center gap-2.5 font-extrabold text-base">
+              <div className="flex items-center gap-2.5 font-medium text-base">
                 <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>Successfully imported & placed {importSummary.total} total records!</span>
               </div>
@@ -850,7 +850,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 </div>
                 <div className="p-2.5 bg-white/80 dark:bg-stone-900/80 rounded-xl border border-emerald-200 dark:border-emerald-800/80">
                   <span className="text-stone-500 dark:text-stone-400 block text-[11px]">Breeding Registry:</span>
-                  <strong className="text-sm text-purple-700 dark:text-purple-300">🤰 {importSummary.breeding} Pregnant Does</strong>
+                  <strong className="text-sm text-[#0F6E56] dark:text-[#5DCAA5]">🤰 {importSummary.breeding} Pregnant Does</strong>
                 </div>
                 <div className="p-2.5 bg-white/80 dark:bg-stone-900/80 rounded-xl border border-emerald-200 dark:border-emerald-800/80">
                   <span className="text-stone-500 dark:text-stone-400 block text-[11px]">Health Ledger:</span>
@@ -900,7 +900,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {[
                 { id: 'goats', label: 'Goats Registry', icon: Tag, desc: 'Tags, breeds, DOB, status' },
-                { id: 'breeding', label: 'Breeding', icon: Baby, desc: 'Mating dates, bucks, kids' },
+                { id: 'breeding', label: 'Breeding', icon: PawPrint, desc: 'Mating dates, bucks, kids' },
                 { id: 'health', label: 'Health / Medical', icon: Stethoscope, desc: 'Treatments & checkups' },
                 { id: 'milk', label: 'Milk Yield', icon: Milk, desc: 'Morning & evening yields' },
                 { id: 'all', label: 'Master Sheet', icon: Layers, desc: 'Combined multi-ledger' },
@@ -1062,12 +1062,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-800 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    <h4 className="text-xs font-extrabold text-stone-900 dark:text-white uppercase tracking-wider">
+                    <FileSpreadsheet className="w-4 h-4 text-[#0F6E56] dark:text-[#5DCAA5]" />
+                    <h4 className="text-xs font-medium text-stone-900 dark:text-white uppercase tracking-wider">
                       File Inspection & Auto-Routing Summary
                     </h4>
                   </div>
-                  <span className="text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full font-semibold">
+                  <span className="text-[11px] text-[#0F6E56] dark:text-[#5DCAA5] bg-[#E7F4EE] dark:bg-[#04342C] px-2 py-0.5 rounded-full font-medium border border-[#C3E6D6] dark:border-[#085041]">
                     {allDetectedColumns.length} Columns Detected &bull; {rawRows.length} Rows Processed
                   </span>
                 </div>
@@ -1079,7 +1079,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                       <span className="w-2 h-2 rounded-full bg-emerald-500" />
                       <span>Herd Goats:</span>
                     </div>
-                    <div className="text-lg font-black text-stone-900 dark:text-white mt-1">
+                    <div className="text-lg font-medium text-stone-900 dark:text-white mt-1 tabular-nums">
                       {parsedData.goats.length}
                     </div>
                     <span className="text-[10px] text-stone-500 dark:text-stone-400">
@@ -1087,25 +1087,25 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     </span>
                   </div>
 
-                  <div className="p-3 bg-purple-50/60 dark:bg-purple-950/40 rounded-xl border border-purple-200 dark:border-purple-800/60">
-                    <div className="flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 font-bold">
-                      <Baby className="w-3.5 h-3.5" />
+                  <div className="p-3 bg-[#E7F4EE] dark:bg-[#04342C] rounded-xl border border-[#C3E6D6] dark:border-[#085041]">
+                    <div className="flex items-center gap-1.5 text-xs text-[#0F6E56] dark:text-[#5DCAA5] font-medium">
+                      <Activity className="w-3.5 h-3.5" />
                       <span>Pregnant Does:</span>
                     </div>
-                    <div className="text-lg font-black text-purple-900 dark:text-purple-200 mt-1">
+                    <div className="text-lg font-medium text-[#085041] dark:text-[#E7F4EE] mt-1 tabular-nums">
                       {parsedData.breeding.length}
                     </div>
-                    <span className="text-[10px] text-purple-700 dark:text-purple-300">
+                    <span className="text-[10px] text-[#0F6E56] dark:text-[#5DCAA5]">
                       Auto-placed in Breeding Estimator
                     </span>
                   </div>
 
                   <div className="p-3 bg-amber-50/60 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800/60">
-                    <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300 font-bold">
+                    <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300 font-medium">
                       <Stethoscope className="w-3.5 h-3.5" />
                       <span>Health Logs:</span>
                     </div>
-                    <div className="text-lg font-black text-amber-900 dark:text-amber-200 mt-1">
+                    <div className="text-lg font-medium text-amber-900 dark:text-amber-200 mt-1 tabular-nums">
                       {parsedData.health.length}
                     </div>
                     <span className="text-[10px] text-amber-700 dark:text-amber-300">
@@ -1114,11 +1114,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   </div>
 
                   <div className="p-3 bg-teal-50/60 dark:bg-teal-950/40 rounded-xl border border-teal-200 dark:border-teal-800/60">
-                    <div className="flex items-center gap-1.5 text-xs text-teal-700 dark:text-teal-300 font-bold">
+                    <div className="flex items-center gap-1.5 text-xs text-teal-700 dark:text-teal-300 font-medium">
                       <Milk className="w-3.5 h-3.5" />
                       <span>Milk Records:</span>
                     </div>
-                    <div className="text-lg font-black text-teal-900 dark:text-teal-200 mt-1">
+                    <div className="text-lg font-medium text-teal-900 dark:text-teal-200 mt-1 tabular-nums">
                       {parsedData.milk.length}
                     </div>
                     <span className="text-[10px] text-teal-700 dark:text-teal-300">
@@ -1134,7 +1134,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setPreviewTab('goats')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
                       previewTab === 'goats'
                         ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs'
                         : 'text-stone-600 dark:text-stone-300 hover:text-stone-900'
@@ -1147,13 +1147,13 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setPreviewTab('breeding')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
                         previewTab === 'breeding'
-                          ? 'bg-purple-600 text-white shadow-xs'
-                          : 'text-purple-700 dark:text-purple-300 hover:bg-purple-100/50'
+                          ? 'bg-[#0F6E56] text-white shadow-xs'
+                          : 'text-[#0F6E56] dark:text-[#5DCAA5] hover:bg-[#E7F4EE] dark:hover:bg-[#04342C]'
                       }`}
                     >
-                      <Baby className="w-3.5 h-3.5" />
+                      <Activity className="w-3.5 h-3.5" />
                       <span>🤰 Pregnant Does ({parsedData.breeding.length})</span>
                     </button>
                   )}
@@ -1231,19 +1231,19 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                           );
                           if (g.status === 'Pregnant') {
                             statusBadge = (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
                                 🤰 Pregnant
                               </span>
                             );
                           } else if (g.status === 'Quarantine') {
                             statusBadge = (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
                                 🟡 Quarantine
                               </span>
                             );
                           } else if (g.status === 'Sold') {
                             statusBadge = (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
                                 ⚪ Sold
                               </span>
                             );
@@ -1251,14 +1251,14 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
                           return (
                             <tr key={i} className="hover:bg-stone-50 dark:hover:bg-stone-800/50">
-                              <td className="px-3 py-2 font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                              <td className="px-3 py-2 font-mono font-medium text-emerald-700 dark:text-emerald-400">
                                 {g.tag_number}
                               </td>
                               <td className="px-3 py-2 font-medium">{g.name || '—'}</td>
                               <td className="px-3 py-2">{g.breed}</td>
                               <td className="px-3 py-2">
                                 <span
-                                  className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${
+                                  className={`px-2 py-0.5 rounded-md font-medium text-[10px] ${
                                     g.gender === 'Female'
                                       ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
                                       : 'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
@@ -1275,13 +1275,13 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                               </td>
                               <td className="px-3 py-2 text-[11px]">
                                 {g.breedingPayload && (
-                                  <span className="inline-flex items-center gap-1 text-purple-700 dark:text-purple-300 font-semibold bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md">
-                                    <Baby className="w-3 h-3" />
+                                  <span className="inline-flex items-center gap-1 text-[#0F6E56] dark:text-[#5DCAA5] font-medium bg-[#E7F4EE] dark:bg-[#04342C] px-2 py-0.5 rounded-md border border-[#C3E6D6] dark:border-[#085041]">
+                                    <Activity className="w-3 h-3" />
                                     <span>Breeding (Due: {g.breedingPayload.expected_birth})</span>
                                   </span>
                                 )}
                                 {g.healthPayload && (
-                                  <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300 font-semibold bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md ml-1">
+                                  <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300 font-medium bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md ml-1">
                                     <Stethoscope className="w-3 h-3" />
                                     <span>Health Log</span>
                                   </span>
@@ -1302,8 +1302,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               {/* TAB 2: Auto-Routed Pregnant Does */}
               {previewTab === 'breeding' && (
                 <div className="border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden bg-white dark:bg-stone-850 shadow-xs">
-                  <div className="p-3 bg-purple-50/70 dark:bg-purple-950/60 border-b border-purple-200 dark:border-purple-800 text-xs text-purple-900 dark:text-purple-200 flex items-center gap-2">
-                    <Baby className="w-4 h-4 text-purple-700 dark:text-purple-400 shrink-0" />
+                  <div className="p-3 bg-[#E7F4EE] dark:bg-[#04342C] border-b border-[#C3E6D6] dark:border-[#085041] text-xs text-[#085041] dark:text-[#E7F4EE] flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-[#0F6E56] dark:text-[#5DCAA5] shrink-0" />
                     <span>
                       The following does were detected as Pregnant from your spreadsheet and will be automatically registered in your <strong>Breeding & Kidding Predictor</strong> with active countdowns!
                     </span>
@@ -1322,8 +1322,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                       </thead>
                       <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200">
                         {parsedData.breeding.slice(0, 10).map((b, i) => (
-                          <tr key={i} className="hover:bg-purple-50/30 dark:hover:bg-purple-950/30">
-                            <td className="px-3 py-2 font-mono font-bold text-purple-700 dark:text-purple-300">
+                          <tr key={i} className="hover:bg-[#E7F4EE]/40 dark:hover:bg-[#04342C]/40">
+                            <td className="px-3 py-2 font-mono font-medium text-[#0F6E56] dark:text-[#5DCAA5]">
                               {b.female_id}
                             </td>
                             <td className="px-3 py-2 font-mono">{b.male_id}</td>
@@ -1518,7 +1518,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-3.5 h-3.5" />
+                  <Upload className="w-3.5 h-3.5" />
                   <span>Import All Synchronized Records ({totalRecordsToImport})</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </>

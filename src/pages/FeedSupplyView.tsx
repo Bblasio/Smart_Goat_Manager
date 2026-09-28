@@ -17,7 +17,6 @@ import {
   Edit2,
   X,
   Pill,
-  Sparkles,
   MapPin,
   Clock,
   ShieldAlert,
@@ -363,7 +362,7 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
           value={expiringMeds.length}
           unit="within 60 days"
           icon={<Clock className="w-4 h-4" />}
-          variant="purple"
+          variant="amber"
           subtext={expiringMeds.length > 0 ? 'Prioritize before shelf expiry' : 'Zero expired medications'}
         />
       </div>
@@ -989,10 +988,10 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
 
               {/* Expiring meds */}
               {expiringMeds.length > 0 && (
-                <div className="bg-white dark:bg-stone-900 rounded-2xl border border-purple-200 dark:border-purple-900/60 p-5 shadow-xs">
+                <div className="bg-white dark:bg-stone-900 rounded-2xl border border-[#E3E1D8] dark:border-[#33322E] p-5 shadow-none">
                   <div className="flex items-center gap-2 mb-4">
-                    <Clock className="w-5 h-5 text-purple-600" />
-                    <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                    <Clock className="w-5 h-5 text-[#854F0B] dark:text-[#EF9F27]" />
+                    <h3 className="text-base font-medium text-[#1F1F1D] dark:text-[#F1F0EA]">
                       Pharmaceuticals Expiring Soon ({expiringMeds.length})
                     </h3>
                   </div>
@@ -1001,14 +1000,14 @@ export const FeedSupplyView: React.FC<FeedSupplyViewProps> = ({ initialTab = 'fe
                     {expiringMeds.map(med => (
                       <div key={med.id} className="py-3 flex items-center justify-between gap-3">
                         <div>
-                          <span className="font-semibold text-stone-900 dark:text-stone-100">
+                          <span className="font-medium text-[#1F1F1D] dark:text-[#F1F0EA]">
                             {med.name}
                           </span>
                           <p className="text-xs text-stone-500">
-                            Expires on <strong className="text-purple-600">{med.expiry_date}</strong>. Batch: {med.batch_number || 'N/A'}. Quantity: {med.quantity} {med.unit}.
+                            Expires on <strong className="text-[#854F0B] dark:text-[#EF9F27] font-medium">{med.expiry_date}</strong>. Batch: {med.batch_number || 'N/A'}. Quantity: {med.quantity} {med.unit}.
                           </p>
                         </div>
-                        <span className="text-xs px-2.5 py-1 bg-purple-50 dark:bg-purple-950 text-purple-700 rounded-lg font-medium">
+                        <span className="text-xs px-2.5 py-1 bg-[#FAEEDA] dark:bg-[#412402] text-[#854F0B] dark:text-[#EF9F27] border border-[#E3E1D8] dark:border-[#33322E] rounded-lg font-medium">
                           Use or Replace
                         </span>
                       </div>

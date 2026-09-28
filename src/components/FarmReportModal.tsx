@@ -10,6 +10,7 @@ import {
   DollarSign,
   Stethoscope,
   Baby,
+  Activity,
   Receipt,
   Mail,
   Phone,
@@ -1556,7 +1557,7 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
             <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-xs">
               <div className="flex items-center justify-between mb-3 border-b border-stone-100 dark:border-stone-800 pb-2">
                 <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                  <Baby className="w-4 h-4 text-purple-600" />
+                  <Activity className="w-4 h-4 text-[#0F6E56] dark:text-[#5DCAA5]" />
                   <span>Breeding & Gestation Schedules ({filteredBreeding.length} Records)</span>
                 </h3>
               </div>
@@ -1577,11 +1578,11 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
                       {filteredBreeding.map(b => (
                         <tr key={b.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/50">
                           <td className="px-3 py-2 font-mono">{b.mating_date}</td>
-                          <td className="px-3 py-2 font-mono font-bold text-purple-700 dark:text-purple-300">{b.female_id}</td>
+                          <td className="px-3 py-2 font-mono font-bold text-[#0F6E56] dark:text-[#5DCAA5]">{b.female_id}</td>
                           <td className="px-3 py-2 font-mono text-stone-700 dark:text-stone-300">{b.male_id}</td>
                           <td className="px-3 py-2 font-mono text-stone-800 dark:text-stone-200">{b.expected_birth || '—'}</td>
                           <td className="px-3 py-2">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E7F4EE] dark:bg-[#04342C] text-[#0F6E56] dark:text-[#5DCAA5] border border-[#C3E6D6] dark:border-[#085041]">
                               {b.status || 'Active'}
                             </span>
                           </td>
@@ -1610,9 +1611,9 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
                   <div className="text-lg font-black text-emerald-800 dark:text-emerald-300">{statusCounts.active}</div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Active Goats</div>
                 </div>
-                <div className="p-3 bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl">
-                  <div className="text-lg font-black text-purple-800 dark:text-purple-300">{statusCounts.pregnant}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">Pregnant Does</div>
+                <div className="p-3 bg-[#E7F4EE] dark:bg-[#04342C] border border-[#C3E6D6] dark:border-[#085041] rounded-xl">
+                  <div className="text-lg font-black text-[#085041] dark:text-[#5DCAA5]">{statusCounts.pregnant}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#0F6E56] dark:text-[#5DCAA5]">Pregnant Does</div>
                 </div>
                 <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl">
                   <div className="text-lg font-black text-amber-900 dark:text-amber-300">{statusCounts.quarantine}</div>
@@ -1647,7 +1648,7 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
                       <td className="px-3 py-2 text-right font-mono">{statusCounts.total > 0 ? ((statusCounts.active / statusCounts.total) * 100).toFixed(1) : 0}%</td>
                     </tr>
                     <tr>
-                      <td className="px-3 py-2 font-semibold text-purple-800">Pregnant Does</td>
+                      <td className="px-3 py-2 font-semibold text-[#085041]">Pregnant Does</td>
                       <td className="px-3 py-2 text-center font-bold font-mono">{statusCounts.pregnant}</td>
                       <td className="px-3 py-2">Confirmed Gestating Breeding Stock</td>
                       <td className="px-3 py-2 text-right font-mono">{statusCounts.total > 0 ? ((statusCounts.pregnant / statusCounts.total) * 100).toFixed(1) : 0}%</td>

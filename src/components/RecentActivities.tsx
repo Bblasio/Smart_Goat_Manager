@@ -2,13 +2,13 @@ import React, { useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
 import {
   Clock,
-  HeartPulse,
-  Baby,
-  Tag,
-  Milk,
+  Stethoscope,
+  Activity,
+  PawPrint,
+  Calendar,
+  Droplet,
   DollarSign,
   Receipt,
-  Sparkles,
   ArrowRight,
   CheckCircle2
 } from 'lucide-react';
@@ -151,19 +151,19 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
   const getIcon = (type: ActivityItem['type']) => {
     switch (type) {
       case 'goat':
-        return <Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
+        return <PawPrint className="w-4 h-4 text-[#0F6E56] dark:text-[#5DCAA5]" />;
       case 'health':
-        return <HeartPulse className="w-4 h-4 text-rose-600 dark:text-rose-400" />;
+        return <Stethoscope className="w-4 h-4 text-[#A32D2D] dark:text-[#F09595]" />;
       case 'birth':
-        return <Baby className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+        return <Activity className="w-4 h-4 text-[#0F6E56] dark:text-[#5DCAA5]" />;
       case 'breeding':
-        return <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
+        return <Calendar className="w-4 h-4 text-[#0F6E56] dark:text-[#5DCAA5]" />;
       case 'milk':
-        return <Milk className="w-4 h-4 text-teal-600 dark:text-teal-400" />;
+        return <Droplet className="w-4 h-4 text-[#0F6E56] dark:text-[#5DCAA5]" />;
       case 'sale':
-        return <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+        return <DollarSign className="w-4 h-4 text-[#854F0B] dark:text-[#EF9F27]" />;
       case 'expense':
-        return <Receipt className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+        return <Receipt className="w-4 h-4 text-[#5F5E5A] dark:text-[#B4B2A9]" />;
       default:
         return <CheckCircle2 className="w-4 h-4 text-stone-600 dark:text-stone-400" />;
     }
@@ -172,19 +172,19 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
   const getBadgeClass = (type: ActivityItem['type']) => {
     switch (type) {
       case 'goat':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800';
+        return 'bg-[#E7F4EE] text-[#0F6E56] border-[#C3E6D6] dark:bg-[#04342C] dark:text-[#5DCAA5] dark:border-[#085041]';
       case 'health':
-        return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800';
+        return 'bg-[#FCEBEB] text-[#A32D2D] border-[#A32D2D]/30 dark:bg-[#501313] dark:text-[#F09595] dark:border-[#F09595]/30';
       case 'birth':
-        return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800';
+        return 'bg-[#E7F4EE] text-[#0F6E56] border-[#C3E6D6] dark:bg-[#04342C] dark:text-[#5DCAA5] dark:border-[#085041]';
       case 'breeding':
-        return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800';
+        return 'bg-[#E7F4EE] text-[#0F6E56] border-[#C3E6D6] dark:bg-[#04342C] dark:text-[#5DCAA5] dark:border-[#085041]';
       case 'milk':
-        return 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800';
+        return 'bg-[#E7F4EE] text-[#0F6E56] border-[#C3E6D6] dark:bg-[#04342C] dark:text-[#5DCAA5] dark:border-[#085041]';
       case 'sale':
-        return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800';
+        return 'bg-[#FAEEDA] text-[#854F0B] border-[#FAEEDA] dark:bg-[#412402] dark:text-[#EF9F27] dark:border-[#412402]';
       case 'expense':
-        return 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800';
+        return 'bg-stone-100 text-stone-700 border-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700';
       default:
         return 'bg-stone-50 text-stone-700 border-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700';
     }

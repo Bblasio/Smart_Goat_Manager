@@ -313,7 +313,7 @@ export const FinancialCashFlowWidget: React.FC<FinancialCashFlowWidgetProps> = (
             {[
               { label: 'Feed & Forage', key: 'Feed', icon: Wheat, color: 'bg-amber-500' },
               { label: 'Vet & Healthcare', key: 'Vet', icon: Stethoscope, color: 'bg-rose-500' },
-              { label: 'Labor & Herders', key: 'Labor', icon: Users, color: 'bg-purple-500' },
+              { label: 'Labor & Herders', key: 'Labor', icon: Users, color: 'bg-slate-500' },
               { label: 'Equipment & Fencing', key: 'Equipment', icon: Wrench, color: 'bg-teal-500' },
               { label: 'Other / Transport', key: 'Other', icon: Receipt, color: 'bg-stone-500' },
             ].map(cat => {

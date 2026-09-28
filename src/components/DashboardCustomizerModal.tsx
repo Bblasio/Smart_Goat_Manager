@@ -16,7 +16,6 @@ import {
   ShieldAlert,
   CloudSun,
   RotateCcw,
-  Sparkles,
   SlidersHorizontal
 } from 'lucide-react';
 
@@ -86,7 +85,7 @@ export const ALL_DASHBOARD_WIDGETS: WidgetDefinition[] = [
     categoryLabel: 'Analytical Graph',
     description: 'Interactive pie chart detailing female to male herd ratio for reproduction planning.',
     icon: PieIcon,
-    accentColor: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800'
+    accentColor: 'text-[#0F6E56] dark:text-[#5DCAA5] bg-[#E7F4EE] dark:bg-[#04342C] border-[#C3E6D6] dark:border-[#085041]'
   },
   {
     id: 'breeding_trends',
@@ -244,29 +243,28 @@ export const DashboardCustomizerModal: React.FC<DashboardCustomizerModalProps> =
         <div className="px-6 py-3 border-b border-stone-100 dark:border-stone-800/80 bg-stone-50/40 dark:bg-stone-850/40 space-y-2.5">
           {/* Quick Preset Buttons */}
           <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
-            <span className="font-semibold text-stone-500 dark:text-stone-400 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="font-medium text-stone-500 dark:text-stone-400 flex items-center gap-1">
               <span>Presets:</span>
             </span>
             <div className="flex items-center gap-1.5 flex-wrap">
               <button
                 type="button"
                 onClick={() => applyPreset(['weight_trends', 'recent_activity', 'cash_flow'])}
-                className="px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors text-[11px]"
+                className="px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-[#E7F4EE] dark:hover:bg-[#04342C] hover:text-[#0F6E56] dark:hover:text-[#5DCAA5] transition-colors text-[11px]"
               >
                 Standard
               </button>
               <button
                 type="button"
                 onClick={() => applyPreset(['cash_flow', 'recent_sales', 'weight_trends'])}
-                className="px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-teal-50 dark:hover:bg-teal-950/40 hover:text-teal-700 dark:hover:text-teal-300 transition-colors text-[11px]"
+                className="px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-[#E7F4EE] dark:hover:bg-[#04342C] hover:text-[#0F6E56] dark:hover:text-[#5DCAA5] transition-colors text-[11px]"
               >
                 Financial Focus
               </button>
               <button
                 type="button"
                 onClick={() => applyPreset(['recent_activity', 'kid_nursery', 'breeding_trends'])}
-                className="px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 transition-colors text-[11px]"
+                className="px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-[#E7F4EE] dark:hover:bg-[#04342C] hover:text-[#0F6E56] dark:hover:text-[#5DCAA5] transition-colors text-[11px]"
               >
                 Breeding & Nursery
               </button>

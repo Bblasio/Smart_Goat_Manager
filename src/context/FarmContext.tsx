@@ -44,6 +44,14 @@ import {
   update,
   User
 } from '../lib/firebase';
+import {
+  safeSetItem,
+  safeGetItem,
+  safeRemoveItem,
+  sanitizeProfileForLocalCache,
+  sanitizeRecordsForLocalCache,
+  cleanStorageQuota
+} from '../utils/safeStorage';
 
 export type SyncStatus = 'connected' | 'connecting' | 'local_fallback' | 'error';
 
@@ -192,9 +200,22 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Herd and farm records helper for cached local data
   const getInitialSaved = (field: string) => {
     try {
-      const isDemo = localStorage.getItem('sgm_is_demo') === 'true';
-      const key = isDemo ? 'sgm_records_usr-demo-farm' : 'sgm_records_offline';
-      const raw = localStorage.getItem(key);
+      const isDemo = safeGetItem('sgm_is_demo') === 'true';
+      let uid: string | null = null;
+      try {
+        const rawUser = safeGetItem('sgm_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u?.uid) uid = u.uid;
+        }
+      } catch {
+        // ignore
+      }
+      const key = isDemo ? 'sgm_records_usr-demo-farm' : (uid ? `sgm_records_${uid}` : 'sgm_records_offline');
+      let raw = safeGetItem(key);
+      if (!raw && uid) {
+        raw = safeGetItem('sgm_records_offline');
+      }
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed[field])) {
@@ -439,6 +460,21 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearTimeout(safetyTimer);
   }, []);
 
+  // Helper to safely cache user profile without hitting quota limit or crashing on QuotaExceededError
+  const cacheUserProfileLocally = (profile: FarmUser, uid?: string) => {
+    try {
+      const sanitized = sanitizeProfileForLocalCache(profile);
+      const jsonStr = JSON.stringify(sanitized);
+      safeSetItem('sgm_user', jsonStr);
+      const effectiveUid = uid || profile.uid;
+      if (effectiveUid) {
+        safeSetItem(`sgm_profile_${effectiveUid}`, jsonStr);
+      }
+    } catch (err) {
+      console.warn('cacheUserProfileLocally notice:', err);
+    }
+  };
+
   // Auth State Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async fbUser => {
@@ -447,7 +483,11 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (fbUser) {
         setIsDemoMode(false);
-        localStorage.removeItem('sgm_is_demo');
+        try {
+          localStorage.removeItem('sgm_is_demo');
+        } catch {
+          // ignore
+        }
         setIsFirebaseActive(true);
         setSyncStatus('connecting');
 
@@ -490,11 +530,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         setUser(immediateUser);
-        localStorage.setItem('sgm_user', JSON.stringify(immediateUser));
-        localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(immediateUser));
-        if (fbUser.email) {
-          localStorage.setItem(`sgm_profile_email_${fbUser.email.toLowerCase()}`, JSON.stringify(immediateUser));
-        }
+        cacheUserProfileLocally(immediateUser, fbUser.uid);
 
         // Fetch user profile from RTDB (read-only; never overwrite with blanks if fetch is slow)
         try {
@@ -532,11 +568,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
 
             setUser(currentProfile);
-            localStorage.setItem('sgm_user', JSON.stringify(currentProfile));
-            localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(currentProfile));
-            if (currentProfile.email) {
-              localStorage.setItem(`sgm_profile_email_${currentProfile.email.toLowerCase()}`, JSON.stringify(currentProfile));
-            }
+            cacheUserProfileLocally(currentProfile, fbUser.uid);
           }
         } catch (err: any) {
           console.warn('Firebase profile fetch notice:', err.message);
@@ -627,11 +659,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           logo_url: profile.logo_url || profile.logoUrl || prev?.logo_url || '',
           created_at: profile.created_at || prev?.created_at || new Date().toISOString(),
         };
-        localStorage.setItem('sgm_user', JSON.stringify(updated));
-        localStorage.setItem(`sgm_profile_${uid}`, JSON.stringify(updated));
-        if (updated.email) {
-          localStorage.setItem(`sgm_profile_email_${updated.email.toLowerCase()}`, JSON.stringify(updated));
-        }
+        cacheUserProfileLocally(updated, uid);
         return updated;
       });
     }
@@ -789,10 +817,10 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
           notes: val.notes || '',
         }));
       setFeeds(parsedFeeds);
-      localStorage.setItem('sgm_feeds', JSON.stringify(parsedFeeds));
+      safeSetItem('sgm_feeds', JSON.stringify(parsedFeeds));
     } else {
       setFeeds([]);
-      localStorage.setItem('sgm_feeds', JSON.stringify([]));
+      safeSetItem('sgm_feeds', JSON.stringify([]));
     }
 
     // Medications
@@ -816,10 +844,10 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         notes: val.notes || '',
       }));
       setMedications(parsedMeds);
-      localStorage.setItem('sgm_medications', JSON.stringify(parsedMeds));
+      safeSetItem('sgm_medications', JSON.stringify(parsedMeds));
     } else {
       setMedications([]);
-      localStorage.setItem('sgm_medications', JSON.stringify([]));
+      safeSetItem('sgm_medications', JSON.stringify([]));
     }
 
     // Kid Growth
@@ -833,14 +861,14 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const parsedKids: KidGrowthRecord[] = sanitizeKidRecords(rawList);
       setKidGrowthRecords(parsedKids);
-      localStorage.setItem('sgm_kid_growth', JSON.stringify(parsedKids));
+      safeSetItem('sgm_kid_growth', JSON.stringify(parsedKids));
     } else {
       const savedLocal = getInitialSaved('kid_growth');
       if (savedLocal && savedLocal.length > 0) {
         setKidGrowthRecords(sanitizeKidRecords(savedLocal));
       } else {
         setKidGrowthRecords([]);
-        localStorage.setItem('sgm_kid_growth', JSON.stringify([]));
+        safeSetItem('sgm_kid_growth', JSON.stringify([]));
       }
     }
   };
@@ -960,9 +988,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       setUser(immediateProfile);
-      localStorage.setItem('sgm_user', JSON.stringify(immediateProfile));
-      localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(immediateProfile));
-      localStorage.setItem(`sgm_profile_email_${userEmail}`, JSON.stringify(immediateProfile));
+      cacheUserProfileLocally(immediateProfile, fbUser.uid);
 
       // Attempt to load profile from RTDB in background without blocking login
       withTimeout(get(ref(rtdb, `users/${fbUser.uid}/user_profile`)), 3500, null)
@@ -994,9 +1020,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 logo_url: val.logo_url || val.logoUrl || prev?.logo_url || immediateProfile.logo_url,
                 created_at: val.created_at || prev?.created_at || immediateProfile.created_at,
               };
-              localStorage.setItem('sgm_user', JSON.stringify(updated));
-              localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(updated));
-              localStorage.setItem(`sgm_profile_email_${userEmail}`, JSON.stringify(updated));
+              cacheUserProfileLocally(updated, fbUser.uid);
               return updated;
             });
           }
@@ -1116,9 +1140,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsFirebaseActive(true);
       setUser(newProfile);
       setAuthLoading(false);
-      localStorage.setItem('sgm_user', JSON.stringify(newProfile));
-      localStorage.setItem(`sgm_profile_${fbUser.uid}`, JSON.stringify(newProfile));
-      localStorage.setItem(`sgm_profile_email_${email.trim().toLowerCase()}`, JSON.stringify(newProfile));
+      cacheUserProfileLocally(newProfile, fbUser.uid);
 
       // 5. Store user_profile in Firebase Realtime Database in background
       withTimeout(
@@ -1176,7 +1198,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const activated = isEmailVerified || isLocalActivated || isUrlActivated || isRtdbVerified;
       if (activated && email) {
-        localStorage.setItem('sgm_activated_' + email, 'true');
+        safeSetItem('sgm_activated_' + email, 'true');
       }
 
       return { activated, emailVerified: isEmailVerified };
@@ -1193,7 +1215,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (email) {
-        localStorage.setItem('sgm_activated_' + email, 'true');
+        safeSetItem('sgm_activated_' + email, 'true');
       }
 
       if (auth.currentUser) {
@@ -1231,7 +1253,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         setUser(activeProfile);
-        localStorage.setItem('sgm_user', JSON.stringify(activeProfile));
+        cacheUserProfileLocally(activeProfile);
         setRecordsLoaded(true);
       }
 
@@ -1265,14 +1287,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       setUser(merged);
-      localStorage.setItem('sgm_user', JSON.stringify(merged));
-      if (activeUid) {
-        localStorage.setItem(`sgm_profile_${activeUid}`, JSON.stringify(merged));
-      }
-      const userEmail = (merged.email || firebaseUser?.email || '').trim().toLowerCase();
-      if (userEmail) {
-        localStorage.setItem(`sgm_profile_email_${userEmail}`, JSON.stringify(merged));
-      }
+      cacheUserProfileLocally(merged, activeUid);
 
       if (activeUid) {
         const payload = {
@@ -1338,7 +1353,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const enterDemoMode = () => {
     setIsDemoMode(true);
-    localStorage.setItem('sgm_is_demo', 'true');
+    safeSetItem('sgm_is_demo', 'true');
     setUser(initialFarmUser);
     setGoats(initialGoats);
     setBreeding(initialBreeding);
@@ -1360,8 +1375,8 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setFirebaseUser(null);
     setUser(null);
     setIsDemoMode(false);
-    localStorage.removeItem('sgm_user');
-    localStorage.removeItem('sgm_is_demo');
+    safeRemoveItem('sgm_user');
+    safeRemoveItem('sgm_is_demo');
     setGoats([]);
     setBreeding([]);
     setHealth([]);
@@ -1417,11 +1432,11 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   ) => {
     try {
-      const isDemo = localStorage.getItem('sgm_is_demo') === 'true';
+      const isDemo = safeGetItem('sgm_is_demo') === 'true';
       const key = isDemo ? 'sgm_records_usr-demo-farm' : (uid ? `sgm_records_${uid}` : 'sgm_records_offline');
       let existing: any = {};
       try {
-        const raw = localStorage.getItem(key);
+        const raw = safeGetItem(key);
         if (raw) existing = JSON.parse(raw);
       } catch {
         existing = {};
@@ -1440,18 +1455,19 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         kid_growth: overrides?.kid_growth !== undefined ? overrides.kid_growth : (existing.kid_growth || kidGrowthRecords || []),
         saved_at: new Date().toISOString(),
       };
-      localStorage.setItem(key, JSON.stringify(payload));
+      const sanitized = sanitizeRecordsForLocalCache(payload);
+      safeSetItem(key, JSON.stringify(sanitized));
       if (overrides?.feeds !== undefined) {
-        localStorage.setItem('sgm_feeds', JSON.stringify(overrides.feeds));
+        safeSetItem('sgm_feeds', JSON.stringify(overrides.feeds));
       }
       if (overrides?.medications !== undefined) {
-        localStorage.setItem('sgm_medications', JSON.stringify(overrides.medications));
+        safeSetItem('sgm_medications', JSON.stringify(overrides.medications));
       }
       if (overrides?.kid_growth !== undefined) {
-        localStorage.setItem('sgm_kid_growth', JSON.stringify(overrides.kid_growth));
+        safeSetItem('sgm_kid_growth', JSON.stringify(overrides.kid_growth));
       }
     } catch (e) {
-      console.warn('LocalStorage backup error:', e);
+      console.warn('LocalStorage backup notice:', e);
     }
   };
 
@@ -1741,6 +1757,21 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const sanitizeForRTDB = (data: any): any => {
+    if (data === undefined) return null;
+    if (data === null || typeof data !== 'object') return data;
+    if (Array.isArray(data)) {
+      return data.map(item => sanitizeForRTDB(item));
+    }
+    const clean: Record<string, any> = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (v !== undefined) {
+        clean[k] = sanitizeForRTDB(v);
+      }
+    }
+    return clean;
+  };
+
   const addBreeding = async (data: Omit<BreedingRecord, 'id'>) => {
     const activeUid = firebaseUser?.uid;
     let id = 'brd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
@@ -1762,11 +1793,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       status: data.status || 'Active',
     };
 
-    setBreeding(prev => {
-      const updated = [newRecord, ...prev];
-      persistRecordsLocally(activeUid, { breeding: updated });
-      return updated;
-    });
+    const updatedBreeding = [newRecord, ...breeding];
+    setBreeding(updatedBreeding);
+    persistRecordsLocally(activeUid, { breeding: updatedBreeding });
 
     if (activeUid) {
       try {
@@ -1788,7 +1817,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (newRecord.registered_kids && newRecord.registered_kids.length > 0) {
           payload.registered_kids = newRecord.registered_kids;
         }
-        await set(itemRef, payload);
+        await set(itemRef, sanitizeForRTDB(payload));
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -1801,27 +1830,38 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateBreeding = async (id: string, updates: Partial<BreedingRecord>) => {
     const activeUid = firebaseUser?.uid;
+    let fullRecord: BreedingRecord | undefined;
+
+    // Immediately resolve full updated record from current state
+    const current = breeding.find(b => b.id === id);
+    if (current) {
+      fullRecord = { ...current, ...updates };
+    } else {
+      fullRecord = updates as BreedingRecord;
+    }
+
     setBreeding(prev => {
-      const updated = prev.map(b => (b.id === id ? { ...b, ...updates } : b));
-      persistRecordsLocally(activeUid, { breeding: updated });
+      const updated = prev.map(b => {
+        if (b.id === id) {
+          const merged = { ...b, ...updates };
+          return merged;
+        }
+        return b;
+      });
       return updated;
     });
+
+    const nextBreedingList = breeding.map(b => (b.id === id ? { ...b, ...updates } : b));
+    persistRecordsLocally(activeUid, { breeding: nextBreedingList });
 
     if (activeUid) {
       try {
         const itemRef = ref(rtdb, `users/${activeUid}/records/breeding/${id}`);
         const snap = await get(itemRef);
-        const sanitized: Record<string, any> = {};
-        Object.entries(updates).forEach(([k, v]) => {
-          if (v !== undefined) {
-            sanitized[k] = v;
-          }
-        });
-        if (snap.exists()) {
-          await set(itemRef, { ...snap.val(), ...sanitized });
-        } else {
-          await set(itemRef, sanitized);
-        }
+        const existingData = snap.exists() ? snap.val() : {};
+        const mergedData = { ...existingData, ...fullRecord };
+        const cleanPayload = sanitizeForRTDB(mergedData);
+        await set(itemRef, cleanPayload);
         setSyncStatus('connected');
         setSyncError(null);
       } catch (err: any) {
@@ -1834,11 +1874,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteBreeding = async (id: string) => {
     const activeUid = firebaseUser?.uid;
-    setBreeding(prev => {
-      const updated = prev.filter(b => b.id !== id);
-      persistRecordsLocally(activeUid, { breeding: updated });
-      return updated;
-    });
+    const updated = breeding.filter(b => b.id !== id);
+    setBreeding(updated);
+    persistRecordsLocally(activeUid, { breeding: updated });
 
     if (activeUid) {
       try {
@@ -2086,7 +2124,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setExpenses(prev => {
       const updated = [newRecord, ...prev];
-      localStorage.setItem('sgm_expenses', JSON.stringify(updated));
+      safeSetItem('sgm_expenses', JSON.stringify(updated));
       persistRecordsLocally(activeUid, { expenses: updated });
       return updated;
     });
@@ -2116,7 +2154,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const activeUid = firebaseUser?.uid;
     setExpenses(prev => {
       const updated = prev.filter(e => e.id !== id);
-      localStorage.setItem('sgm_expenses', JSON.stringify(updated));
+      safeSetItem('sgm_expenses', JSON.stringify(updated));
       persistRecordsLocally(activeUid, { expenses: updated });
       return updated;
     });
@@ -2354,7 +2392,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const activeUid = firebaseUser?.uid;
     setFeeds(prev => {
       const updated = prev.filter(f => f.id !== id);
-      localStorage.setItem('sgm_feeds', JSON.stringify(updated));
+      safeSetItem('sgm_feeds', JSON.stringify(updated));
       persistRecordsLocally(activeUid, { feeds: updated });
       return updated;
     });
@@ -2375,7 +2413,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearAllFeeds = async () => {
     const activeUid = firebaseUser?.uid;
     setFeeds([]);
-    localStorage.setItem('sgm_feeds', JSON.stringify([]));
+    safeSetItem('sgm_feeds', JSON.stringify([]));
     persistRecordsLocally(activeUid, { feeds: [] });
 
     if (activeUid) {
@@ -2520,7 +2558,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const activeUid = firebaseUser?.uid;
     setMedications(prev => {
       const updated = prev.filter(m => m.id !== id);
-      localStorage.setItem('sgm_medications', JSON.stringify(updated));
+      safeSetItem('sgm_medications', JSON.stringify(updated));
       persistRecordsLocally(activeUid, { medications: updated });
       return updated;
     });
@@ -2541,7 +2579,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearAllMedications = async () => {
     const activeUid = firebaseUser?.uid;
     setMedications([]);
-    localStorage.setItem('sgm_medications', JSON.stringify([]));
+    safeSetItem('sgm_medications', JSON.stringify([]));
     persistRecordsLocally(activeUid, { medications: [] });
 
     if (activeUid) {
@@ -2823,7 +2861,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearAllKidGrowthRecords = async () => {
     const activeUid = firebaseUser?.uid;
     setKidGrowthRecords([]);
-    localStorage.setItem('sgm_kid_growth', JSON.stringify([]));
+    safeSetItem('sgm_kid_growth', JSON.stringify([]));
     persistRecordsLocally(activeUid, { kid_growth: [] });
 
     if (activeUid) {
@@ -3244,7 +3282,7 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ]);
 
       if (user) {
-        localStorage.setItem(`sgm_profile_${activeUid}`, JSON.stringify(user));
+        cacheUserProfileLocally(user, activeUid);
       }
 
       setSyncStatus('connected');
@@ -3409,9 +3447,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFeeds(initialFeeds);
       setMedications(initialMedications);
       setKidGrowthRecords(initialKidGrowthRecords);
-      localStorage.setItem('sgm_feeds', JSON.stringify(initialFeeds));
-      localStorage.setItem('sgm_medications', JSON.stringify(initialMedications));
-      localStorage.setItem('sgm_kid_growth', JSON.stringify(initialKidGrowthRecords));
+      safeSetItem('sgm_feeds', JSON.stringify(initialFeeds));
+      safeSetItem('sgm_medications', JSON.stringify(initialMedications));
+      safeSetItem('sgm_kid_growth', JSON.stringify(initialKidGrowthRecords));
     }
   };
 

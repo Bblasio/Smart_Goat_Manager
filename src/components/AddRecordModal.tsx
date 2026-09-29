@@ -17,7 +17,20 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   onClose,
   defaultType = 'goat',
 }) => {
-  const { addGoat, addBreeding, addHealth, addSale, addExpense, addWorker, addMilk, addKidGrowthRecord, goats } = useFarm();
+  const {
+    addGoat,
+    updateGoat,
+    breeding,
+    addBreeding,
+    updateBreeding,
+    addHealth,
+    addSale,
+    addExpense,
+    addWorker,
+    addMilk,
+    addKidGrowthRecord,
+    goats
+  } = useFarm();
   const { showToast } = useToast();
   const { currency, weightUnit, milkUnit, formatCurrency } = useUnits();
   const [recordType, setRecordType] = useState<RecordType>(defaultType);
@@ -178,6 +191,26 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           });
         }
 
+        // If Dam Tag provided, mark matching active breeding schedule as Delivered
+        if (kidDamTag.trim()) {
+          const cleanDam = kidDamTag.trim().toUpperCase();
+          const activeBreeding = breeding.find(
+            b => b.female_id.trim().toUpperCase() === cleanDam && (b.status === 'Active' || !b.status)
+          );
+          if (activeBreeding) {
+            await updateBreeding(activeBreeding.id, {
+              status: 'Delivered',
+              actual_birth_date: kidDob,
+              kids_born: (activeBreeding.kids_born || 0) + 1,
+              kid_tags: Array.from(new Set([...(activeBreeding.kid_tags || []), cleanTag])),
+            });
+          }
+          const damGoat = goats.find(g => g.tag_number.trim().toUpperCase() === cleanDam);
+          if (damGoat && damGoat.status === 'Pregnant') {
+            await updateGoat(damGoat.id, { status: 'Active' });
+          }
+        }
+
         setSuccessMsg(`Kid ${cleanTag}${cleanName ? ` (${cleanName})` : ''} enrolled in nursery and herd records successfully!`);
         setKidTag('');
         setKidName('');
@@ -187,11 +220,24 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           setErrorMsg('Both Female Tag and Male Tag are required.');
           return;
         }
+        const cleanFemale = breedFemale.trim().toUpperCase();
+        const cleanMale = breedMale.trim().toUpperCase();
+
+        const activeExisting = breeding.find(
+          b => b.female_id.trim().toUpperCase() === cleanFemale && (b.status === 'Active' || !b.status)
+        );
+        if (activeExisting) {
+          setErrorMsg(
+            `Doe ${cleanFemale} already has an active breeding schedule paired with Sire ${activeExisting.male_id} (Expected delivery: ${activeExisting.expected_birth}). Please update the existing record or record birth first.`
+          );
+          return;
+        }
+
         const gDays = parseInt(gestationDays) || 150;
         const calcBirth = expectedBirth || calcExpectedBirth(matingDate, gDays);
         addBreeding({
-          female_id: breedFemale.trim().toUpperCase(),
-          male_id: breedMale.trim().toUpperCase(),
+          female_id: cleanFemale,
+          male_id: cleanMale,
           mating_date: matingDate,
           expected_birth: calcBirth,
           gestation_days: gDays,

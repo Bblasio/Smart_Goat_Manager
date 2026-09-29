@@ -288,11 +288,11 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
       const registeredKidsSummary = kids.map(k => ({
         id: k.id,
         tag: k.tag.trim().toUpperCase(),
-        name: k.name.trim() || undefined,
+        name: k.name.trim() || '',
         gender: k.gender,
         birthWeight: k.birthWeight,
         breed: k.breed.trim() || defaultBreed,
-        notes: k.notes.trim() || undefined,
+        notes: k.notes.trim() || '',
       }));
 
       // 1. Update Breeding Record to 'Delivered' with complete kid details preserved
@@ -306,6 +306,22 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
           .map(k => `${k.tag.trim().toUpperCase()}${k.name ? ` (${k.name})` : ''} [${k.gender}]`)
           .join(', ')}. ${gestationVarianceInfo}`,
       });
+
+      // Also ensure any other active breeding records for this same dam are marked Delivered to prevent duplicate entry
+      const otherActiveForDam = breeding.filter(
+        b =>
+          b.id !== breedingRecord.id &&
+          b.female_id.trim().toUpperCase() === femaleTag &&
+          (b.status === 'Active' || !b.status)
+      );
+      for (const other of otherActiveForDam) {
+        await updateBreeding(other.id, {
+          status: 'Delivered',
+          actual_birth_date: deliveryDate,
+          kids_born: kids.length,
+          kid_tags: kidTags,
+        });
+      }
 
       // 2. Update Dam doe to Active status (no longer Pregnant)
       if (damGoat) {
@@ -441,10 +457,14 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
             </div>
             <div>
               <h3 id="record-kidding-title" className="text-lg font-bold text-stone-900 dark:text-stone-100">
-                Record Goat Delivery &amp; Add Kid
+                {breedingRecord.status === 'Delivered'
+                  ? `Manage Delivered Kids • Dam ${breedingRecord.female_id}`
+                  : 'Record Goat Delivery & Add Kid'}
               </h3>
               <p className="text-xs text-stone-500 dark:text-stone-400">
-                Log the birth, automatically reset doe status from Pregnant to Active, and register newborn kids.
+                {breedingRecord.status === 'Delivered'
+                  ? `Delivery recorded on ${breedingRecord.actual_birth_date || 'schedule'}. Manage or update registered kids from this kidding.`
+                  : 'Log the birth, automatically set breeding status to Delivered, reset doe to Active, and register newborn kids.'}
               </p>
             </div>
           </div>
@@ -469,13 +489,20 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
               <span className="text-[11px] font-mono text-stone-500 dark:text-stone-400">
                 Mating: {breedingRecord.mating_date} • Due: {breedingRecord.expected_birth}
               </span>
-              <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                isDueReached
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
-                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
-              }`}>
-                {isDueReached ? 'Due Date Reached' : `${daysUntilDue}d until Due`}
-              </span>
+              {breedingRecord.status === 'Delivered' ? (
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  <span>Delivered</span>
+                </span>
+              ) : (
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                  isDueReached
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                }`}>
+                  {isDueReached ? 'Due Date Reached' : `${daysUntilDue}d until Due`}
+                </span>
+              )}
             </div>
           </div>
 
@@ -726,6 +753,8 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
               <span>
                 {isSubmitting
                   ? 'Saving Delivery...'
+                  : breedingRecord.status === 'Delivered'
+                  ? `Save Registered Kids (${kids.length} Kid${kids.length > 1 ? 's' : ''})`
                   : `Confirm Birth & Add ${kids.length} Kid${kids.length > 1 ? 's' : ''}`}
               </span>
             </button>

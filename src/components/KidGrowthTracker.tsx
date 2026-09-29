@@ -37,7 +37,10 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
     updateKidGrowthRecord,
     deleteKidGrowthRecord,
     goats,
-    addGoat
+    addGoat,
+    updateGoat,
+    breeding,
+    updateBreeding
   } = useFarm();
   const { showToast } = useToast();
   const { weightUnit, formatWeight } = useUnits();
@@ -231,6 +234,26 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
         dam_tag: newDamTag.trim() || undefined,
         sire_tag: newSireTag.trim() || undefined,
       });
+    }
+
+    // If dam tag was specified, find and update any active breeding schedule to 'Delivered'
+    if (newDamTag.trim()) {
+      const cleanDam = newDamTag.trim().toUpperCase();
+      const activeBreeding = breeding.find(
+        b => b.female_id.trim().toUpperCase() === cleanDam && (b.status === 'Active' || !b.status)
+      );
+      if (activeBreeding) {
+        await updateBreeding(activeBreeding.id, {
+          status: 'Delivered',
+          actual_birth_date: newDob,
+          kids_born: (activeBreeding.kids_born || 0) + 1,
+          kid_tags: Array.from(new Set([...(activeBreeding.kid_tags || []), cleanTag])),
+        });
+      }
+      const damGoat = goats.find(g => g.tag_number.trim().toUpperCase() === cleanDam);
+      if (damGoat && damGoat.status === 'Pregnant') {
+        await updateGoat(damGoat.id, { status: 'Active' });
+      }
     }
 
     // Reset Form

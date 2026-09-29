@@ -85,6 +85,13 @@ export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ on
       (b.status === 'Active' || !b.status)
   );
 
+  // Check if currently selected doe has a delivered breeding record
+  const deliveredBreedingForSelectedDoe = breeding.find(
+    b =>
+      b.female_id.toUpperCase() === selectedDoeTag.toUpperCase() &&
+      b.status === 'Delivered'
+  );
+
   // Filter health records that have pregnancy checkups
   const pregnancyHealthRecords = health.filter(
     h => h.is_pregnant || h.checkup_type === 'Pregnancy Check' || h.condition.toLowerCase().includes('pregnant')
@@ -226,21 +233,30 @@ export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ on
     const formattedKiddingDate = kiddingTargetDate.toISOString().split('T')[0];
     const formattedConceptionDate = effectiveConceptionDate.toISOString().split('T')[0];
 
+    const cleanDoe = selectedDoeTag.trim().toUpperCase();
+    const cleanSire = selectedSireTag.trim().toUpperCase();
+
     // Check if an active record already exists for this doe
-    const existing = breeding.find(b => b.female_id === selectedDoeTag && b.status === 'Active');
+    const existing = breeding.find(
+      b =>
+        b.female_id.trim().toUpperCase() === cleanDoe &&
+        (b.status === 'Active' || !b.status)
+    );
 
     if (existing) {
       await updateBreeding(existing.id, {
+        male_id: cleanSire,
         mating_date: formattedConceptionDate,
         expected_birth: formattedKiddingDate,
         gestation_days: gestationDays,
+        status: 'Active',
         notes: `Estimated via Breeding Tool (${gestationDays}d gestation). Predicted window: ${kiddingWindowStart.toISOString().split('T')[0]} to ${kiddingWindowEnd.toISOString().split('T')[0]}.`,
       });
       setSaveSuccessMsg(`Updated active breeding schedule for doe ${selectedDoeTag}!`);
     } else {
       await addBreeding({
-        female_id: selectedDoeTag,
-        male_id: selectedSireTag,
+        female_id: cleanDoe,
+        male_id: cleanSire,
         mating_date: formattedConceptionDate,
         expected_birth: formattedKiddingDate,
         gestation_days: gestationDays,
@@ -597,7 +613,7 @@ export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ on
             </div>
 
             {/* Quick Action: Enter Goat Gave Birth for Currently Selected Doe */}
-            {activeBreedingForSelectedDoe && (() => {
+            {activeBreedingForSelectedDoe ? (() => {
               const doeTargetDate = new Date(activeBreedingForSelectedDoe.expected_birth);
               const t = new Date();
               t.setHours(0, 0, 0, 0);
@@ -654,7 +670,36 @@ export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ on
                   )}
                 </div>
               );
-            })()}
+            })() : deliveredBreedingForSelectedDoe ? (
+              <div className="p-3.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
+                <div className="text-xs text-emerald-100 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+                  <span>
+                    Doe {selectedDoeTag} successfully delivered on {deliveredBreedingForSelectedDoe.actual_birth_date || 'schedule'}. Status: <strong className="text-white">Delivered</strong> ({deliveredBreedingForSelectedDoe.kids_born || deliveredBreedingForSelectedDoe.registered_kids?.length || 1} kid{((deliveredBreedingForSelectedDoe.kids_born || deliveredBreedingForSelectedDoe.registered_kids?.length || 1) === 1 ? '' : 's')}).
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBreedingForDelivery(deliveredBreedingForSelectedDoe)}
+                    className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-white/20"
+                    title="View or modify kids from this delivered kidding"
+                  >
+                    <GoatKidIcon className="w-3.5 h-3.5" />
+                    <span>Manage Kids ({deliveredBreedingForSelectedDoe.kids_born || deliveredBreedingForSelectedDoe.registered_kids?.length || 1})</span>
+                  </button>
+                  {onNavigate && (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('records', 'kids')}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-stone-950 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Nursery
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* Clinical Milestones Timeline */}

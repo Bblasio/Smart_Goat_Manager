@@ -1,22 +1,23 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useTheme } from '../context/ThemeContext';
 import {
-  Lock,
-  Mail,
-  Home,
-  ArrowRight,
-  Sparkles,
   Loader2,
   CheckCircle2,
   AlertCircle,
   Eye,
   EyeOff,
-  LogIn,
+  Sun,
+  Moon,
+  ShieldCheck,
+  Check,
+  X
 } from 'lucide-react';
 import { evaluatePasswordPolicy } from '../utils/passwordPolicy';
 
 export const AuthView: React.FC = () => {
   const { login, signup, resetPassword, enterDemoMode } = useFarm();
+  const { theme, toggleTheme } = useTheme();
   const [mode, setMode] = useState<'login' | 'signup' | 'reset'>('login');
 
   // Form Fields
@@ -47,8 +48,15 @@ export const AuthView: React.FC = () => {
       const res = await Promise.race([
         login(email.trim(), password),
         new Promise<{ success: boolean; error?: string }>(resolve =>
-          setTimeout(() => resolve({ success: false, error: 'Sign-in request timed out. Please check your internet connection and retry.' }), 12000)
-        )
+          setTimeout(
+            () =>
+              resolve({
+                success: false,
+                error: 'Sign-in request timed out. Please check your internet connection and retry.',
+              }),
+            12000
+          )
+        ),
       ]);
 
       if (!res.success) {
@@ -63,7 +71,6 @@ export const AuthView: React.FC = () => {
     }
   };
 
-  // Create account: immediate creation and instant sign-in without email verification
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -78,8 +85,6 @@ export const AuthView: React.FC = () => {
       return;
     }
 
-    // Strict Password Policy Enforcement:
-    // 6 minimum, capital letter, special character, number, small letter
     const policyCheck = evaluatePasswordPolicy(password);
     if (!policyCheck.isValid) {
       setErrorMsg(
@@ -89,7 +94,6 @@ export const AuthView: React.FC = () => {
     }
 
     setIsLoading(true);
-
     try {
       const profileDetails = {
         owner_name: '',
@@ -112,8 +116,7 @@ export const AuthView: React.FC = () => {
 
       setInfoMsg('Account created successfully! Entering your farm ledger...');
     } catch (err: any) {
-      setErrorMsg(err.message || 'An unexpected error occurred during account creation.');
-    } finally {
+      setErrorMsg(err?.message || 'An unexpected error occurred during account creation.');
       setIsLoading(false);
     }
   };
@@ -123,7 +126,7 @@ export const AuthView: React.FC = () => {
     setErrorMsg('');
     setInfoMsg('');
     if (!email.trim()) {
-      setErrorMsg('Please enter your email address.');
+      setErrorMsg('Please enter your registered email address.');
       return;
     }
 
@@ -139,163 +142,105 @@ export const AuthView: React.FC = () => {
       } else {
         setErrorMsg(res.error || 'Unable to send password reset email.');
       }
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to send password reset link.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-stone-950 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      {/* Two-Column Farm Layout */}
-      <div className="w-full max-w-5xl bg-stone-900 border border-stone-800 rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-        
-        {/* LEFT COLUMN: Clean Brand Identity */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-emerald-950 via-emerald-900 to-stone-950 p-8 sm:p-10 text-white flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-emerald-800/40 relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-10 left-0 -ml-12 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+    <div className="min-h-screen bg-stone-100 dark:bg-stone-950 flex flex-col items-center justify-center p-4 sm:p-6 transition-colors duration-200 relative overflow-hidden">
+      {/* Background ambient lighting */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 space-y-6 max-w-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl overflow-hidden border border-white/20 shadow-inner shrink-0">
-                <img src="/app.png" alt="Smart Goat Management" className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
-                  Farm Management System
-                </span>
-                <h1 className="text-xl font-extrabold text-white tracking-tight">
-                  Smart Goat Management
-                </h1>
-              </div>
-            </div>
+      {/* Top right theme switcher */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+          className="p-2.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white shadow-sm transition-all cursor-pointer"
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
+      </div>
 
-            <div className="pt-2">
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white leading-tight">
-                Simple & Efficient Goat Farm Records
-              </h2>
-              <p className="mt-3 text-sm text-emerald-200/80 leading-relaxed">
-                A simple and reliable digital management tool for your farm. Track your goat herd records, health checkups, breeding dates, milk yields, and farm expenses and sales.
-              </p>
-            </div>
+      {/* Auth Card Container */}
+      <div className="w-full max-w-[400px] sm:max-w-[420px] rounded-2xl shadow-xl border border-stone-200/90 dark:border-stone-800 overflow-hidden bg-white dark:bg-stone-900 transition-all z-10">
+        {/* Card Header Bar with Official Logo and Brand */}
+        <div className="bg-[#0b5736] px-5 py-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center p-1 shadow-sm shrink-0 border border-white/40">
+            <img
+              src="/app.png"
+              alt="Smart Goat Official Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
+          <span className="text-white font-bold text-base tracking-tight">
+            Smart Goat
+          </span>
         </div>
 
-        {/* RIGHT COLUMN: Interactive Authentication Form */}
-        <div className="lg:col-span-7 bg-stone-900 p-6 sm:p-10 flex flex-col justify-center">
-          <div className="max-w-md mx-auto w-full space-y-6">
-
-            {/* Mode Switcher Tabs */}
-            {mode !== 'reset' && (
-              <div className="flex bg-stone-800 p-1 rounded-2xl border border-stone-700 text-xs font-semibold">
-                <button
-                  type="button"
-                  id="tab-auth-login"
-                  onClick={() => {
-                    setMode('login');
-                    setErrorMsg('');
-                    setInfoMsg('');
-                  }}
-                  className={`flex-1 py-2.5 rounded-xl text-center transition-all ${
-                    mode === 'login'
-                      ? 'bg-emerald-600 text-white font-bold shadow-sm'
-                      : 'text-stone-400 hover:text-stone-200'
-                  }`}
-                >
-                  Sign In to Farm
-                </button>
-                <button
-                  type="button"
-                  id="tab-auth-signup"
-                  onClick={() => {
-                    setMode('signup');
-                    setErrorMsg('');
-                    setInfoMsg('');
-                  }}
-                  className={`flex-1 py-2.5 rounded-xl text-center transition-all ${
-                    mode === 'signup'
-                      ? 'bg-emerald-600 text-white font-bold shadow-sm'
-                      : 'text-stone-400 hover:text-stone-200'
-                  }`}
-                >
-                  Create Farm Account
-                </button>
+        {/* Card Body */}
+        <div className="p-6 sm:p-7 space-y-5">
+          {/* ========================================================= */}
+          {/* VIEW A: SIGN IN FORM */}
+          {/* ========================================================= */}
+          {mode === 'login' && (
+            <>
+              {/* Header Title */}
+              <div>
+                <h1 className="text-2xl sm:text-[26px] font-bold text-stone-900 dark:text-white tracking-tight leading-tight">
+                  Welcome back
+                </h1>
+                <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                  Sign in to your farm records.
+                </p>
               </div>
-            )}
 
-            {/* Notification & Alerts */}
-            {errorMsg && (
-              <div className="p-3.5 bg-rose-950/70 border border-rose-800 text-rose-300 text-xs rounded-2xl flex items-start gap-2.5 leading-relaxed animate-fade-in">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <span>{errorMsg}</span>
-                  {mode === 'login' && (
-                    <div className="mt-2.5 pt-2 border-t border-rose-900/60 flex flex-wrap items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode('reset');
-                          setErrorMsg('');
-                        }}
-                        className="text-amber-300 font-semibold hover:underline"
-                      >
-                        Forgot password? Reset it here →
-                      </button>
-                      <span className="text-stone-500">•</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode('signup');
-                          setErrorMsg('');
-                        }}
-                        className="text-emerald-400 font-semibold hover:underline"
-                      >
-                        Create a new farm account →
-                      </button>
-                    </div>
-                  )}
+              {/* Feedback Notifications */}
+              {errorMsg && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 text-rose-700 dark:text-rose-300 text-xs rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 leading-relaxed">{errorMsg}</div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {infoMsg && (
-              <div className="p-3.5 bg-emerald-950/70 border border-emerald-800 text-emerald-300 text-xs rounded-2xl flex items-center gap-2.5 animate-fade-in">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>{infoMsg}</span>
-              </div>
-            )}
+              {infoMsg && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-center gap-2.5 animate-in fade-in duration-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>{infoMsg}</span>
+                </div>
+              )}
 
-            {/* ========================================================= */}
-            {/* VIEW A: SIGN IN FORM */}
-            {/* ========================================================= */}
-            {mode === 'login' && (
               <form onSubmit={handleLogin} className="space-y-4">
+                {/* Email Field */}
                 <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight">
-                    Sign In
-                  </h3>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-stone-300 mb-1.5">
+                  <label
+                    htmlFor="input-login-email"
+                    className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5"
+                  >
                     Email
                   </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-3.5" />
-                    <input
-                      id="input-login-email"
-                      type="email"
-                      placeholder="farmer@example.com"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
-                      required
-                    />
-                  </div>
+                  <input
+                    id="input-login-email"
+                    type="email"
+                    placeholder="name@farm.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-850 text-stone-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0b5736] focus:border-transparent transition-all placeholder:text-stone-400"
+                  />
                 </div>
 
+                {/* Password Field */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-stone-300">
+                    <label
+                      htmlFor="input-login-password"
+                      className="text-xs font-semibold text-stone-700 dark:text-stone-300"
+                    >
                       Password
                     </label>
                     <button
@@ -304,278 +249,330 @@ export const AuthView: React.FC = () => {
                       onClick={() => {
                         setMode('reset');
                         setErrorMsg('');
+                        setInfoMsg('');
                       }}
-                      className="text-xs text-emerald-400 hover:text-emerald-300"
+                      className="text-xs font-medium text-[#0b5736] dark:text-emerald-400 hover:underline cursor-pointer"
                     >
                       Forgot password?
                     </button>
                   </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-3.5" />
                     <input
                       id="input-login-password"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Enter your password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-10 py-2.5 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
                       required
+                      className="w-full pl-3.5 pr-10 py-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-850 text-stone-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0b5736] focus:border-transparent transition-all placeholder:text-stone-400"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-3 text-stone-400 hover:text-stone-200"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 p-1 cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
-                {/* Sign In Button with enhanced loading animation */}
-                <div className="space-y-2">
-                  {isLoading && (
-                    <div className="p-3 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs rounded-xl flex items-center justify-center gap-2.5 animate-pulse shadow-inner">
-                      <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
-                      <span className="font-semibold tracking-wide">Authenticating farm credentials, please wait...</span>
-                    </div>
-                  )}
-
+                {/* Primary Button: Sign in */}
+                <div className="pt-1 space-y-2.5">
                   <button
                     type="submit"
                     id="btn-submit-login"
                     disabled={isLoading}
-                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-wait relative overflow-hidden"
+                    className="w-full py-2.5 px-4 rounded-lg bg-[#0b5736] hover:bg-[#08482d] active:bg-[#063923] text-white font-semibold text-sm shadow-xs hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                   >
-                    {isLoading ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-5 h-5 animate-spin text-white" />
-                        <span className="tracking-wide">Signing In...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <span>Sign In</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
+                    {isLoading && <Loader2 className="w-4 h-4 animate-spin text-white" />}
+                    <span>Sign in</span>
                   </button>
-                </div>
 
-                {/* Demo Mode Action */}
-                <div className="pt-3 border-t border-stone-800 flex items-center justify-center">
+                  {/* Secondary Button: Try with demo farm records */}
                   <button
                     type="button"
                     id="btn-explore-demo-farm"
                     onClick={enterDemoMode}
-                    className="text-xs text-stone-400 hover:text-stone-200 underline flex items-center gap-1"
+                    className="w-full py-2.5 px-4 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-850 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs hover:border-stone-400"
                   >
-                    <span>Or explore with local demo farm records</span>
+                    <span>Try with demo farm records</span>
                   </button>
                 </div>
               </form>
-            )}
 
-            {/* ========================================================= */}
-            {/* VIEW B: SIGNUP FORM WITH PASSWORD POLICIES */}
-            {/* ========================================================= */}
-            {mode === 'signup' && (
+              {/* Footer Switcher */}
+              <div className="pt-2 text-center">
+                <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400">
+                  New to Smart Goat?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signup');
+                      setErrorMsg('');
+                      setInfoMsg('');
+                    }}
+                    className="text-[#0b5736] dark:text-emerald-400 font-semibold underline hover:text-[#08482d] dark:hover:text-emerald-300 cursor-pointer"
+                  >
+                    Create an account
+                  </button>
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* ========================================================= */}
+          {/* VIEW B: SIGNUP FORM */}
+          {/* ========================================================= */}
+          {mode === 'signup' && (
+            <>
+              <div>
+                <h1 className="text-2xl sm:text-[26px] font-bold text-stone-900 dark:text-white tracking-tight leading-tight">
+                  Create account
+                </h1>
+                <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                  Start tracking your goat herd and farm records.
+                </p>
+              </div>
+
+              {/* Feedback Notifications */}
+              {errorMsg && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 text-rose-700 dark:text-rose-300 text-xs rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 leading-relaxed">{errorMsg}</div>
+                </div>
+              )}
+
+              {infoMsg && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-center gap-2.5 animate-in fade-in duration-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>{infoMsg}</span>
+                </div>
+              )}
+
               <form onSubmit={handleCreateAccount} className="space-y-3.5">
+                {/* Farm Name Field */}
                 <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight">
-                    Create Farm Account
-                  </h3>
+                  <label
+                    htmlFor="input-signup-farm-name"
+                    className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5"
+                  >
+                    Farm Name
+                  </label>
+                  <input
+                    id="input-signup-farm-name"
+                    type="text"
+                    placeholder="e.g. Greenwood Goat Ranch"
+                    value={farmName}
+                    onChange={e => setFarmName(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-850 text-stone-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0b5736] focus:border-transparent transition-all placeholder:text-stone-400"
+                  />
                 </div>
 
-                {/* Farm Name */}
+                {/* Email Field */}
                 <div>
-                  <label className="block text-xs font-semibold text-stone-300 mb-1">
-                    Farm Name *
+                  <label
+                    htmlFor="input-signup-email"
+                    className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5"
+                  >
+                    Email
                   </label>
-                  <div className="relative">
-                    <Home className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
-                    <input
-                      id="input-signup-farm-name"
-                      type="text"
-                      placeholder="e.g. Greenwood Goat Farm"
-                      value={farmName}
-                      onChange={e => setFarmName(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
-                      required
-                    />
-                  </div>
+                  <input
+                    id="input-signup-email"
+                    type="email"
+                    placeholder="name@farm.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-850 text-stone-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0b5736] focus:border-transparent transition-all placeholder:text-stone-400"
+                  />
                 </div>
 
-                {/* Email */}
+                {/* Password Field with Policy Feedback */}
                 <div>
-                  <label className="block text-xs font-semibold text-stone-300 mb-1">
-                    Email *
+                  <label
+                    htmlFor="input-signup-password"
+                    className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5"
+                  >
+                    Password
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
-                    <input
-                      id="input-signup-email"
-                      type="email"
-                      placeholder="farmer@example.com"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Password Field */}
-                <div>
-                  <label className="block text-xs font-semibold text-stone-300 mb-1">
-                    Password *
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-3" />
                     <input
                       id="input-signup-password"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Create secure password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
-                      className={`w-full pl-10 pr-9 py-2 bg-stone-800 border text-white rounded-xl text-sm focus:outline-none focus:ring-2 placeholder:text-stone-500 transition-all ${
-                        password.length === 0
-                          ? 'border-stone-700 focus:ring-emerald-500'
-                          : passwordPolicy.isValid
-                          ? 'border-emerald-500/80 focus:ring-emerald-500'
-                          : 'border-amber-500/60 focus:ring-amber-500'
-                      }`}
                       required
+                      className="w-full pl-3.5 pr-10 py-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-850 text-stone-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0b5736] focus:border-transparent transition-all placeholder:text-stone-400"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-stone-400 hover:text-stone-200"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 p-1 cursor-pointer"
                     >
-                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                </div>
 
-                {/* Password Policy as Just a Clean List */}
-                <div className="text-xs text-stone-400 px-1">
-                  <ul className="list-disc list-inside space-y-1 text-xs text-stone-400">
-                    <li className={passwordPolicy.minLength ? 'text-emerald-400' : ''}>
-                      Minimum 6 characters
-                    </li>
-                    <li className={passwordPolicy.hasCapital ? 'text-emerald-400' : ''}>
-                      At least one uppercase letter (A-Z)
-                    </li>
-                    <li className={passwordPolicy.hasSmall ? 'text-emerald-400' : ''}>
-                      At least one lowercase letter (a-z)
-                    </li>
-                    <li className={passwordPolicy.hasNumber ? 'text-emerald-400' : ''}>
-                      At least one number (0-9)
-                    </li>
-                    <li className={passwordPolicy.hasSpecial ? 'text-emerald-400' : ''}>
-                      At least one special character (!@#$%^&*...)
-                    </li>
-                  </ul>
-                </div>
-
-                <button
-                  type="submit"
-                  id="btn-create-farm-account"
-                  disabled={isLoading || (password.length > 0 && !passwordPolicy.isValid)}
-                  className="w-full py-3 mt-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-stone-700 disabled:text-stone-400 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Creating account...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Create Account</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
+                  {/* Password requirements indicators if user has started typing */}
+                  {password.length > 0 && (
+                    <div className="mt-2 p-2.5 rounded-lg bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-800 text-[11px] space-y-1 text-stone-600 dark:text-stone-400">
+                      <div className="flex items-center gap-1.5 font-medium text-stone-700 dark:text-stone-300 pb-1 border-b border-stone-200 dark:border-stone-750">
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#0b5736] dark:text-emerald-400" />
+                        <span>Password Requirements:</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 pt-0.5">
+                        <div className={`flex items-center gap-1 ${passwordPolicy.minLength ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}`}>
+                          {passwordPolicy.minLength ? <Check className="w-3 h-3" /> : <X className="w-3 h-3 text-stone-400" />}
+                          <span>6+ characters</span>
+                        </div>
+                        <div className={`flex items-center gap-1 ${passwordPolicy.hasCapital ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}`}>
+                          {passwordPolicy.hasCapital ? <Check className="w-3 h-3" /> : <X className="w-3 h-3 text-stone-400" />}
+                          <span>Uppercase (A-Z)</span>
+                        </div>
+                        <div className={`flex items-center gap-1 ${passwordPolicy.hasSmall ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}`}>
+                          {passwordPolicy.hasSmall ? <Check className="w-3 h-3" /> : <X className="w-3 h-3 text-stone-400" />}
+                          <span>Lowercase (a-z)</span>
+                        </div>
+                        <div className={`flex items-center gap-1 ${passwordPolicy.hasNumber ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}`}>
+                          {passwordPolicy.hasNumber ? <Check className="w-3 h-3" /> : <X className="w-3 h-3 text-stone-400" />}
+                          <span>Number (0-9)</span>
+                        </div>
+                        <div className={`flex items-center gap-1 col-span-2 ${passwordPolicy.hasSpecial ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}`}>
+                          {passwordPolicy.hasSpecial ? <Check className="w-3 h-3" /> : <X className="w-3 h-3 text-stone-400" />}
+                          <span>Special character (!@#$%^&*)</span>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </button>
+                </div>
 
-                <div className="pt-2 text-center">
+                {/* Primary Button: Create account */}
+                <div className="pt-1 space-y-2.5">
+                  <button
+                    type="submit"
+                    id="btn-submit-signup"
+                    disabled={isLoading}
+                    className="w-full py-2.5 px-4 rounded-lg bg-[#0b5736] hover:bg-[#08482d] active:bg-[#063923] text-white font-semibold text-sm shadow-xs hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  >
+                    {isLoading && <Loader2 className="w-4 h-4 animate-spin text-white" />}
+                    <span>Create account</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={enterDemoMode}
+                    className="w-full py-2.5 px-4 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-850 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs hover:border-stone-400"
+                  >
+                    <span>Try with demo farm records</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Footer Switcher */}
+              <div className="pt-2 text-center">
+                <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400">
+                  Already have an account?{' '}
                   <button
                     type="button"
                     onClick={() => {
                       setMode('login');
                       setErrorMsg('');
+                      setInfoMsg('');
                     }}
-                    className="text-xs text-stone-400 hover:text-stone-200"
+                    className="text-[#0b5736] dark:text-emerald-400 font-semibold underline hover:text-[#08482d] dark:hover:text-emerald-300 cursor-pointer"
                   >
-                    Already have an account? <span className="text-emerald-400 font-semibold underline">Sign In</span>
+                    Sign in
                   </button>
-                </div>
-              </form>
-            )}
+                </p>
+              </div>
+            </>
+          )}
 
-            {/* ========================================================= */}
-            {/* VIEW D: FORGOT PASSWORD */}
-            {/* ========================================================= */}
-            {mode === 'reset' && (
+          {/* ========================================================= */}
+          {/* VIEW C: FORGOT PASSWORD */}
+          {/* ========================================================= */}
+          {mode === 'reset' && (
+            <>
+              <div>
+                <h1 className="text-2xl sm:text-[26px] font-bold text-stone-900 dark:text-white tracking-tight leading-tight">
+                  Reset password
+                </h1>
+                <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                  Enter your registered email to receive a password reset link.
+                </p>
+              </div>
+
+              {/* Feedback Notifications */}
+              {errorMsg && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 text-rose-700 dark:text-rose-300 text-xs rounded-xl flex items-start gap-2.5 animate-in fade-in duration-200">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 leading-relaxed">{errorMsg}</div>
+                </div>
+              )}
+
+              {infoMsg && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-center gap-2.5 animate-in fade-in duration-200">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>{infoMsg}</span>
+                </div>
+              )}
+
               <form onSubmit={handleReset} className="space-y-4">
                 <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight">
-                    Reset Farm Password
-                  </h3>
-                  <p className="text-xs text-stone-400 mt-1">
-                    Enter your registered email address and we'll dispatch a secure password reset link.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-stone-300 mb-1.5">
-                    Registered Email Address
+                  <label
+                    htmlFor="input-reset-email"
+                    className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5"
+                  >
+                    Email address
                   </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-stone-500 absolute left-3.5 top-3.5" />
-                    <input
-                      id="input-reset-email"
-                      type="email"
-                      placeholder="farmer@example.com"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-stone-800 border border-stone-700 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-stone-500"
-                      required
-                    />
-                  </div>
+                  <input
+                    id="input-reset-email"
+                    type="email"
+                    placeholder="name@farm.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-850 text-stone-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0b5736] focus:border-transparent transition-all placeholder:text-stone-400"
+                  />
                 </div>
 
-                <button
-                  type="submit"
-                  id="btn-send-reset-link"
-                  disabled={isLoading}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Sending link...</span>
-                    </>
-                  ) : (
-                    <span>Send Password Reset Link</span>
-                  )}
-                </button>
+                <div className="pt-1">
+                  <button
+                    type="submit"
+                    id="btn-send-reset-link"
+                    disabled={isLoading}
+                    className="w-full py-2.5 px-4 rounded-lg bg-[#0b5736] hover:bg-[#08482d] active:bg-[#063923] text-white font-semibold text-sm shadow-xs hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  >
+                    {isLoading && <Loader2 className="w-4 h-4 animate-spin text-white" />}
+                    <span>Send password reset link</span>
+                  </button>
+                </div>
+              </form>
 
-                <div className="text-center pt-2">
+              {/* Footer Switcher */}
+              <div className="pt-2 text-center">
+                <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400">
+                  Remembered your password?{' '}
                   <button
                     type="button"
                     onClick={() => {
                       setMode('login');
                       setErrorMsg('');
+                      setInfoMsg('');
                     }}
-                    className="text-xs text-emerald-400 hover:text-emerald-300"
+                    className="text-[#0b5736] dark:text-emerald-400 font-semibold underline hover:text-[#08482d] dark:hover:text-emerald-300 cursor-pointer"
                   >
-                    ← Return to Sign In
+                    Sign in
                   </button>
-                </div>
-              </form>
-            )}
-
-          </div>
+                </p>
+              </div>
+            </>
+          )}
         </div>
-
       </div>
     </div>
   );

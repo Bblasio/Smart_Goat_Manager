@@ -1463,6 +1463,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Mating Date</th>
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Gestation Period</th>
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Expected Delivery</th>
+                  <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700">Status</th>
                   <th className="px-6 py-3.5 bg-[#f7f6f2] dark:bg-stone-800 border-b border-[#e5e5dc] dark:border-stone-700 text-right">Actions</th>
                 </tr>
               </thead>
@@ -1516,13 +1517,36 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                             <span className="italic text-[#b7bab2] text-xs font-normal">—</span>
                           )}
                         </td>
+                        <td className="px-6 py-[15px]">
+                          {item.status === 'Delivered' ? (
+                            <div>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span>Delivered ({item.kids_born || item.registered_kids?.length || (item.kid_tags ? item.kid_tags.length : 1)} kid{((item.kids_born || item.registered_kids?.length || (item.kid_tags ? item.kid_tags.length : 1)) === 1 ? '' : 's')})</span>
+                              </span>
+                              {item.actual_birth_date && (
+                                <span className="block text-[11px] text-stone-500 dark:text-stone-400 font-mono mt-0.5">
+                                  Born: {item.actual_birth_date}
+                                </span>
+                              )}
+                            </div>
+                          ) : isDue ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700 animate-pulse">
+                              <span>Due for Kidding</span>
+                            </span>
+                          ) : isDueSoon ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                              <span>Due in {diffDays}d</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                              <span>In Gestation ({diffDays}d left)</span>
+                            </span>
+                          )}
+                        </td>
                         <td className="px-6 py-[15px] text-right flex items-center justify-end gap-2">
                           {item.status === 'Delivered' ? (
                             <div className="flex items-center gap-1.5">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Delivered ({item.kids_born || item.registered_kids?.length || (item.kid_tags ? item.kid_tags.length : 1)} {((item.kids_born || item.registered_kids?.length || (item.kid_tags ? item.kid_tags.length : 1)) === 1 ? 'kid' : 'kids')})</span>
-                              </span>
                               <button
                                 type="button"
                                 onClick={() => handleOpenKiddingModal(item)}
@@ -1530,7 +1554,18 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                                 title="View and edit registered kids for this delivery"
                               >
                                 <GoatKidIcon className="w-3.5 h-3.5" />
-                                <span>Kids ({item.kids_born || item.registered_kids?.length || (item.kid_tags ? item.kid_tags.length : 1)})</span>
+                                <span>Manage Kids ({item.kids_born || item.registered_kids?.length || (item.kid_tags ? item.kid_tags.length : 1)})</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveTab('kids');
+                                  setSearchQuery(item.female_id);
+                                }}
+                                className="px-2 py-1 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer"
+                                title="View newborn kids in Nursery & Growth Tracker"
+                              >
+                                <span>Nursery</span>
                               </button>
                             </div>
                           ) : isDue ? (
@@ -1590,7 +1625,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <div className="max-w-md mx-auto text-center space-y-3">
                         <p className="text-stone-700 dark:text-stone-300 font-semibold">No breeding records found</p>
                         <p className="text-xs text-stone-500 dark:text-stone-400">
@@ -2374,8 +2409,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         onClose={() => setSelectedBreedingForDelivery(null)}
         breedingRecord={selectedBreedingForDelivery}
         onSuccess={() => {
-          setActiveTab('kids');
-          setSearchQuery('');
+          setSelectedBreedingForDelivery(null);
         }}
       />
     </div>

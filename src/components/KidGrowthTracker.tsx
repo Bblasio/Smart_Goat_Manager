@@ -79,6 +79,7 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
   const [thirtyDayWeightInput, setThirtyDayWeightInput] = useState('');
   const [weanStatus, setWeanStatus] = useState<'Nursing' | 'Weaned' | 'Sold' | 'Retained'>('Weaned');
   const [weanNotes, setWeanNotes] = useState('');
+  const [moveToHerdInWeanModal, setMoveToHerdInWeanModal] = useState<boolean>(false);
 
   // Unique breeds
   const availableBreeds = useMemo(() => {
@@ -220,20 +221,23 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
       notes: newNotes.trim() || undefined,
     });
 
-    // Also register in main herd records if not already present
-    const existingGoat = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
-    if (!existingGoat) {
-      await addGoat({
-        tag_number: cleanTag,
-        name: cleanName,
-        breed: cleanBreed,
-        gender: newGender,
-        dob: newDob,
-        weight_kg: birthWeight,
-        status: 'Active',
-        dam_tag: newDamTag.trim() || undefined,
-        sire_tag: newSireTag.trim() || undefined,
-      });
+    // Only enroll into main adult herd if retained for breeding stock
+    // Nursing or Weaned kids stay in nursery tracker until moved to herd
+    if (newStatus === 'Retained') {
+      const existingGoat = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
+      if (!existingGoat) {
+        await addGoat({
+          tag_number: cleanTag,
+          name: cleanName,
+          breed: cleanBreed,
+          gender: newGender,
+          dob: newDob,
+          weight_kg: birthWeight,
+          status: 'Active',
+          dam_tag: newDamTag.trim() || undefined,
+          sire_tag: newSireTag.trim() || undefined,
+        });
+      }
     }
 
     // If dam tag was specified, find and update any active breeding schedule to 'Delivered'
@@ -250,11 +254,18 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
           kid_tags: Array.from(new Set([...(activeBreeding.kid_tags || []), cleanTag])),
         });
       }
-      const damGoat = goats.find(g => g.tag_number.trim().toUpperCase() === cleanDam);
-      if (damGoat && damGoat.status === 'Pregnant') {
+      const damGoat = goats.find(
+        g =>
+          g.tag_number.trim().toUpperCase() === cleanDam ||
+          g.id === cleanDam ||
+          (g.name && g.name.trim().toUpperCase() === cleanDam)
+      );
+      if (damGoat) {
         await updateGoat(damGoat.id, { status: 'Active' });
       }
     }
+
+    showToast(`Kid ${cleanTag} registered in nursery.`, 'success');
 
     // Reset Form
     setNewTag('');
@@ -272,6 +283,7 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
     setThirtyDayWeightInput(kid.thirty_day_weight_kg ? kid.thirty_day_weight_kg.toString() : '');
     setWeanStatus(kid.status || 'Weaned');
     setWeanNotes(kid.notes || '');
+    setMoveToHerdInWeanModal(kid.status === 'Retained');
     setShowWeanModal(true);
   };
 
@@ -294,6 +306,29 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
       updates.weaning_date = weanDate;
     }
 
+    // Move from nursery/weaning to adult herd if requested or status set to Retained
+    if (weanStatus === 'Retained' || moveToHerdInWeanModal) {
+      const cleanTag = selectedKid.kid_tag.toUpperCase();
+      const existing = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
+      if (!existing) {
+        await addGoat({
+          tag_number: cleanTag,
+          name: selectedKid.kid_name || undefined,
+          breed: selectedKid.breed || 'Boer',
+          gender: selectedKid.gender,
+          dob: selectedKid.dob,
+          weight_kg: Number(updates.weaning_weight_kg || selectedKid.weaning_weight_kg || selectedKid.thirty_day_weight_kg || selectedKid.birth_weight_kg || 15),
+          status: 'Active',
+          dam_tag: selectedKid.dam_tag || undefined,
+          sire_tag: selectedKid.sire_tag || undefined,
+        });
+      }
+      updates.status = 'Retained';
+      showToast(`Kid ${selectedKid.kid_tag} weaned and moved to herd.`, 'success');
+    } else {
+      showToast(`Weaning updated for ${selectedKid.kid_tag}.`, 'success');
+    }
+
     await updateKidGrowthRecord(selectedKid.id, updates);
     setShowWeanModal(false);
     setSelectedKid(null);
@@ -301,14 +336,15 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
 
   // Graduate kid into main adult herd
   const handleGraduateKidToAdult = async (kid: KidGrowthRecord) => {
-    const existing = goats.find(g => g.tag_number.toUpperCase() === kid.kid_tag.toUpperCase());
+    const cleanTag = kid.kid_tag.toUpperCase();
+    const existing = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
     if (existing) {
-      showToast(`Goat with ear tag ${kid.kid_tag} is already in the main adult herd!`, 'info');
+      showToast(`${kid.kid_tag} is already in the herd.`, 'info');
       return;
     }
 
     await addGoat({
-      tag_number: kid.kid_tag.toUpperCase(),
+      tag_number: cleanTag,
       name: kid.kid_name || undefined,
       breed: kid.breed || 'Boer',
       gender: kid.gender,
@@ -321,10 +357,10 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
 
     await updateKidGrowthRecord(kid.id, {
       status: 'Retained',
-      notes: (kid.notes ? `${kid.notes} | ` : '') + 'Graduated to Adult Herd',
+      notes: (kid.notes ? `${kid.notes} | ` : '') + 'Moved to Adult Herd',
     });
 
-    showToast(`Enrolled kid ${kid.kid_tag} as an Active member in the Adult Herd registry!`, 'success');
+    showToast(`Kid ${kid.kid_tag} moved to adult herd.`, 'success');
   };
 
   return (
@@ -1015,7 +1051,11 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
                 </label>
                 <select
                   value={weanStatus}
-                  onChange={e => setWeanStatus(e.target.value as any)}
+                  onChange={e => {
+                    const val = e.target.value as any;
+                    setWeanStatus(val);
+                    if (val === 'Retained') setMoveToHerdInWeanModal(true);
+                  }}
                   className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-white font-bold"
                 >
                   <option value="Nursing">Nursing (Still on dam / bottle)</option>
@@ -1023,6 +1063,26 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
                   <option value="Retained">Retained for Breeding Herd</option>
                   <option value="Sold">Sold / Marketed</option>
                 </select>
+              </div>
+
+              <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700/80">
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="checkbox-move-to-adult-herd"
+                    checked={moveToHerdInWeanModal || weanStatus === 'Retained'}
+                    onChange={e => setMoveToHerdInWeanModal(e.target.checked)}
+                    className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs text-stone-800 dark:text-stone-200 font-bold block">
+                      Move kid from nursery to adult herd
+                    </span>
+                    <span className="text-[11px] text-stone-500 dark:text-stone-400 block">
+                      Enrolls kid into the adult herd registry and increases farm headcount.
+                    </span>
+                  </div>
+                </label>
               </div>
 
               <div>

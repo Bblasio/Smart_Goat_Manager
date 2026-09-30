@@ -46,8 +46,27 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
   // Present on-farm herd (strictly excluding sold and deceased goats)
   const presentGoats = goats.filter(g => g.status !== 'Sold' && g.status !== 'Dead');
   const totalHerdCount = presentGoats.length;
-  const activeGoats = presentGoats.filter(g => g.status === 'Active' || !g.status).length;
+
+  // Active breeding dam set (strictly excluding sold and dead does)
+  const activeBreedingDamTags = new Set(
+    breeding
+      .filter(b => (b.status === 'Active' || !b.status) && !soldOrDeadIdentifiers.has((b.female_id || '').trim().toUpperCase()))
+      .map(b => (b.female_id || '').trim().toUpperCase())
+  );
+
+  // Pregnant doe identification (pregnant does are already part of total herd headcount)
+  const isGoatPregnant = (g: GoatRecord) => {
+    if (g.status === 'Pregnant') return true;
+    if (g.gender?.toLowerCase().startsWith('f')) {
+      const cleanTag = g.tag_number.trim().toUpperCase();
+      return activeBreedingDamTags.has(cleanTag) || activeBreedingDamTags.has(g.id);
+    }
+    return false;
+  };
+
+  const pregnantGoatsCount = presentGoats.filter(isGoatPregnant).length;
   const quarantineGoats = presentGoats.filter(g => g.status === 'Quarantine').length;
+  const activeGoats = presentGoats.filter(g => !isGoatPregnant(g) && g.status !== 'Quarantine').length;
   const soldGoats = goats.filter(g => g.status === 'Sold').length;
   const males = presentGoats.filter(g => g.gender?.toLowerCase().startsWith('m')).length;
   const females = totalHerdCount - males;
@@ -60,7 +79,7 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
     if (soldOrDeadIdentifiers.has(cleanDam)) return false;
     return true;
   });
-  const activePregnanciesCount = activePregnancies.length;
+  const activePregnanciesCount = Math.max(pregnantGoatsCount, activePregnancies.length);
 
   const today = new Date();
   const sortedUpcomingBirths = [...activePregnancies].sort(
@@ -141,7 +160,7 @@ export const DashboardSummaryCard: React.FC<DashboardSummaryCardProps> = ({
           footer={
             <>
               <div className="flex items-center justify-between text-[#5F5E5A] dark:text-[#B4B2A9] font-normal">
-                <span>{females} Does • {males} Bucks</span>
+                <span>{activeGoats} Active • {pregnantGoatsCount > 0 ? `${pregnantGoatsCount} Pregnant • ` : ''}{females} Does • {males} Bucks</span>
                 <span className="text-[#8A897F] dark:text-[#7C7A72] group-hover:text-[#0F6E56] dark:group-hover:text-[#5DCAA5] transition-colors flex items-center">
                   Records <ArrowUpRight className="w-3 h-3 ml-0.5" />
                 </span>

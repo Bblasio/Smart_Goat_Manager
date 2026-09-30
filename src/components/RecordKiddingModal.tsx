@@ -44,6 +44,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
     goats,
     breeding,
     updateBreeding,
+    deleteBreeding,
     updateGoat,
     addGoat,
     addMultipleGoats,
@@ -268,7 +269,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
         return;
       }
       if (enteredTags.has(cleanTag)) {
-        showToast(`Duplicate tag "${cleanTag}". Each kid must have a distinct ear tag.`, 'warning');
+        showToast(`Duplicate tag "${cleanTag}". Ear tags must be unique.`, 'warning');
         return;
       }
       enteredTags.add(cleanTag);
@@ -295,43 +296,28 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
         notes: k.notes.trim() || '',
       }));
 
-      // 1. Update Breeding Record to 'Delivered' with complete kid details preserved
-      await updateBreeding(breedingRecord.id, {
-        status: 'Delivered',
-        actual_birth_date: deliveryDate,
-        kids_born: kids.length,
-        kid_tags: kidTags,
-        registered_kids: registeredKidsSummary,
-        notes: `Delivery recorded on ${deliveryDate}. ${kids.length} newborn kid(s) born: ${kids
-          .map(k => `${k.tag.trim().toUpperCase()}${k.name ? ` (${k.name})` : ''} [${k.gender}]`)
-          .join(', ')}. ${gestationVarianceInfo}`,
-      });
+      // 1. Remove female schedule from breeding records now that birth is confirmed
+      await deleteBreeding(breedingRecord.id);
 
-      // Also ensure any other active breeding records for this same dam are marked Delivered to prevent duplicate entry
+      // Also ensure any other active breeding records for this same dam are removed to prevent duplicate entry
       const otherActiveForDam = breeding.filter(
         b =>
           b.id !== breedingRecord.id &&
-          b.female_id.trim().toUpperCase() === femaleTag &&
-          (b.status === 'Active' || !b.status)
+          b.female_id.trim().toUpperCase() === femaleTag
       );
       for (const other of otherActiveForDam) {
-        await updateBreeding(other.id, {
-          status: 'Delivered',
-          actual_birth_date: deliveryDate,
-          kids_born: kids.length,
-          kid_tags: kidTags,
-        });
+        await deleteBreeding(other.id);
       }
 
       // 2. Update Dam doe to Active status (no longer Pregnant)
-      if (damGoat) {
-        await updateGoat(damGoat.id, { status: 'Active' });
-      } else {
-        // Fallback: search by tag
-        const matchDoe = goats.find(g => g.tag_number.toUpperCase() === femaleTag);
-        if (matchDoe) {
-          await updateGoat(matchDoe.id, { status: 'Active' });
-        }
+      const matchedDam = goats.find(
+        g =>
+          g.tag_number.trim().toUpperCase() === femaleTag ||
+          g.id === breedingRecord.female_id ||
+          (g.name && g.name.trim().toUpperCase() === femaleTag)
+      );
+      if (matchedDam) {
+        await updateGoat(matchedDam.id, { status: 'Active' });
       }
 
       // 3. Add Health Record confirming successful delivery and post-partum health
@@ -346,10 +332,9 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
         vet_name: 'Attended Kidding',
       });
 
-      // 4. Register EVERY newborn kid into BOTH:
-      // A) Herd Records (`addGoat` / `addMultipleGoats`) - so they appear in Herd & Farm Records table & cards with Sire & Dam
-      // B) Nursery & Growth Tracker (`addKidGrowthRecord` / `addMultipleKidGrowthRecords`) - so they appear in Nursery tracking
-      const newGoatsToEnroll: Omit<GoatRecord, 'id' | 'created_at'>[] = [];
+      // 4. Register EVERY newborn kid into Nursery & Growth Tracker (`kidGrowthRecords`)
+      // Note: Newborn kids stay in nursery/weaning tracker until moved to the main herd.
+      // Dam is already on the herd headcount, so her status shifts to Active (total headcount unchanged).
       const newKidsToEnroll: Omit<KidGrowthRecord, 'id' | 'created_at'>[] = [];
 
       for (const kid of kids) {
@@ -360,7 +345,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
         // Convert to standard kg if user entered in lbs
         const weightKg = weightUnit === 'lbs' ? Number((rawWeight / 2.20462).toFixed(2)) : rawWeight;
 
-        // Check if kid already exists in goats
+        // If kid already exists in goats (e.g. pre-existing), sync pedigree
         const existingGoat = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
         if (existingGoat) {
           await updateGoat(existingGoat.id, {
@@ -369,18 +354,6 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
             gender: kid.gender,
             dob: deliveryDate,
             weight_kg: weightKg,
-            dam_tag: femaleTag,
-            sire_tag: maleTag,
-          });
-        } else {
-          newGoatsToEnroll.push({
-            tag_number: cleanTag,
-            name: cleanName,
-            breed: kidBreed,
-            gender: kid.gender,
-            dob: deliveryDate,
-            weight_kg: weightKg,
-            status: 'Active',
             dam_tag: femaleTag,
             sire_tag: maleTag,
           });
@@ -416,16 +389,13 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
         }
       }
 
-      // Batch enroll new goats and nursery kids
-      if (newGoatsToEnroll.length > 0) {
-        await addMultipleGoats(newGoatsToEnroll);
-      }
+      // Batch enroll nursery kids
       if (newKidsToEnroll.length > 0) {
         await addMultipleKidGrowthRecords(newKidsToEnroll);
       }
 
       showToast(
-        `Kidding confirmed! Dam ${femaleTag} is now Active. ${kids.length} newborn kid(s) saved and enrolled in both Herd & Nursery records.`,
+        `Birth confirmed for ${femaleTag} (${kids.length} kid${kids.length > 1 ? 's' : ''}). Dam is now Active.`,
         'success'
       );
 
@@ -435,7 +405,7 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
 
       onClose();
     } catch (err: any) {
-      showToast(err.message || 'Failed to record kidding delivery', 'error');
+      showToast(err.message || 'Failed to record birth', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -719,16 +689,16 @@ export const RecordKiddingModal: React.FC<RecordKiddingModalProps> = ({
             </div>
             <ul className="text-[11px] text-emerald-800 dark:text-emerald-300 list-disc list-inside space-y-0.5 leading-relaxed">
               <li>
-                <strong>Dam {breedingRecord.female_id}:</strong> Status updated from <em>Pregnant</em> to <strong>Active</strong>.
+                <strong>Dam {breedingRecord.female_id}:</strong> Status updated from <em>Pregnant</em> to <strong>Active</strong> in herd.
               </li>
               <li>
-                <strong>Breeding Table:</strong> Schedule marked <strong>Delivered</strong> and removed from the active countdown watchlist.
+                <strong>Breeding Records:</strong> Female removed from breeding records as birth is confirmed.
               </li>
               <li>
-                <strong>Herd Records:</strong> Kid(s) added with Dam &amp; Sire tags automatically recorded.
+                <strong>Herd Records:</strong> Kid(s) added with <strong>Active</strong> status and Dam &amp; Sire tags recorded.
               </li>
               <li>
-                <strong>Nursery:</strong> Kid(s) enrolled in the Growth Tracker under Nursing status.
+                <strong>Dashboard Badges:</strong> Active herd metrics increase with the mother and newborn kid(s).
               </li>
             </ul>
           </div>

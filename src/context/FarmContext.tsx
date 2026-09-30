@@ -1588,11 +1588,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    setGoats(prev => {
-      const updated = [...createdGoats, ...prev];
-      persistRecordsLocally(activeUid, { goats: updated });
-      return updated;
-    });
+    const nextGoats = [...createdGoats, ...goats];
+    setGoats(nextGoats);
+    persistRecordsLocally(activeUid, { goats: nextGoats });
 
     if (activeUid && Object.keys(firebasePayload).length > 0) {
       try {
@@ -1610,20 +1608,18 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateGoat = async (id: string, updates: Partial<GoatRecord>) => {
     const activeUid = firebaseUser?.uid;
     const nowIso = new Date().toISOString();
-    setGoats(prev => {
-      const updated = prev.map(g => {
-        if (g.id !== id) return g;
-        const next = { ...g, ...updates };
-        if (updates.status === 'Quarantine' && !updates.quarantine_start_date) {
-          next.quarantine_start_date = g.quarantine_start_date || nowIso;
-        } else if (updates.status && updates.status !== 'Quarantine') {
-          next.quarantine_start_date = undefined;
-        }
-        return next;
-      });
-      persistRecordsLocally(activeUid, { goats: updated });
-      return updated;
+    const nextGoats = goats.map(g => {
+      if (g.id !== id) return g;
+      const next = { ...g, ...updates };
+      if (updates.status === 'Quarantine' && !updates.quarantine_start_date) {
+        next.quarantine_start_date = g.quarantine_start_date || nowIso;
+      } else if (updates.status && updates.status !== 'Quarantine') {
+        next.quarantine_start_date = undefined;
+      }
+      return next;
     });
+    setGoats(nextGoats);
+    persistRecordsLocally(activeUid, { goats: nextGoats });
 
     if (activeUid) {
       try {
@@ -2778,11 +2774,9 @@ export const FarmProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    setKidGrowthRecords(prev => {
-      const updated = [...createdRecords, ...prev];
-      persistRecordsLocally(activeUid, { kid_growth: updated });
-      return updated;
-    });
+    const nextKids = [...createdRecords, ...kidGrowthRecords];
+    setKidGrowthRecords(nextKids);
+    persistRecordsLocally(activeUid, { kid_growth: nextKids });
 
     if (activeUid && Object.keys(firebasePayload).length > 0) {
       try {

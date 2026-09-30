@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useToast } from '../context/ToastContext';
 import { RecordType, AppView, GoatRecord, SaleRecord, HealthRecord, BreedingRecord } from '../types';
@@ -179,8 +179,8 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         await bulkUpdateGoats(selectedGoatIds, updates);
       }
 
-      showToast(`Successfully updated ${selectedGoatIds.length} goat record(s).`, 'success');
-      setBulkSuccessMsg(`Batch updated ${selectedGoatIds.length} goat(s) successfully.`);
+      showToast(`Updated ${selectedGoatIds.length} goat record(s).`, 'success');
+      setBulkSuccessMsg(`Updated ${selectedGoatIds.length} goat(s).`);
       setIsBatchEditModalOpen(false);
       setSelectedGoatIds([]);
       setTimeout(() => setBulkSuccessMsg(null), 4500);
@@ -191,24 +191,49 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     }
   };
 
+  // Fast indexed lookups for sales, breeding and health
+  const salesMap = useMemo(() => {
+    const map = new Map<string, SaleRecord>();
+    for (const s of sales) {
+      if (s.goat_id) {
+        map.set(s.goat_id.trim().toUpperCase(), s);
+      }
+    }
+    return map;
+  }, [sales]);
+
+  const activeBreedingMap = useMemo(() => {
+    const map = new Map<string, BreedingRecord>();
+    for (const b of breeding) {
+      if (b.female_id && (b.status === 'Active' || !b.status)) {
+        map.set(b.female_id.trim().toUpperCase(), b);
+      }
+    }
+    return map;
+  }, [breeding]);
+
+  const latestHealthMap = useMemo(() => {
+    const map = new Map<string, HealthRecord>();
+    const sorted = [...health].sort((a, b) => new Date(b.checkup_date).getTime() - new Date(a.checkup_date).getTime());
+    for (const h of sorted) {
+      const key = (h.goat_id || '').trim().toUpperCase();
+      if (key && !map.has(key)) {
+        map.set(key, h);
+      }
+    }
+    return map;
+  }, [health]);
+
   // Helper to determine effective goat status, fetching from sales if sold
   const getGoatEffectiveStatus = (goat: GoatRecord): 'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead' => {
     if (goat.status === 'Dead' || (goat.status as any) === 'Deceased') return 'Dead';
     if (goat.status === 'Sold') return 'Sold';
-    // Check if recorded in sales transactions by tag_number, id, or name
     const cleanTag = goat.tag_number.toUpperCase();
     const cleanName = goat.name ? goat.name.trim().toUpperCase() : '';
-    const hasSaleRecord = sales.some(s => {
-      const saleTarget = (s.goat_id || '').trim().toUpperCase();
-      return saleTarget === cleanTag || s.goat_id === goat.id || (cleanName && saleTarget === cleanName);
-    });
-    if (hasSaleRecord) return 'Sold';
+    const saleRecord = salesMap.get(cleanTag) || salesMap.get(goat.id.toUpperCase()) || (cleanName ? salesMap.get(cleanName) : undefined);
+    if (saleRecord) return 'Sold';
     if (goat.status === 'Quarantine') return 'Quarantine';
-    const isCurrentlyBreeding = breeding.some(
-      b =>
-        (b.female_id.toUpperCase() === cleanTag || b.female_id === goat.id) &&
-        (b.status === 'Active' || !b.status)
-    );
+    const isCurrentlyBreeding = activeBreedingMap.has(cleanTag) || activeBreedingMap.has(goat.id.toUpperCase());
     if (isCurrentlyBreeding && goat.gender === 'Female') return 'Pregnant';
     if (goat.status === 'Pregnant' && !isCurrentlyBreeding) return 'Active';
     return goat.status || 'Active';
@@ -217,10 +242,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   const getGoatSaleRecord = (goat: GoatRecord) => {
     const cleanTag = goat.tag_number.toUpperCase();
     const cleanName = goat.name ? goat.name.trim().toUpperCase() : '';
-    return sales.find(s => {
-      const saleTarget = (s.goat_id || '').trim().toUpperCase();
-      return saleTarget === cleanTag || s.goat_id === goat.id || (cleanName && saleTarget === cleanName);
-    });
+    return salesMap.get(cleanTag) || salesMap.get(goat.id.toUpperCase()) || (cleanName ? salesMap.get(cleanName) : undefined);
   };
 
   const renderGoatStatusBadge = (status?: string, saleInfo?: SaleRecord) => {
@@ -281,12 +303,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   const getGoatLatestHealth = (goat: GoatRecord): HealthRecord | undefined => {
     const cleanTag = goat.tag_number.trim().toUpperCase();
     const cleanName = goat.name ? goat.name.trim().toUpperCase() : '';
-    const matches = health.filter(h => {
-      const target = (h.goat_id || '').trim().toUpperCase();
-      return target === cleanTag || h.goat_id === goat.id || (cleanName && target === cleanName);
-    });
-    if (!matches.length) return undefined;
-    return [...matches].sort((a, b) => new Date(b.checkup_date).getTime() - new Date(a.checkup_date).getTime())[0];
+    return latestHealthMap.get(cleanTag) || latestHealthMap.get(goat.id.toUpperCase()) || (cleanName ? latestHealthMap.get(cleanName) : undefined);
   };
 
   const getGoatHealthStatus = (goat: GoatRecord): {
@@ -324,11 +341,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         return { status: 'Observation', condition: latest.condition || 'Quarantine protocol', treatment: latest.treatment, date: latest.checkup_date, isPregnant: latest.is_pregnant };
       }
       const cleanTag = goat.tag_number.toUpperCase();
-      const isBreeding = breeding.some(
-        b =>
-          (b.female_id.toUpperCase() === cleanTag || b.female_id === goat.id) &&
-          (b.status === 'Active' || !b.status)
-      );
+      const isBreeding = activeBreedingMap.has(cleanTag) || activeBreedingMap.has(goat.id.toUpperCase());
       if (
         effectiveHerdStatus === 'Pregnant' ||
         (isBreeding && (latest.is_pregnant || latest.checkup_type === 'Pregnancy Check'))
@@ -417,143 +430,278 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     }
   };
 
-  const today = new Date();
-  const dueSoon = breeding.filter(b => {
-    if (!b.expected_birth) return false;
-    const exp = new Date(b.expected_birth);
-    const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return diffDays >= 0 && diffDays <= 7;
-  });
+  const today = useMemo(() => new Date(), []);
 
-  const sickGoats = health.filter(
-    h =>
-      h.condition.toLowerCase().includes('sick') ||
-      h.condition.toLowerCase().includes('weak') ||
-      h.condition.toLowerCase().includes('fever') ||
-      h.status === 'Under Treatment' ||
-      h.status === 'Critical'
-  );
+  const dueSoon = useMemo(() => {
+    return breeding.filter(b => {
+      if (!b.expected_birth) return false;
+      const exp = new Date(b.expected_birth);
+      const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 && diffDays <= 7;
+    });
+  }, [breeding, today]);
 
-  const totalSalesRevenue = sales.reduce((sum, s) => sum + (s.price || 0), 0);
+  const sickGoats = useMemo(() => {
+    return health.filter(
+      h =>
+        h.condition.toLowerCase().includes('sick') ||
+        h.condition.toLowerCase().includes('weak') ||
+        h.condition.toLowerCase().includes('fever') ||
+        h.status === 'Under Treatment' ||
+        h.status === 'Critical'
+    );
+  }, [health]);
+
+  const totalSalesRevenue = useMemo(() => {
+    return sales.reduce((sum, s) => sum + (s.price || 0), 0);
+  }, [sales]);
+
+  // Single-pass computation of goat metadata, census metrics and filter counts
+  const goatCalculations = useMemo(() => {
+    const metaMap = new Map<string, {
+      effectiveStatus: 'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead';
+      healthInfo: ReturnType<typeof getGoatHealthStatus>;
+      saleRecord?: SaleRecord;
+    }>();
+
+    let sold = 0;
+    let dead = 0;
+    let active = 0;
+    let pregnant = 0;
+    let quarantine = 0;
+
+    const healthCounts = {
+      Healthy: 0,
+      'Under Treatment': 0,
+      Critical: 0,
+      Observation: 0,
+      Pregnant: 0,
+    };
+
+    const breedCounts = new Map<string, number>();
+
+    for (const g of goats) {
+      const cleanTag = g.tag_number.toUpperCase();
+      const cleanName = g.name ? g.name.trim().toUpperCase() : '';
+      const saleRecord = salesMap.get(cleanTag) || salesMap.get(g.id.toUpperCase()) || (cleanName ? salesMap.get(cleanName) : undefined);
+      const effectiveStatus = getGoatEffectiveStatus(g);
+      const healthInfo = getGoatHealthStatus(g);
+
+      metaMap.set(g.id, { effectiveStatus, healthInfo, saleRecord });
+
+      if (effectiveStatus === 'Sold') sold++;
+      else if (effectiveStatus === 'Dead') dead++;
+      else if (effectiveStatus === 'Active') active++;
+      else if (effectiveStatus === 'Pregnant') pregnant++;
+      else if (effectiveStatus === 'Quarantine') quarantine++;
+
+      if (healthInfo.status === 'Healthy') healthCounts.Healthy++;
+      else if (healthInfo.status === 'Under Treatment') healthCounts['Under Treatment']++;
+      else if (healthInfo.status === 'Critical') healthCounts.Critical++;
+      else if (healthInfo.status === 'Observation') healthCounts.Observation++;
+
+      if (healthInfo.status === 'Pregnant' || healthInfo.isPregnant || effectiveStatus === 'Pregnant') {
+        healthCounts.Pregnant++;
+      }
+
+      if (g.breed) {
+        breedCounts.set(g.breed, (breedCounts.get(g.breed) || 0) + 1);
+      }
+    }
+
+    const remaining = Math.max(0, goats.length - (sold + dead));
+    const breeds = Array.from(breedCounts.keys()).sort();
+
+    return {
+      metaMap,
+      soldCount: sold,
+      deceasedCount: dead,
+      activeCount: active,
+      pregnantCount: pregnant,
+      quarantineCount: quarantine,
+      remainingHeadCount: remaining,
+      healthCounts,
+      breedCounts,
+      availableBreeds: breeds,
+    };
+  }, [goats, salesMap, activeBreedingMap, latestHealthMap]);
 
   // Herd Head Count & Census Reconciliation
   const totalHerdRegistered = goats.length;
-  const soldCount = goats.filter(g => getGoatEffectiveStatus(g) === 'Sold').length;
-  const deceasedCount = goats.filter(g => getGoatEffectiveStatus(g) === 'Dead').length;
-  const remainingHeadCount = Math.max(0, totalHerdRegistered - (soldCount + deceasedCount));
+  const soldCount = goatCalculations.soldCount;
+  const deceasedCount = goatCalculations.deceasedCount;
+  const remainingHeadCount = goatCalculations.remainingHeadCount;
   const kidsCount = kidGrowthRecords.length;
-  const nursingKidsCount = kidGrowthRecords.filter(k => k.status === 'Nursing').length;
-  const weanedKidsCount = kidGrowthRecords.filter(k => k.status === 'Weaned').length;
+  const nursingKidsCount = useMemo(() => kidGrowthRecords.filter(k => k.status === 'Nursing').length, [kidGrowthRecords]);
+  const weanedKidsCount = useMemo(() => kidGrowthRecords.filter(k => k.status === 'Weaned').length, [kidGrowthRecords]);
 
   // Map goats by tag for quick name and detail lookup
-  const goatMap = new Map(goats.map(g => [g.tag_number.toUpperCase(), g]));
+  const goatMap = useMemo(() => {
+    const map = new Map<string, GoatRecord>();
+    for (const g of goats) {
+      map.set(g.tag_number.toUpperCase(), g);
+      map.set(g.id, g);
+      if (g.name) map.set(g.name.trim().toUpperCase(), g);
+    }
+    return map;
+  }, [goats]);
 
-  // Unique breeds present in current herd
-  const availableBreeds = Array.from(new Set(goats.map(g => g.breed).filter(Boolean))).sort();
+  const availableBreeds = goatCalculations.availableBreeds;
 
   // Search & Status filters
-  const filteredGoats = goats.filter(g => {
+  const filteredGoats = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const effectiveStatus = getGoatEffectiveStatus(g);
-    const healthInfo = getGoatHealthStatus(g);
+    return goats.filter(g => {
+      const meta = goatCalculations.metaMap.get(g.id);
+      const effectiveStatus = meta?.effectiveStatus || 'Active';
+      const healthInfo = meta?.healthInfo || { status: 'Healthy' as const };
 
-    // Filter by ID, Breed, or Current Health Status / Condition / Treatment
-    const matchesSearch =
-      !q ||
-      g.tag_number.toLowerCase().includes(q) ||
-      (g.name && g.name.toLowerCase().includes(q)) ||
-      g.breed.toLowerCase().includes(q) ||
-      g.gender.toLowerCase().includes(q) ||
-      healthInfo.status.toLowerCase().includes(q) ||
-      (healthInfo.condition && healthInfo.condition.toLowerCase().includes(q)) ||
-      (healthInfo.treatment && healthInfo.treatment.toLowerCase().includes(q)) ||
-      effectiveStatus.toLowerCase().includes(q);
+      // Filter by ID, Breed, or Current Health Status / Condition / Treatment
+      const matchesSearch =
+        !q ||
+        g.tag_number.toLowerCase().includes(q) ||
+        (g.name && g.name.toLowerCase().includes(q)) ||
+        g.breed.toLowerCase().includes(q) ||
+        g.gender.toLowerCase().includes(q) ||
+        healthInfo.status.toLowerCase().includes(q) ||
+        (healthInfo.condition && healthInfo.condition.toLowerCase().includes(q)) ||
+        (healthInfo.treatment && healthInfo.treatment.toLowerCase().includes(q)) ||
+        effectiveStatus.toLowerCase().includes(q);
 
-    // Herd Status Filter
-    const matchesHerdStatus =
-      goatStatusFilter === 'all' ||
-      (goatStatusFilter === 'remaining'
-        ? effectiveStatus !== 'Sold' && effectiveStatus !== 'Dead'
-        : effectiveStatus.toLowerCase() === goatStatusFilter.toLowerCase());
+      // Herd Status Filter
+      const matchesHerdStatus =
+        goatStatusFilter === 'all' ||
+        (goatStatusFilter === 'remaining'
+          ? effectiveStatus !== 'Sold' && effectiveStatus !== 'Dead'
+          : effectiveStatus.toLowerCase() === goatStatusFilter.toLowerCase());
 
-    // Health Status Filter
-    const matchesHealthStatus =
-      goatHealthFilter === 'all' ||
-      (goatHealthFilter === 'Healthy' && healthInfo.status === 'Healthy') ||
-      (goatHealthFilter === 'Under Treatment' && healthInfo.status === 'Under Treatment') ||
-      (goatHealthFilter === 'Critical' && healthInfo.status === 'Critical') ||
-      (goatHealthFilter === 'Observation' && healthInfo.status === 'Observation') ||
-      (goatHealthFilter === 'Pregnant' && (healthInfo.status === 'Pregnant' || healthInfo.isPregnant || effectiveStatus === 'Pregnant'));
+      // Health Status Filter
+      const matchesHealthStatus =
+        goatHealthFilter === 'all' ||
+        (goatHealthFilter === 'Healthy' && healthInfo.status === 'Healthy') ||
+        (goatHealthFilter === 'Under Treatment' && healthInfo.status === 'Under Treatment') ||
+        (goatHealthFilter === 'Critical' && healthInfo.status === 'Critical') ||
+        (goatHealthFilter === 'Observation' && healthInfo.status === 'Observation') ||
+        (goatHealthFilter === 'Pregnant' && (healthInfo.status === 'Pregnant' || healthInfo.isPregnant || effectiveStatus === 'Pregnant'));
 
-    // Breed Filter
-    const matchesBreed =
-      goatBreedFilter === 'all' ||
-      g.breed.toLowerCase() === goatBreedFilter.toLowerCase();
+      // Breed Filter
+      const matchesBreed =
+        goatBreedFilter === 'all' ||
+        g.breed.toLowerCase() === goatBreedFilter.toLowerCase();
 
-    return matchesSearch && matchesHerdStatus && matchesHealthStatus && matchesBreed;
-  });
+      return matchesSearch && matchesHerdStatus && matchesHealthStatus && matchesBreed;
+    });
+  }, [goats, goatCalculations.metaMap, searchQuery, goatStatusFilter, goatHealthFilter, goatBreedFilter]);
 
   const handleOpenKiddingModal = (b: BreedingRecord) => {
     setSelectedBreedingForDelivery(b);
   };
 
-  const filteredBreeding = breeding.filter(b => {
+  const filteredBreeding = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const female = goatMap.get(b.female_id.toUpperCase());
-    const male = goatMap.get(b.male_id.toUpperCase());
-    return (
-      !q ||
-      b.female_id.toLowerCase().includes(q) ||
-      b.male_id.toLowerCase().includes(q) ||
-      (female?.name && female.name.toLowerCase().includes(q)) ||
-      (male?.name && male.name.toLowerCase().includes(q)) ||
-      (b.status && b.status.toLowerCase().includes(q))
+    return breeding.filter(b => {
+      // Delivered does are removed from breeding records
+      if (b.status === 'Delivered') return false;
+      const female = goatMap.get(b.female_id.toUpperCase());
+      const male = goatMap.get(b.male_id.toUpperCase());
+      return (
+        !q ||
+        b.female_id.toLowerCase().includes(q) ||
+        b.male_id.toLowerCase().includes(q) ||
+        (female?.name && female.name.toLowerCase().includes(q)) ||
+        (male?.name && male.name.toLowerCase().includes(q)) ||
+        (b.status && b.status.toLowerCase().includes(q))
+      );
+    });
+  }, [breeding, searchQuery, goatMap]);
+
+  const filteredHealth = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return health.filter(h => {
+      const matchedGoat = goatMap.get(h.goat_id.toUpperCase());
+      const goatName = matchedGoat?.name || '';
+
+      const matchesSearch =
+        !q ||
+        h.goat_id.toLowerCase().includes(q) ||
+        goatName.toLowerCase().includes(q) ||
+        (h.status && h.status.toLowerCase().includes(q)) ||
+        h.condition.toLowerCase().includes(q) ||
+        h.treatment.toLowerCase().includes(q) ||
+        (h.checkup_type && h.checkup_type.toLowerCase().includes(q)) ||
+        (h.vet_name && h.vet_name.toLowerCase().includes(q)) ||
+        (h.is_pregnant && 'pregnant'.includes(q));
+
+      const matchesStatus =
+        healthStatusFilter === 'all' ||
+        (healthStatusFilter === 'Healthy' && (h.status === 'Healthy' || h.condition.toLowerCase().includes('healthy') || h.condition.toLowerCase().includes('good'))) ||
+        (healthStatusFilter === 'Under Treatment' && (h.status === 'Under Treatment' || h.condition.toLowerCase().includes('sick') || h.condition.toLowerCase().includes('weak') || h.condition.toLowerCase().includes('fever'))) ||
+        (healthStatusFilter === 'Pregnancy Check' && (h.checkup_type === 'Pregnancy Check' || h.is_pregnant)) ||
+        (healthStatusFilter === 'Critical' && (h.status === 'Critical' || h.condition.toLowerCase().includes('critical')));
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [health, searchQuery, healthStatusFilter, goatMap]);
+
+  const filteredMilk = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return milk;
+    return milk.filter(
+      m =>
+        m.goat_id.toLowerCase().includes(q) ||
+        m.date.toLowerCase().includes(q)
     );
-  });
+  }, [milk, searchQuery]);
 
-  const filteredHealth = health.filter(h => {
-    const q = searchQuery.trim().toLowerCase();
-    const matchedGoat = goatMap.get(h.goat_id.toUpperCase());
-    const goatName = matchedGoat?.name || '';
+  const filteredSales = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return sales;
+    return sales.filter(
+      s =>
+        s.goat_id.toLowerCase().includes(q) ||
+        s.buyer_name.toLowerCase().includes(q)
+    );
+  }, [sales, searchQuery]);
 
-    const matchesSearch =
-      !q ||
-      h.goat_id.toLowerCase().includes(q) ||
-      goatName.toLowerCase().includes(q) ||
-      (h.status && h.status.toLowerCase().includes(q)) ||
-      h.condition.toLowerCase().includes(q) ||
-      h.treatment.toLowerCase().includes(q) ||
-      (h.checkup_type && h.checkup_type.toLowerCase().includes(q)) ||
-      (h.vet_name && h.vet_name.toLowerCase().includes(q)) ||
-      (h.is_pregnant && 'pregnant'.includes(q));
+  const filteredWorkers = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return workers;
+    return workers.filter(
+      w =>
+        w.full_name.toLowerCase().includes(q) ||
+        w.location.toLowerCase().includes(q)
+    );
+  }, [workers, searchQuery]);
 
-    const matchesStatus =
-      healthStatusFilter === 'all' ||
-      (healthStatusFilter === 'Healthy' && (h.status === 'Healthy' || h.condition.toLowerCase().includes('healthy') || h.condition.toLowerCase().includes('good'))) ||
-      (healthStatusFilter === 'Under Treatment' && (h.status === 'Under Treatment' || h.condition.toLowerCase().includes('sick') || h.condition.toLowerCase().includes('weak') || h.condition.toLowerCase().includes('fever'))) ||
-      (healthStatusFilter === 'Pregnancy Check' && (h.checkup_type === 'Pregnancy Check' || h.is_pregnant)) ||
-      (healthStatusFilter === 'Critical' && (h.status === 'Critical' || h.condition.toLowerCase().includes('critical')));
+  const healthFilterCounts = useMemo(() => {
+    let healthy = 0;
+    let underTreatment = 0;
+    let pregnancyCheck = 0;
+    let critical = 0;
 
-    return matchesSearch && matchesStatus;
-  });
+    for (const h of health) {
+      const condLower = h.condition.toLowerCase();
+      if (h.status === 'Healthy' || condLower.includes('healthy') || condLower.includes('good')) {
+        healthy++;
+      }
+      if (h.status === 'Under Treatment' || condLower.includes('sick') || condLower.includes('weak') || condLower.includes('fever')) {
+        underTreatment++;
+      }
+      if (h.checkup_type === 'Pregnancy Check' || h.is_pregnant) {
+        pregnancyCheck++;
+      }
+      if (h.status === 'Critical' || condLower.includes('critical')) {
+        critical++;
+      }
+    }
 
-  const filteredMilk = milk.filter(
-    m =>
-      m.goat_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.date.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredSales = sales.filter(
-    s =>
-      s.goat_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.buyer_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredWorkers = workers.filter(
-    w =>
-      w.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      w.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    return {
+      Healthy: healthy,
+      'Under Treatment': underTreatment,
+      'Pregnancy Check': pregnancyCheck,
+      Critical: critical,
+    };
+  }, [health]);
 
   // High quality Excel, CSV & PDF export with defined headings
   const handleExportData = (
@@ -978,11 +1126,11 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   </span>
                   {[
                     { id: 'all', label: 'All Health', count: goats.length },
-                    { id: 'Healthy', label: 'Healthy', count: goats.filter(g => getGoatHealthStatus(g).status === 'Healthy').length, dot: 'bg-emerald-500' },
-                    { id: 'Under Treatment', label: 'Under Treatment', count: goats.filter(g => getGoatHealthStatus(g).status === 'Under Treatment').length, dot: 'bg-amber-500' },
-                    { id: 'Critical', label: 'Critical', count: goats.filter(g => getGoatHealthStatus(g).status === 'Critical').length, dot: 'bg-rose-500' },
-                    { id: 'Observation', label: 'Observation', count: goats.filter(g => getGoatHealthStatus(g).status === 'Observation').length, dot: 'bg-yellow-500' },
-                    { id: 'Pregnant', label: 'Pregnant', count: goats.filter(g => getGoatHealthStatus(g).status === 'Pregnant' || getGoatHealthStatus(g).isPregnant || getGoatEffectiveStatus(g) === 'Pregnant').length, dot: 'bg-[#0F6E56] dark:bg-[#5DCAA5]' },
+                    { id: 'Healthy', label: 'Healthy', count: goatCalculations.healthCounts.Healthy, dot: 'bg-emerald-500' },
+                    { id: 'Under Treatment', label: 'Under Treatment', count: goatCalculations.healthCounts['Under Treatment'], dot: 'bg-amber-500' },
+                    { id: 'Critical', label: 'Critical', count: goatCalculations.healthCounts.Critical, dot: 'bg-rose-500' },
+                    { id: 'Observation', label: 'Observation', count: goatCalculations.healthCounts.Observation, dot: 'bg-yellow-500' },
+                    { id: 'Pregnant', label: 'Pregnant', count: goatCalculations.healthCounts.Pregnant, dot: 'bg-[#0F6E56] dark:bg-[#5DCAA5]' },
                   ].map(pill => (
                     <button
                       key={pill.id}
@@ -1020,9 +1168,9 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                     {[
                       { id: 'all', label: 'All Registered', count: totalHerdRegistered },
                       { id: 'remaining', label: 'Remaining (Present)', count: remainingHeadCount },
-                      { id: 'Active', label: 'Active', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Active').length },
-                      { id: 'Pregnant', label: 'Pregnant', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Pregnant').length },
-                      { id: 'Quarantine', label: 'Quarantine', count: goats.filter(g => getGoatEffectiveStatus(g) === 'Quarantine').length },
+                      { id: 'Active', label: 'Active', count: goatCalculations.activeCount },
+                      { id: 'Pregnant', label: 'Pregnant', count: goatCalculations.pregnantCount },
+                      { id: 'Quarantine', label: 'Quarantine', count: goatCalculations.quarantineCount },
                       { id: 'Sold', label: 'Sold', count: soldCount },
                       { id: 'Dead', label: 'Deceased', count: deceasedCount },
                     ].map(pill => (
@@ -1065,7 +1213,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                           <option value="all">All Breeds ({goats.length})</option>
                           {availableBreeds.map(b => (
                             <option key={b} value={b}>
-                              {b} ({goats.filter(g => g.breed === b).length})
+                              {b} ({goatCalculations.breedCounts.get(b) || 0})
                             </option>
                           ))}
                         </select>
@@ -1154,22 +1302,22 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                     {
                       id: 'Healthy',
                       label: 'Healthy',
-                      count: health.filter(h => h.status === 'Healthy' || h.condition.toLowerCase().includes('healthy') || h.condition.toLowerCase().includes('good')).length
+                      count: healthFilterCounts.Healthy,
                     },
                     {
                       id: 'Under Treatment',
                       label: 'Under Treatment / Sick',
-                      count: health.filter(h => h.status === 'Under Treatment' || h.condition.toLowerCase().includes('sick') || h.condition.toLowerCase().includes('fever')).length
+                      count: healthFilterCounts['Under Treatment'],
                     },
                     {
                       id: 'Pregnancy Check',
                       label: 'Pregnancy / Ultrasound',
-                      count: health.filter(h => h.checkup_type === 'Pregnancy Check' || h.is_pregnant).length
+                      count: healthFilterCounts['Pregnancy Check'],
                     },
                     {
                       id: 'Critical',
                       label: 'Critical',
-                      count: health.filter(h => h.status === 'Critical' || h.condition.toLowerCase().includes('critical')).length
+                      count: healthFilterCounts.Critical,
                     },
                   ].map(pill => (
                     <button
@@ -2384,7 +2532,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   try {
                     const count = selectedGoatIds.length;
                     await bulkDeleteGoats(selectedGoatIds);
-                    showToast(`Successfully deleted ${count} goat record(s) from herd.`, 'success');
+                    showToast(`Deleted ${count} goat(s) from herd.`, 'success');
                     setSelectedGoatIds([]);
                     setIsBatchDeleteModalOpen(false);
                   } catch (err: any) {

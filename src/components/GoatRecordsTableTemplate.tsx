@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   GoatRecord,
   HealthRecord,
@@ -25,7 +25,11 @@ import {
   Weight,
   Layers,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 
 interface GoatRecordsTableTemplateProps {
@@ -114,16 +118,47 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
     setQuickEditGoat(null);
   };
 
+  // Memoized fast lookup maps for status, health and sales
+  const breedingSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const b of breeding) {
+      if (b.female_id && (b.status === 'Active' || !b.status)) {
+        set.add(b.female_id.toUpperCase());
+      }
+    }
+    return set;
+  }, [breeding]);
+
+  const salesPriceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of sales) {
+      if (s.goat_id) {
+        map.set(s.goat_id.toUpperCase(), s.price || 0);
+      }
+    }
+    return map;
+  }, [sales]);
+
+  const latestHealthMap = useMemo(() => {
+    const map = new Map<string, HealthRecord>();
+    const sorted = [...health].sort((a, b) => new Date(b.checkup_date).getTime() - new Date(a.checkup_date).getTime());
+    for (const h of sorted) {
+      const key = (h.goat_id || '').trim().toUpperCase();
+      if (key && !map.has(key)) {
+        map.set(key, h);
+      }
+    }
+    return map;
+  }, [health]);
+
   // Helper to determine effective status
   const getGoatEffectiveStatus = (goat: GoatRecord): GoatRecord['status'] => {
     if (goat.status === 'Sold') return 'Sold';
     if (goat.status === 'Dead') return 'Dead';
     if (goat.status === 'Quarantine') return 'Quarantine';
-    const isCurrentlyBreeding = breeding.some(
-      b =>
-        (b.female_id.toUpperCase() === goat.tag_number.toUpperCase() || b.female_id === goat.id) &&
-        (b.status === 'Active' || !b.status)
-    );
+    const tagUpper = goat.tag_number.toUpperCase();
+    const idUpper = goat.id.toUpperCase();
+    const isCurrentlyBreeding = breedingSet.has(tagUpper) || breedingSet.has(idUpper);
     if (isCurrentlyBreeding && goat.gender === 'Female') return 'Pregnant';
     if (goat.status === 'Pregnant' && !isCurrentlyBreeding) return 'Active';
     return goat.status || 'Active';
@@ -131,16 +166,10 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
 
   // Helper for health info
   const getGoatHealthInfo = (goat: GoatRecord) => {
-    const records = health
-      .filter(h => h.goat_id === goat.tag_number || h.goat_id === goat.id)
-      .sort((a, b) => new Date(b.checkup_date).getTime() - new Date(a.checkup_date).getTime());
-    const latest = records[0];
-
-    const isBreeding = breeding.some(
-      b =>
-        (b.female_id.toUpperCase() === goat.tag_number.toUpperCase() || b.female_id === goat.id) &&
-        (b.status === 'Active' || !b.status)
-    );
+    const tagUpper = goat.tag_number.toUpperCase();
+    const idUpper = goat.id.toUpperCase();
+    const latest = latestHealthMap.get(tagUpper) || latestHealthMap.get(idUpper);
+    const isBreeding = breedingSet.has(tagUpper) || breedingSet.has(idUpper);
 
     if (latest) {
       const isSick =
@@ -208,9 +237,9 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
 
   // Helper for sale record
   const getSaleInfo = (goat: GoatRecord) => {
-    const sale = sales.find(s => s.goat_id === goat.tag_number || s.goat_id === goat.id);
-    if (!sale) return null;
-    return formatCurrency(sale.price);
+    const price = salesPriceMap.get(goat.tag_number.toUpperCase()) ?? salesPriceMap.get(goat.id.toUpperCase());
+    if (price === undefined) return null;
+    return formatCurrency(price);
   };
 
   // Date formatter
@@ -232,16 +261,18 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
   }
 
   // Sorting
-  const sortedGoats = [...goats].sort((a, b) => {
-    let comp = 0;
-    if (sortField === 'tag') comp = a.tag_number.localeCompare(b.tag_number, undefined, { numeric: true });
-    else if (sortField === 'status') comp = (a.status || '').localeCompare(b.status || '');
-    else if (sortField === 'breed') comp = a.breed.localeCompare(b.breed);
-    else if (sortField === 'gender') comp = a.gender.localeCompare(b.gender);
-    else if (sortField === 'weight') comp = (a.weight_kg || 0) - (b.weight_kg || 0);
-    else if (sortField === 'dob') comp = (a.dob || '').localeCompare(b.dob || '');
-    return sortOrder === 'asc' ? comp : -comp;
-  });
+  const sortedGoats = useMemo(() => {
+    return [...goats].sort((a, b) => {
+      let comp = 0;
+      if (sortField === 'tag') comp = a.tag_number.localeCompare(b.tag_number, undefined, { numeric: true });
+      else if (sortField === 'status') comp = (a.status || '').localeCompare(b.status || '');
+      else if (sortField === 'breed') comp = a.breed.localeCompare(b.breed);
+      else if (sortField === 'gender') comp = a.gender.localeCompare(b.gender);
+      else if (sortField === 'weight') comp = (a.weight_kg || 0) - (b.weight_kg || 0);
+      else if (sortField === 'dob') comp = (a.dob || '').localeCompare(b.dob || '');
+      return sortOrder === 'asc' ? comp : -comp;
+    });
+  }, [goats, sortField, sortOrder]);
 
   const toggleSort = (field: typeof sortField) => {
     if (sortField === field) {
@@ -252,6 +283,28 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
     }
   };
 
+  // Pagination for high responsiveness with large herds
+  const [pageSize, setPageSize] = useState<number | 'all'>(50);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(sortedGoats.length / pageSize));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [goats.length, sortField, sortOrder]);
+
+  const paginatedGoats = useMemo(() => {
+    if (pageSize === 'all') return sortedGoats;
+    const start = (currentPage - 1) * pageSize;
+    return sortedGoats.slice(start, start + pageSize);
+  }, [sortedGoats, currentPage, pageSize]);
+
   const isAllSelected = goats.length > 0 && selectedGoatIds.length === goats.length;
   const isIndeterminate = selectedGoatIds.length > 0 && selectedGoatIds.length < goats.length;
 
@@ -260,7 +313,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
       {/* Mobile Card-per-Row Fallback (visible on screens < 768px) */}
       <div className="block md:hidden space-y-3 mb-4">
         {sortedGoats.length > 0 ? (
-          sortedGoats.map(goat => {
+          paginatedGoats.map(goat => {
             const effectiveStatus = getGoatEffectiveStatus(goat);
             const healthInfo = getGoatHealthInfo(goat);
             const salePrice = effectiveStatus === 'Sold' ? getSaleInfo(goat) : null;
@@ -537,7 +590,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
             {/* Table Body with 15px row padding, Zebra Striping (#fbfbf9), and #e7f3ec hover */}
             <tbody className="divide-y divide-stone-200/50 dark:divide-stone-800/80">
               {sortedGoats.length > 0 ? (
-                sortedGoats.map((goat, index) => {
+                paginatedGoats.map((goat, index) => {
                   const effectiveStatus = getGoatEffectiveStatus(goat);
                   const healthInfo = getGoatHealthInfo(goat);
                   const salePrice = effectiveStatus === 'Sold' ? getSaleInfo(goat) : null;
@@ -775,6 +828,80 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
           </table>
         </div>
       </div>
+
+      {/* Responsive Pagination Controls */}
+      {sortedGoats.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-4 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl text-xs shadow-2xs">
+          <div className="flex items-center gap-2 text-stone-600 dark:text-stone-400">
+            <span>
+              Showing <strong className="text-stone-900 dark:text-stone-100">{pageSize === 'all' ? 1 : Math.min((currentPage - 1) * pageSize + 1, sortedGoats.length)}</strong>–<strong className="text-stone-900 dark:text-stone-100">{pageSize === 'all' ? sortedGoats.length : Math.min(currentPage * pageSize, sortedGoats.length)}</strong> of <strong className="text-stone-900 dark:text-stone-100">{sortedGoats.length}</strong> goats
+            </span>
+            <div className="flex items-center gap-1.5 ml-3 pl-3 border-l border-stone-200 dark:border-stone-700">
+              <span className="text-[11px] text-stone-500">Per page:</span>
+              <select
+                value={pageSize}
+                onChange={e => {
+                  const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                  setPageSize(val as any);
+                  setCurrentPage(1);
+                }}
+                className="bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-2 py-1 text-xs font-semibold text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value="all">All</option>
+              </select>
+            </div>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(1)}
+                className="p-1.5 rounded-lg border border-stone-200 dark:border-stone-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 transition-colors"
+                title="First Page"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className="p-1.5 rounded-lg border border-stone-200 dark:border-stone-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 transition-colors"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="px-3 py-1 font-semibold text-stone-800 dark:text-stone-200 text-xs">
+                Page {currentPage} of {totalPages}
+              </div>
+
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                className="p-1.5 rounded-lg border border-stone-200 dark:border-stone-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 transition-colors"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(totalPages)}
+                className="p-1.5 rounded-lg border border-stone-200 dark:border-stone-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 transition-colors"
+                title="Last Page"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quick View Modal */}
       {quickViewGoat && (

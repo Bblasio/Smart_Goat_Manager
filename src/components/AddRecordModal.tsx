@@ -23,6 +23,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
     breeding,
     addBreeding,
     updateBreeding,
+    deleteBreeding,
     addHealth,
     addSale,
     addExpense,
@@ -76,7 +77,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   const [kidDamTag, setKidDamTag] = useState('');
   const [kidSireTag, setKidSireTag] = useState('');
   const [kidBirthWeight, setKidBirthWeight] = useState('3.5');
-  const [kidStatus, setKidStatus] = useState<'Nursing' | 'Weaned'>('Nursing');
+  const [kidStatus, setKidStatus] = useState<'Nursing' | 'Weaned' | 'Retained'>('Nursing');
   const [kidNotes, setKidNotes] = useState('');
 
   // Breeding form state
@@ -175,43 +176,46 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           notes: kidNotes.trim() || undefined,
         });
 
-        // Also enroll in general herd records if not already added
-        const existingGoat = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
-        if (!existingGoat) {
-          await addGoat({
-            tag_number: cleanTag,
-            name: cleanName,
-            breed: cleanBreed,
-            gender: kidGender,
-            dob: kidDob,
-            weight_kg: birthWeight,
-            status: 'Active',
-            dam_tag: kidDamTag.trim() || undefined,
-            sire_tag: kidSireTag.trim() || undefined,
-          });
-        }
-
-        // If Dam Tag provided, mark matching active breeding schedule as Delivered
-        if (kidDamTag.trim()) {
-          const cleanDam = kidDamTag.trim().toUpperCase();
-          const activeBreeding = breeding.find(
-            b => b.female_id.trim().toUpperCase() === cleanDam && (b.status === 'Active' || !b.status)
-          );
-          if (activeBreeding) {
-            await updateBreeding(activeBreeding.id, {
-              status: 'Delivered',
-              actual_birth_date: kidDob,
-              kids_born: (activeBreeding.kids_born || 0) + 1,
-              kid_tags: Array.from(new Set([...(activeBreeding.kid_tags || []), cleanTag])),
+        // Only enroll in general adult herd records if status is 'Retained'
+        // Kids with 'Nursing' or 'Weaned' remain in nursery tracking until moved to adult herd
+        if (kidStatus === 'Retained') {
+          const existingGoat = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
+          if (!existingGoat) {
+            await addGoat({
+              tag_number: cleanTag,
+              name: cleanName,
+              breed: cleanBreed,
+              gender: kidGender,
+              dob: kidDob,
+              weight_kg: birthWeight,
+              status: 'Active',
+              dam_tag: kidDamTag.trim() || undefined,
+              sire_tag: kidSireTag.trim() || undefined,
             });
           }
-          const damGoat = goats.find(g => g.tag_number.trim().toUpperCase() === cleanDam);
-          if (damGoat && damGoat.status === 'Pregnant') {
+        }
+
+        // If Dam Tag provided, remove matching active breeding schedule from breeding records
+        if (kidDamTag.trim()) {
+          const cleanDam = kidDamTag.trim().toUpperCase();
+          const activeBreedings = breeding.filter(
+            b => b.female_id.trim().toUpperCase() === cleanDam
+          );
+          for (const ab of activeBreedings) {
+            await deleteBreeding(ab.id);
+          }
+          const damGoat = goats.find(
+            g =>
+              g.tag_number.trim().toUpperCase() === cleanDam ||
+              g.id === cleanDam ||
+              (g.name && g.name.trim().toUpperCase() === cleanDam)
+          );
+          if (damGoat) {
             await updateGoat(damGoat.id, { status: 'Active' });
           }
         }
 
-        setSuccessMsg(`Kid ${cleanTag}${cleanName ? ` (${cleanName})` : ''} enrolled in nursery and herd records successfully!`);
+        setSuccessMsg(`Kid ${cleanTag} added to ${kidStatus === 'Retained' ? 'adult herd' : 'nursery'}.`);
         setKidTag('');
         setKidName('');
         setKidNotes('');
@@ -649,6 +653,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
                   >
                     <option value="Nursing">Nursing (Creep / Milk)</option>
                     <option value="Weaned">Weaned</option>
+                    <option value="Retained">Retained (Enroll in Adult Herd)</option>
                   </select>
                 </div>
               </div>

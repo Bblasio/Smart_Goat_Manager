@@ -16,6 +16,8 @@ import {
   Bell,
   PlusCircle,
   Settings,
+  PanelLeftClose,
+  PanelLeftOpen,
   LucideIcon
 } from 'lucide-react';
 import { AppView } from '../types';
@@ -28,6 +30,8 @@ interface SidebarProps {
   setMobileOpen: (open: boolean) => void;
   onOpenNotificationModal?: () => void;
   todayNotificationCount?: number;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 interface NavItemConfig {
@@ -46,6 +50,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setMobileOpen,
   onOpenNotificationModal,
   todayNotificationCount = 0,
+  isCollapsed = false,
+  onToggleCollapse,
 }) => {
   const {
     farmName,
@@ -167,7 +173,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Main Row: Icon + Label + Inline Badge */}
           <div className="flex items-center justify-between gap-2.5 w-full min-w-0">
             <div className="flex items-center gap-3 min-w-0">
-              {/* Icon with high contrast and tablet dot badge */}
+              {/* Icon with high contrast and collapsed dot badge */}
               <div className="relative w-5 h-5 flex items-center justify-center shrink-0">
                 <Icon
                   className={`w-5 h-5 transition-colors ${
@@ -175,10 +181,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }`}
                   strokeWidth={1.75}
                 />
-                {/* Tablet rail collapsed dot indicator on the icon */}
+                {/* Collapsed dot indicator on the icon */}
                 {item.badge && (
                   <span
-                    className={`hidden md:block xl:hidden absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 ${
+                    className={`${
+                      isCollapsed ? 'hidden md:block' : 'hidden md:block xl:hidden'
+                    } absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ring-2 ring-stone-900 ${
                       item.id === 'feed_supply'
                         ? 'bg-amber-400 animate-pulse'
                         : item.id === 'tasks'
@@ -189,11 +197,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
               </div>
 
-              {/* Label: never truncated to prevent 'Breeding Esti...' */}
+              {/* Label: hidden when navigation is minimized */}
               <span
-                className={`text-xs whitespace-normal sm:whitespace-nowrap transition-colors md:hidden xl:inline ${
-                  isActive ? 'text-white font-semibold' : 'text-stone-300 group-hover:text-white font-medium'
-                }`}
+                className={`text-xs whitespace-normal sm:whitespace-nowrap transition-colors ${
+                  isCollapsed ? 'hidden' : 'md:hidden xl:inline'
+                } ${isActive ? 'text-white font-semibold' : 'text-stone-300 group-hover:text-white font-medium'}`}
               >
                 {item.label}
               </span>
@@ -202,7 +210,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Inline Count Badge (e.g. numeric "3") */}
             {item.badge && isCountBadge && (
               <span
-                className={`shrink-0 ml-1.5 md:hidden xl:inline-flex items-center justify-center min-w-[20px] h-5 rounded-full text-[10.5px] font-bold px-1.5 ${
+                className={`shrink-0 ml-1.5 ${
+                  isCollapsed ? 'hidden' : 'md:hidden xl:inline-flex'
+                } items-center justify-center min-w-[20px] h-5 rounded-full text-[10.5px] font-bold px-1.5 ${
                   item.badgeClass || (isActive ? 'bg-emerald-700 text-white' : 'bg-stone-800 text-stone-300')
                 }`}
               >
@@ -213,7 +223,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Desktop-only Inline Text Badge for >=1280px */}
             {item.badge && !isCountBadge && (
               <span
-                className={`hidden xl:inline-block shrink-0 ml-1.5 rounded-full text-[10px] uppercase font-semibold leading-none px-2 py-1 ${
+                className={`${
+                  isCollapsed ? 'hidden' : 'hidden xl:inline-block'
+                } shrink-0 ml-1.5 rounded-full text-[10px] uppercase font-semibold leading-none px-2 py-1 ${
                   item.badgeClass || (isActive ? 'bg-emerald-800 text-white' : 'bg-stone-800 text-stone-300')
                 }`}
               >
@@ -222,7 +234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          {/* Mobile Drawer (< 768px): If Text Badge (not count), wrap below label on its own line, indented 32px to align with label */}
+          {/* Mobile Drawer (< 768px): If Text Badge (not count), wrap below label on its own line */}
           {item.badge && !isCountBadge && (
             <div className="md:hidden pl-8 pt-1">
               <span
@@ -236,8 +248,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </button>
 
-        {/* Hover Tooltip on Tablet Rail (768-1279px) */}
-        <div className="hidden md:flex xl:hidden pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3.5 z-50 whitespace-nowrap bg-stone-900 border border-stone-700 text-white text-xs font-medium py-1.5 px-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Hover Tooltip when Navigation is Minimized (Tablet Rail or Minimized Desktop) */}
+        <div className={`${
+          isCollapsed ? 'hidden md:flex' : 'hidden md:flex xl:hidden'
+        } pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3.5 z-50 whitespace-nowrap bg-stone-900 border border-stone-700 text-white text-xs font-medium py-1.5 px-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity`}>
           <span>{item.label}</span>
           {item.badge && (
             <span className="ml-1.5 text-[10px] font-bold text-emerald-400 uppercase">
@@ -262,38 +276,62 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Responsive Navigation Sidebar:
           - <768px: Slide-out drawer (min-w-[285px] w-[285px] sm:w-72, hidden by default, translate-x-0 when mobileOpen, z-55)
-          - 768-1279px (tablet): Collapsed icon-only rail (w-[68px])
-          - >=1280px (desktop): Full sidebar (w-64)
+          - Collapsed mode (user toggled or tablet): Compact icon rail (w-[68px])
+          - Expanded mode: Full sidebar (w-64)
       */}
       <aside
         aria-label="Application Sidebar"
-        className={`no-print fixed top-0 bottom-0 left-0 z-55 bg-[#0e1512] text-stone-100 flex-col justify-between border-r border-stone-800 transition-all duration-200 ease-in-out ${
+        className={`no-print fixed top-0 bottom-0 left-0 z-55 bg-[#0e1512] text-stone-100 flex flex-col justify-between border-r border-stone-800 transition-all duration-300 ease-in-out ${
           mobileOpen
             ? 'flex translate-x-0 min-w-[285px] w-[285px] sm:w-72 shadow-2xl'
+            : isCollapsed
+            ? 'hidden md:flex md:translate-x-0 md:w-[68px] xl:w-[68px]'
             : 'hidden md:flex md:translate-x-0 md:w-[68px] xl:w-64'
         }`}
       >
         {/* Top Header / Branding */}
-        <div className="p-3 md:p-2.5 xl:p-4 border-b border-stone-800">
-          <div className="flex items-center justify-between md:justify-center xl:justify-between">
-            <div className="flex items-center gap-3 text-left min-w-0">
+        <div className={`p-3 md:p-2.5 ${isCollapsed ? 'xl:p-2.5' : 'xl:p-4'} border-b border-stone-800 transition-all`}>
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between md:justify-center xl:justify-between'}`}>
+            <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'gap-3'} text-left min-w-0`}>
               {user?.logo_url && !logoFailed ? (
-                <img
-                  src={user.logo_url}
-                  alt={farmName}
-                  onError={() => setLogoFailed(true)}
-                  className="w-9 h-9 md:w-9 md:h-9 xl:w-9 xl:h-9 rounded-xl object-cover border border-emerald-500/50 shadow-xs shrink-0"
-                />
-              ) : (
-                <div className="w-9 h-9 md:w-9 md:h-9 xl:w-9 xl:h-9 rounded-xl overflow-hidden border border-emerald-500/50 shadow-xs shrink-0 bg-stone-800">
+                <div
+                  onClick={onToggleCollapse}
+                  className="relative group/logo cursor-pointer shrink-0"
+                  title={isCollapsed ? "Click to expand navigation ([ or ⌘B)" : farmName}
+                >
                   <img
-                    src="/app.png"
+                    src={user.logo_url}
                     alt={farmName}
-                    className="w-full h-full object-cover"
+                    onError={() => setLogoFailed(true)}
+                    className="w-9 h-9 rounded-xl object-cover border border-emerald-500/50 shadow-xs"
                   />
+                  {isCollapsed && (
+                    <div className="absolute inset-0 bg-emerald-950/80 opacity-0 group-hover/logo:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                      <PanelLeftOpen className="w-4 h-4 text-emerald-300" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div
+                  onClick={onToggleCollapse}
+                  className="relative group/logo cursor-pointer shrink-0"
+                  title={isCollapsed ? "Click to expand navigation ([ or ⌘B)" : farmName}
+                >
+                  <div className="w-9 h-9 rounded-xl overflow-hidden border border-emerald-500/50 shadow-xs bg-stone-800">
+                    <img
+                      src="/app.png"
+                      alt={farmName}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {isCollapsed && (
+                    <div className="absolute inset-0 bg-emerald-950/80 opacity-0 group-hover/logo:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                      <PanelLeftOpen className="w-4 h-4 text-emerald-300" />
+                    </div>
+                  )}
                 </div>
               )}
-              <div className="min-w-0 md:hidden xl:block">
+              <div className={`min-w-0 ${isCollapsed ? 'hidden' : 'md:hidden xl:block'}`}>
                 <h1 className="font-bold text-white text-sm tracking-tight truncate">
                   {farmName}
                 </h1>
@@ -305,6 +343,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Minimize / Collapse Toggle Button at Top Header (Desktop >=1280px when expanded) */}
+            {onToggleCollapse && !isCollapsed && (
+              <button
+                type="button"
+                id="btn-sidebar-collapse-top"
+                onClick={onToggleCollapse}
+                className="hidden xl:flex p-1.5 text-stone-400 hover:text-white rounded-lg hover:bg-stone-800/80 transition-colors shrink-0"
+                title="Minimize navigation ([ or ⌘B)"
+                aria-label="Minimize navigation"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            )}
 
             {/* Mobile Close Button (< md only) */}
             <button
@@ -342,8 +394,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Footer: Demo Reset Action (if in demo mode only; signout removed per requirement) */}
-        {isDemoMode && (
+        {/* Bottom Bar: Minimize / Expand Navigation Toggle */}
+        {onToggleCollapse && (
+          <div className="border-t border-stone-800 bg-[#0a0f0d] p-2 hidden md:block relative group">
+            <button
+              type="button"
+              id="btn-sidebar-collapse-toggle"
+              onClick={onToggleCollapse}
+              title={isCollapsed ? "Expand navigation ([ or ⌘B)" : "Minimize navigation ([ or ⌘B)"}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-1' : 'justify-between px-2.5'} py-2 rounded-xl bg-stone-900/90 hover:bg-stone-800 text-stone-400 hover:text-stone-200 border border-stone-800/80 transition-all text-xs font-medium`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {isCollapsed ? (
+                  <PanelLeftOpen className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                ) : (
+                  <PanelLeftClose className="w-4 h-4 text-stone-400 group-hover:text-white group-hover:scale-110 transition-transform" />
+                )}
+                {!isCollapsed && <span className="truncate">Minimize Navigation</span>}
+              </div>
+              {!isCollapsed && (
+                <kbd className="hidden xl:inline-flex items-center px-1.5 py-0.5 rounded bg-stone-800 border border-stone-700 text-[10px] font-mono text-stone-400">
+                  [
+                </kbd>
+              )}
+            </button>
+            {isCollapsed && (
+              <div className="pointer-events-none absolute left-full bottom-2 ml-3.5 z-50 whitespace-nowrap bg-stone-900 border border-stone-700 text-white text-xs font-medium py-1.5 px-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                <span>Expand navigation ([ or ⌘B)</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Footer: Demo Reset Action (if in demo mode only; hidden when collapsed to save space) */}
+        {isDemoMode && !isCollapsed && (
           <div className="border-t border-stone-800 bg-[#0a0f0d] p-3 md:hidden xl:block">
             <button
               type="button"

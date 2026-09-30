@@ -180,14 +180,24 @@ export const FarmReportModal: React.FC<FarmReportModalProps> = ({
 
   // Herd status counts (current snapshot)
   const statusCounts = useMemo(() => {
+    const activeBreedingSet = new Set(
+      breeding
+        .filter(b => b.status === 'Active' || !b.status)
+        .map(b => (b.female_id || '').trim().toUpperCase())
+    );
+    const isPregnant = (g: any) =>
+      g.status === 'Pregnant' ||
+      (g.gender?.toLowerCase().startsWith('f') &&
+        (activeBreedingSet.has(g.tag_number.trim().toUpperCase()) || activeBreedingSet.has(g.id)));
+
     return {
-      active: goats.filter(g => (g.status || 'Active') === 'Active').length,
-      pregnant: goats.filter(g => g.status === 'Pregnant').length,
+      active: goats.filter(g => !isPregnant(g) && g.status !== 'Quarantine' && g.status !== 'Sold' && g.status !== 'Dead').length,
+      pregnant: goats.filter(g => isPregnant(g) && g.status !== 'Sold' && g.status !== 'Dead').length,
       quarantine: goats.filter(g => g.status === 'Quarantine').length,
       sold: goats.filter(g => g.status === 'Sold').length,
-      total: goats.length,
+      total: goats.filter(g => g.status !== 'Sold' && g.status !== 'Dead').length,
     };
-  }, [goats]);
+  }, [goats, breeding]);
 
   // Goat lookup
   const goatMap = useMemo(() => new Map(goats.map(g => [g.tag_number.toUpperCase(), g])), [goats]);

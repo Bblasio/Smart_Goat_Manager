@@ -252,7 +252,7 @@ export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ on
         status: 'Active',
         notes: `Estimated via Breeding Tool (${gestationDays}d gestation). Predicted window: ${kiddingWindowStart.toISOString().split('T')[0]} to ${kiddingWindowEnd.toISOString().split('T')[0]}.`,
       });
-      setSaveSuccessMsg(`Updated active breeding schedule for doe ${selectedDoeTag}!`);
+      setSaveSuccessMsg(`Breeding schedule updated for ${selectedDoeTag}.`);
     } else {
       await addBreeding({
         female_id: cleanDoe,
@@ -263,7 +263,7 @@ export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ on
         status: 'Active',
         notes: `Calculated via Breeding Tool with ${gestationDays} days gestation.`,
       });
-      setSaveSuccessMsg(`New breeding schedule created and saved for doe ${selectedDoeTag}!`);
+      setSaveSuccessMsg(`Breeding schedule saved for ${selectedDoeTag}.`);
     }
 
     // Also update/add a health note if in health mode
@@ -1036,7 +1036,7 @@ export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ on
         onSuccess={({ damTag, kidsCount }) => {
           setSelectedBreedingForDelivery(null);
           setSaveSuccessMsg(
-            `Kidding delivery recorded! Dam ${damTag} delivered ${kidsCount} kid(s). Badge count and Nursery records updated.`
+            `Birth confirmed for ${damTag} (${kidsCount} kid${kidsCount > 1 ? 's' : ''}). Dam is now Active.`
           );
           setTimeout(() => setSaveSuccessMsg(null), 5000);
         }}

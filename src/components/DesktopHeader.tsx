@@ -13,7 +13,9 @@ import {
   Activity,
   DollarSign,
   Building2,
-  Settings
+  Settings,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 
 interface DesktopHeaderProps {
@@ -23,6 +25,8 @@ interface DesktopHeaderProps {
   onOpenSearchModal: () => void;
   onOpenNotificationModal: () => void;
   todayNotificationCount: number;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
@@ -32,6 +36,8 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   onOpenSearchModal,
   onOpenNotificationModal,
   todayNotificationCount,
+  isSidebarCollapsed = false,
+  onToggleSidebar,
 }) => {
   const { farmName, user } = useFarm();
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
@@ -86,6 +92,22 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
     <header className="no-print hidden md:flex sticky top-0 z-30 h-16 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800/80 px-4 xl:px-6 items-center justify-between transition-colors duration-200">
       {/* Left: Breadcrumb Navigation */}
       <div className="flex items-center gap-2.5 min-w-0">
+        {onToggleSidebar && (
+          <button
+            type="button"
+            id="btn-desktop-header-toggle-sidebar"
+            onClick={onToggleSidebar}
+            className="flex items-center justify-center p-2 rounded-xl text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800/80 transition-colors mr-0.5 shrink-0"
+            title={isSidebarCollapsed ? "Expand navigation ([ or ⌘B)" : "Minimize navigation ([ or ⌘B)"}
+            aria-label={isSidebarCollapsed ? "Expand navigation" : "Minimize navigation"}
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setActiveTab('dashboard')}

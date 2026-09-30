@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { FarmProvider, useFarm } from './context/FarmContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider, useToast } from './context/ToastContext';
@@ -95,7 +95,29 @@ const MainLayout: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Global Keyboard Shortcuts (⌘K, /, N)
+  // Sidebar Navigation minimized state with localStorage persistence
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('smart_goat_sidebar_collapsed');
+      return saved === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleSidebarCollapse = useCallback(() => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('smart_goat_sidebar_collapsed', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
+  // Global Keyboard Shortcuts (⌘K, /, N, [, ⌘B)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -110,11 +132,14 @@ const MainLayout: React.FC = () => {
       } else if ((e.key === 'n' || e.key === 'N') && !isInput && !isAddModalOpen && !isCommandPaletteOpen) {
         e.preventDefault();
         handleOpenAddModal('goat');
+      } else if (!isInput && (e.key === '[' || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b'))) {
+        e.preventDefault();
+        handleToggleSidebarCollapse();
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isAddModalOpen, isCommandPaletteOpen]);
+  }, [isAddModalOpen, isCommandPaletteOpen, handleToggleSidebarCollapse]);
 
   const getTabLabel = (tab: AppView): string => {
     switch (tab) {
@@ -141,9 +166,6 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  // Tabs with rich dataset rosters and calculations that trigger smooth loading feedback
-  const heavyTabs: AppView[] = ['records', 'breeding_estimator', 'reports', 'health_vet', 'tasks', 'feed_supply', 'dashboard', 'settings', 'profile'];
-
   const [recordsInitialTab, setRecordsInitialTab] = useState<'goats' | 'kids' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor'>('goats');
 
   const handleNavigate = (newTab: AppView, subTab?: string) => {
@@ -154,16 +176,7 @@ const MainLayout: React.FC = () => {
     if (newTab === activeTab && (!subTab || subTab === recordsInitialTab)) return;
     if (mobileSidebarOpen) setMobileSidebarOpen(false);
 
-    if (heavyTabs.includes(newTab)) {
-      setIsNavigating(true);
-      setNavigatingMessage(`Loading ${getTabLabel(newTab)}...`);
-      setTimeout(() => {
-        setActiveTab(newTab);
-        setIsNavigating(false);
-      }, 240);
-    } else {
-      setActiveTab(newTab);
-    }
+    setActiveTab(newTab);
   };
 
   if (authLoading || !minLaunchTimePassed) {
@@ -209,10 +222,12 @@ const MainLayout: React.FC = () => {
         setMobileOpen={setMobileSidebarOpen}
         onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
         todayNotificationCount={activeTodayCount}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebarCollapse}
       />
 
-      {/* Main Content Area (offset by left sidebar: 0 on mobile, 68px on tablet rail, 256px on desktop) */}
-      <div className="flex-1 w-full max-w-full min-w-0 md:pl-[68px] xl:pl-64 print:pl-0 flex flex-col">
+      {/* Main Content Area (offset by left sidebar: 0 on mobile, 68px on tablet rail or minimized desktop, 256px on expanded desktop) */}
+      <div className={`flex-1 w-full max-w-full min-w-0 ${isSidebarCollapsed ? 'md:pl-[68px] xl:pl-[68px]' : 'md:pl-[68px] xl:pl-64'} print:pl-0 flex flex-col transition-[padding] duration-300 ease-in-out`}>
         {/* Desktop & Tablet Sticky Header Bar */}
         <DesktopHeader
           activeTab={activeTab}
@@ -221,6 +236,8 @@ const MainLayout: React.FC = () => {
           onOpenSearchModal={() => setIsCommandPaletteOpen(true)}
           onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
           todayNotificationCount={activeTodayCount}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onToggleSidebar={handleToggleSidebarCollapse}
         />
 
         {/* Offline Warning Banner */}
@@ -342,6 +359,8 @@ const MainLayout: React.FC = () => {
               <SettingsView
                 onNavigate={handleNavigate}
                 onMobileDrillChange={setIsSettingsDrilledIn}
+                isNavMinimized={isSidebarCollapsed}
+                onToggleNavMinimize={handleToggleSidebarCollapse}
               />
             )}
 
@@ -350,6 +369,8 @@ const MainLayout: React.FC = () => {
                 onNavigate={handleNavigate}
                 initialSection="you_and_farm"
                 onMobileDrillChange={setIsSettingsDrilledIn}
+                isNavMinimized={isSidebarCollapsed}
+                onToggleNavMinimize={handleToggleSidebarCollapse}
               />
             )}
           </div>

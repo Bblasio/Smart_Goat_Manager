@@ -120,15 +120,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return goats.filter(g => g.status !== 'Sold' && g.status !== 'Dead');
   }, [goats]);
 
+  const activeBreedingDamTags = useMemo(() => {
+    const set = new Set<string>();
+    breeding.forEach(b => {
+      if (b.status && b.status !== 'Active') return;
+      const clean = (b.female_id || '').trim().toUpperCase();
+      if (clean && !soldOrDeadIdentifiers.has(clean)) {
+        set.add(clean);
+      }
+    });
+    return set;
+  }, [breeding, soldOrDeadIdentifiers]);
+
+  const isGoatPregnant = (g: any) => {
+    if (g.status === 'Pregnant') return true;
+    if (g.gender?.toLowerCase().startsWith('f')) {
+      const cleanTag = g.tag_number.trim().toUpperCase();
+      return activeBreedingDamTags.has(cleanTag) || activeBreedingDamTags.has(g.id);
+    }
+    return false;
+  };
+
   const totalGoats = presentGoats.length;
+  const pregnantCount = useMemo(() => {
+    return presentGoats.filter(isGoatPregnant).length;
+  }, [presentGoats, activeBreedingDamTags]);
+
+  const activeGoats = useMemo(() => {
+    return presentGoats.filter(g => !isGoatPregnant(g) && g.status !== 'Quarantine').length;
+  }, [presentGoats, activeBreedingDamTags]);
+
   const males = presentGoats.filter(g => g.gender.toLowerCase().startsWith('m')).length;
   const females = totalGoats - males;
-  const pregnantCount = breeding.filter(b => {
-    if (b.status && b.status !== 'Active') return false;
-    const cleanDam = (b.female_id || '').trim().toUpperCase();
-    if (soldOrDeadIdentifiers.has(cleanDam)) return false;
-    return true;
-  }).length;
   const totalWorkers = workers.length;
 
   const today = new Date();
@@ -761,12 +784,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={onNavigateToRecords}
             className="cursor-pointer bg-white dark:bg-[#1F1F1D] p-5 rounded-2xl border border-[#E3E1D8] dark:border-[#33322E] hover:border-[#0F6E56] dark:hover:border-[#5DCAA5] transition-all shadow-none"
           >
-            <div className="text-[12px] font-medium text-[#5F5E5A] dark:text-[#B4B2A9] uppercase tracking-[0.03em] mb-1">
-              Total Goats
+            <div className="text-[12px] font-medium text-[#5F5E5A] dark:text-[#B4B2A9] uppercase tracking-[0.03em] mb-1 flex items-center justify-between">
+              <span>Total Goats</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                {activeGoats} Active
+              </span>
             </div>
             <div className="text-[26px] font-medium font-mono tabular-nums leading-[1.2] text-[#1F1F1D] dark:text-[#F1F0EA]">{totalGoats}</div>
             <div className="text-[11px] text-[#8A897F] dark:text-[#7C7A72] mt-2 flex items-center gap-1">
-              <span className="text-[#0F6E56] dark:text-[#5DCAA5] font-normal">● In active herd</span>
+              <span className="text-[#0F6E56] dark:text-[#5DCAA5] font-medium">● {activeGoats} active in herd</span>
             </div>
           </div>
 

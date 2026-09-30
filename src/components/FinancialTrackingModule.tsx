@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useUnits } from '../context/UnitsContext';
+import { useToast } from '../context/ToastContext';
 import { ExpenseCategory } from '../types';
 import {
   TrendingUp,
@@ -28,6 +29,7 @@ import { StatCard } from './StatCard';
 export const FinancialTrackingModule: React.FC = () => {
   const { sales, expenses, addExpense, deleteExpense, addSale, deleteSale, goats, farmName } = useFarm();
   const { currency, formatCurrency } = useUnits();
+  const { showToast } = useToast();
 
   // Modal / Form state
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
@@ -252,15 +254,18 @@ export const FinancialTrackingModule: React.FC = () => {
   };
 
   const handleDeleteItem = async (entry: LedgerEntry) => {
-    const confirmDelete = window.confirm(`Are you sure you want to delete this ${entry.type} record: "${entry.title}"?`);
-    if (!confirmDelete) return;
-
-    if (entry.type === 'expense') {
-      await deleteExpense(entry.originalId);
-      setSuccessToast('Expense record removed.');
-    } else {
-      await deleteSale(entry.originalId);
-      setSuccessToast('Sale transaction removed.');
+    try {
+      if (entry.type === 'expense') {
+        await deleteExpense(entry.originalId);
+        showToast(`Expense "${entry.title}" removed.`, 'info');
+        setSuccessToast(`Expense "${entry.title}" removed.`);
+      } else {
+        await deleteSale(entry.originalId);
+        showToast(`Sale record "${entry.title}" removed.`, 'info');
+        setSuccessToast(`Sale record "${entry.title}" removed.`);
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to remove transaction', 'error');
     }
     setTimeout(() => setSuccessToast(null), 3000);
   };

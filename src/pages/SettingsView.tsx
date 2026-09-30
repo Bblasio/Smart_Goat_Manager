@@ -37,17 +37,13 @@ import {
   VolumeX,
   Laptop,
   Upload,
-  Camera,
-  PanelLeftClose,
-  PanelLeftOpen
+  Camera
 } from 'lucide-react';
 
 interface SettingsViewProps {
   onNavigate?: (view: AppView) => void;
   initialSection?: string;
   onMobileDrillChange?: (drilled: boolean) => void;
-  isNavMinimized?: boolean;
-  onToggleNavMinimize?: () => void;
 }
 
 export type SettingsSection =
@@ -74,8 +70,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onNavigate,
   initialSection,
   onMobileDrillChange,
-  isNavMinimized = false,
-  onToggleNavMinimize,
 }) => {
   const {
     farmName,
@@ -886,49 +880,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Navigation Layout: Minimize Navigation */}
-      {onToggleNavMinimize && (
-        <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
-          <div className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-200 flex items-center justify-center shrink-0">
-                {isNavMinimized ? (
-                  <PanelLeftOpen className="w-4 h-4 text-emerald-600" />
-                ) : (
-                  <PanelLeftClose className="w-4 h-4 text-stone-600 dark:text-stone-300" />
-                )}
-              </div>
-              <div>
-                <div className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                  <span>Minimize Navigation Sidebar</span>
-                  <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-600 text-[10px] font-mono text-stone-500 dark:text-stone-300 shadow-2xs">
-                    [
-                  </kbd>
-                </div>
-                <div className="text-[11px] text-stone-500 dark:text-stone-400">
-                  Collapse the sidebar into a compact icon rail to maximize screen space for records, tables and analytics
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              id="btn-settings-toggle-nav-minimize"
-              onClick={onToggleNavMinimize}
-              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                isNavMinimized ? 'bg-emerald-600' : 'bg-stone-300 dark:bg-stone-700'
-              }`}
-              title={isNavMinimized ? "Expand navigation sidebar" : "Minimize navigation sidebar"}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-xs transition-transform transform ${
-                  isNavMinimized ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   );
 

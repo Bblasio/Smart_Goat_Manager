@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useToast } from '../context/ToastContext';
 import {
   CheckSquare,
   CheckCircle2,
@@ -22,7 +23,8 @@ import {
   ChevronRight,
   BadgeAlert,
   Check,
-  Tag
+  Tag,
+  Trash2
 } from 'lucide-react';
 import { AppView } from '../types';
 import { suggestTaskTagAndCategory, GoatTaskSuggestion, createQuarantineBiosecurityTasks } from '../utils/taskHelper';
@@ -55,11 +57,22 @@ interface TasksViewProps {
 
 export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal }) => {
   const { goats, health, breeding, sales, farmName } = useFarm();
+  const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<TaskTab>('pending');
   const [selectedCategory, setSelectedCategory] = useState<TaskCategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+
+  // Dismissed task IDs (deleted from view)
+  const [dismissedTaskIds, setDismissedTaskIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('sgm_dismissed_tasks');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // New Custom Task Form State
   const [newTitle, setNewTitle] = useState('');
@@ -318,15 +331,51 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
     return list;
   }, [goats, health, breeding, completedTaskMap, todayStr]);
 
-  // Combine system tasks with custom farm tasks
+  // Combine system tasks with custom farm tasks (excluding dismissed tasks)
   const allTasks: FarmTaskItem[] = useMemo(() => {
-    const combined = [...systemGeneratedTasks, ...customTasks];
+    const combined = [...systemGeneratedTasks, ...customTasks].filter(t => !dismissedTaskIds.includes(t.id));
     return combined.map(t => ({
       ...t,
       is_completed: !!completedTaskMap[t.id],
       completed_at: completedTaskMap[t.id]?.completed_at || t.completed_at,
     }));
-  }, [systemGeneratedTasks, customTasks, completedTaskMap]);
+  }, [systemGeneratedTasks, customTasks, completedTaskMap, dismissedTaskIds]);
+
+  // Handler to permanently delete or dismiss a task
+  const handleDeleteTask = (taskId: string) => {
+    setDismissedTaskIds(prev => {
+      const next = [...prev, taskId];
+      try {
+        localStorage.setItem('sgm_dismissed_tasks', JSON.stringify(next));
+      } catch (err) {
+        console.warn(err);
+      }
+      return next;
+    });
+
+    setCustomTasks(prev => {
+      const next = prev.filter(t => t.id !== taskId);
+      try {
+        localStorage.setItem('sgm_farm_custom_tasks', JSON.stringify(next));
+      } catch (err) {
+        console.warn(err);
+      }
+      return next;
+    });
+
+    setCompletedTaskMap(prev => {
+      const updated = { ...prev };
+      delete updated[taskId];
+      try {
+        localStorage.setItem('sgm_farm_tasks_completed_map', JSON.stringify(updated));
+      } catch (err) {
+        console.warn(err);
+      }
+      return updated;
+    });
+
+    showToast('Task removed from list', 'info');
+  };
 
   // Handler to toggle task completion
   const handleToggleTask = (taskId: string) => {
@@ -809,10 +858,19 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
                       <button
                         type="button"
                         onClick={() => handleToggleTask(task.id)}
-                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                       >
                         <Check className="w-3.5 h-3.5" />
                         <span>Mark as Done</span>
+                      </button>
+                      <button
+                        type="button"
+                        id={`btn-del-task-${task.id}`}
+                        onClick={() => handleDeleteTask(task.id)}
+                        className="p-2 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer"
+                        title="Delete task"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -865,14 +923,25 @@ export const TasksView: React.FC<TasksViewProps> = ({ onNavigate, onOpenAddModal
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleToggleTask(task.id)}
-                    className="self-start sm:self-center px-3 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Reopen Task</span>
-                  </button>
+                  <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTask(task.id)}
+                      className="px-3 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reopen Task</span>
+                    </button>
+                    <button
+                      type="button"
+                      id={`btn-del-done-task-${task.id}`}
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer"
+                      title="Delete completed task"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))
             )}

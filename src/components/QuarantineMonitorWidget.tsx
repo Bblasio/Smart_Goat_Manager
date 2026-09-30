@@ -96,11 +96,6 @@ export const QuarantineMonitorWidget: React.FC<QuarantineMonitorWidgetProps> = (
   };
 
   const handleReleaseToHerd = async (goat: GoatRecord) => {
-    const confirmRelease = window.confirm(
-      `Confirm Bio-Security Clearance for ${goat.tag_number} (${goat.name || 'Unnamed'})?\n\nThis will re-integrate the goat into the Active herd.`
-    );
-    if (!confirmRelease) return;
-
     try {
       await updateGoat(goat.id, { status: 'Active' });
       setActionSuccessMsg(`${goat.tag_number} cleared and re-integrated into General Herd!`);

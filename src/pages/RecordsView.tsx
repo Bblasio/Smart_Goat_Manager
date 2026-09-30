@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { useToast } from '../context/ToastContext';
 import { RecordType, AppView, GoatRecord, SaleRecord, HealthRecord, BreedingRecord } from '../types';
@@ -16,6 +16,7 @@ import {
   Milk,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
   FileSpreadsheet,
   Upload,
   X,
@@ -60,9 +61,18 @@ interface RecordsViewProps {
   onNavigate?: (view: AppView) => void;
   onOpenNotificationModal?: () => void;
   initialTab?: TabType;
+  initialSearchQuery?: string;
+  onSelectGoatRecord?: (goat: GoatRecord) => void;
 }
 
-export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavigate, onOpenNotificationModal, initialTab }) => {
+export const RecordsView: React.FC<RecordsViewProps> = ({
+  onOpenAddModal,
+  onNavigate,
+  onOpenNotificationModal,
+  initialTab,
+  initialSearchQuery,
+  onSelectGoatRecord,
+}) => {
   const {
     farmName,
     user,
@@ -125,7 +135,13 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
     weightValue: '',
   });
   const [bulkSuccessMsg, setBulkSuccessMsg] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
+
+  useEffect(() => {
+    if (initialSearchQuery !== undefined) {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
   const [goatStatusFilter, setGoatStatusFilter] = useState<'all' | 'remaining' | 'Active' | 'Pregnant' | 'Quarantine' | 'Sold' | 'Dead'>('all');
   const [goatHealthFilter, setGoatHealthFilter] = useState<'all' | 'Healthy' | 'Under Treatment' | 'Critical' | 'Observation' | 'Pregnant'>('all');
   const [goatBreedFilter, setGoatBreedFilter] = useState<string>('all');
@@ -134,6 +150,24 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
   const [excelCategory, setExcelCategory] = useState<'goats' | 'breeding' | 'health' | 'milk'>('goats');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [pedigreeTargetGoat, setPedigreeTargetGoat] = useState<GoatRecord | null>(null);
+
+  const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const importMenuRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (importMenuRef.current && !importMenuRef.current.contains(e.target as Node)) {
+        setIsImportMenuOpen(false);
+      }
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   const handleOpenTabExcelUpload = (category: 'goats' | 'breeding' | 'health' | 'milk') => {
     setExcelCategory(category);
@@ -929,17 +963,25 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
             setActiveTab('goats');
             setGoatStatusFilter('Dead');
           }}
-          className={`p-4 rounded-2xl text-left transition-all border ${
+          className={`p-4 rounded-2xl text-left transition-all border cursor-pointer ${
             activeTab === 'goats' && goatStatusFilter === 'Dead'
-              ? 'bg-rose-50 dark:bg-rose-950/80 border-rose-400 shadow-xs'
-              : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-rose-400 shadow-2xs'
+              ? 'bg-rose-50 dark:bg-rose-950/80 border-rose-500 ring-2 ring-rose-500/20 shadow-xs'
+              : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-stone-400 shadow-2xs'
           }`}
         >
-          <div className="text-xs font-semibold text-rose-800 dark:text-rose-400 uppercase tracking-wide">
+          <div className={`text-xs font-semibold uppercase tracking-wide ${
+            activeTab === 'goats' && goatStatusFilter === 'Dead'
+              ? 'text-rose-800 dark:text-rose-400'
+              : 'text-stone-600 dark:text-stone-400'
+          }`}>
             Deceased
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-rose-900 dark:text-rose-300 mt-1.5 font-serif">
-            {deceasedCount} <span className="text-xs font-sans font-semibold text-rose-700 dark:text-rose-400">head</span>
+          <div className={`text-2xl sm:text-3xl font-black mt-1.5 font-serif ${
+            activeTab === 'goats' && goatStatusFilter === 'Dead'
+              ? 'text-rose-900 dark:text-rose-300'
+              : 'text-stone-900 dark:text-stone-100'
+          }`}>
+            {deceasedCount} <span className="text-xs font-sans font-semibold text-stone-500">head</span>
           </div>
           <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
             Deceased
@@ -951,7 +993,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
           type="button"
           id="census-btn-kids"
           onClick={() => setActiveTab('kids')}
-          className={`p-4 rounded-2xl text-left transition-all border sm:col-span-2 lg:col-span-1 ${
+          className={`p-4 rounded-2xl text-left transition-all border sm:col-span-2 lg:col-span-1 cursor-pointer ${
             activeTab === 'kids'
               ? 'bg-amber-50 dark:bg-amber-950/80 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
               : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500 shadow-2xs'
@@ -977,11 +1019,11 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
 
       {/* Action Toolbar & Filters */}
       <div className="flex flex-col gap-3">
-
-        {/* Dedicated Search & Filter Bar with Per-Record Action Controls */}
         {activeTab !== 'advisor' && (
           <div className="flex flex-col gap-2.5 bg-stone-50/80 dark:bg-stone-900/80 p-3 rounded-2xl border border-stone-200 dark:border-stone-800">
+            {/* Toolbar Row */}
             <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
+              {/* Shortened Search */}
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -989,10 +1031,10 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   type="text"
                   placeholder={
                     activeTab === 'goats'
-                      ? 'Search herd by Goat ID (e.g. GT-101), Breed (e.g. Boer), or Current Health Status (Healthy, Under Treatment, Mastitis)...'
+                      ? 'Search tag, breed, or name...'
                       : activeTab === 'health'
-                      ? 'Filter health records by ear tag (e.g. GT-103), goat name (Nala), or status (Healthy, Under Treatment)...'
-                      : `Filter ${activeTab} records by keyword or tag...`
+                      ? 'Search tag or diagnosis...'
+                      : `Search ${activeTab}...`
                   }
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
@@ -1010,13 +1052,14 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                 )}
               </div>
 
-              {/* Per-Record Upload & Manual Add Actions */}
+              {/* Actions: Primary Add + Import Dropdown + Export Dropdown + Batch Select */}
               <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {/* Primary Add Button */}
                 <button
                   type="button"
                   id="btn-tab-add-manually"
                   onClick={() => onOpenAddModal(activeTab === 'kids' ? 'kid_growth' : (activeTab as RecordType))}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-2xs cursor-pointer shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>
@@ -1038,19 +1081,108 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                   </span>
                 </button>
 
+                {/* Import Dropdown */}
                 {(activeTab === 'goats' || activeTab === 'breeding' || activeTab === 'health' || activeTab === 'milk') && (
-                  <button
-                    type="button"
-                    id={`btn-upload-${activeTab}-tab`}
-                    onClick={() => handleOpenTabExcelUpload(activeTab)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
-                    title={`Upload ${activeTab} spreadsheet document (.xlsx, .xls, .csv)`}
-                  >
-                    <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Upload {activeTab === 'goats' ? 'Goats' : activeTab === 'breeding' ? 'Breeding' : activeTab === 'health' ? 'Health' : 'Milk'} (Excel/CSV)</span>
-                  </button>
+                  <div className="relative" ref={importMenuRef}>
+                    <button
+                      type="button"
+                      id={`btn-import-${activeTab}`}
+                      onClick={() => setIsImportMenuOpen(prev => !prev)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-semibold rounded-xl transition-colors shadow-2xs cursor-pointer shrink-0"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+                      <span>Import</span>
+                      <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform ${isImportMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isImportMenuOpen && (
+                      <div className="absolute right-0 mt-1.5 w-48 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 shadow-xl py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
+                        <button
+                          type="button"
+                          id={`btn-upload-${activeTab}-tab`}
+                          onClick={() => {
+                            setIsImportMenuOpen(false);
+                            handleOpenTabExcelUpload(activeTab);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-stone-700 dark:text-stone-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors text-left cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Upload (Excel/CSV)</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
 
+                {/* Export Dropdown (Excel, CSV, PDF, Duration Report) */}
+                <div className="relative" ref={exportMenuRef}>
+                  <button
+                    type="button"
+                    id="btn-export-dropdown"
+                    onClick={() => setIsExportMenuOpen(prev => !prev)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-semibold rounded-xl transition-colors shadow-2xs cursor-pointer shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+                    <span>Export</span>
+                    <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isExportMenuOpen && (
+                    <div className="absolute right-0 mt-1.5 w-48 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 shadow-xl py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
+                      <button
+                        type="button"
+                        id="btn-export-excel-tab"
+                        onClick={() => {
+                          setIsExportMenuOpen(false);
+                          handleExportData(activeTab, 'excel');
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-stone-700 dark:text-stone-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors text-left cursor-pointer"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Excel (.xlsx)</span>
+                      </button>
+                      <button
+                        type="button"
+                        id="btn-export-csv"
+                        onClick={() => {
+                          setIsExportMenuOpen(false);
+                          handleExportData(activeTab, 'csv');
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors text-left cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5 text-stone-500" />
+                        <span>CSV (.csv)</span>
+                      </button>
+                      <button
+                        type="button"
+                        id="btn-export-pdf-tab"
+                        onClick={() => {
+                          setIsExportMenuOpen(false);
+                          handleExportData(activeTab, 'pdf');
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-stone-700 dark:text-stone-200 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-300 transition-colors text-left cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-rose-500" />
+                        <span>PDF Document</span>
+                      </button>
+                      <div className="h-px bg-stone-100 dark:bg-stone-700 my-1" />
+                      <button
+                        type="button"
+                        id="btn-tab-open-report"
+                        onClick={() => {
+                          setIsExportMenuOpen(false);
+                          setIsReportModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors text-left cursor-pointer"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
+                        <span>Duration Report</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Batch Select (when on goats tab) */}
                 {activeTab === 'goats' && (
                   <button
                     type="button"
@@ -1059,232 +1191,204 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                       setIsBulkMode(prev => !prev);
                       setSelectedGoatIds([]);
                     }}
-                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors shadow-2xs ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors shadow-2xs cursor-pointer shrink-0 ${
                       isBulkMode
                         ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20'
-                        : 'bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700'
+                        : 'bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700'
                     }`}
-                    title="Toggle batch selection checkboxes to update or delete multiple records"
+                    title="Toggle batch selection checkboxes"
                   >
                     <CheckSquare className="w-3.5 h-3.5" />
-                    <span>{isBulkMode ? 'Batch Select (Active)' : 'Batch Select'}</span>
+                    <span>{isBulkMode ? 'Batch (Active)' : 'Batch Select'}</span>
                   </button>
                 )}
-
-                <button
-                  type="button"
-                  id="btn-tab-open-report"
-                  onClick={() => setIsReportModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-900 hover:bg-black dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
-                  title="Generate Duration Report"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Report</span>
-                </button>
-
-                <button
-                  id="btn-export-excel-tab"
-                  onClick={() => handleExportData(activeTab, 'excel')}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
-                  title="Download formatted Excel (.xlsx) spreadsheet with defined headings"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Excel</span>
-                </button>
-
-                <button
-                  id="btn-export-csv"
-                  onClick={() => handleExportData(activeTab, 'csv')}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
-                  title="Download CSV file with defined headings"
-                >
-                  <Download className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
-                  <span>CSV</span>
-                </button>
-
-                <button
-                  type="button"
-                  id="btn-export-pdf-tab"
-                  onClick={() => handleExportData(activeTab, 'pdf')}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
-                  title="Export records table as a formatted PDF document utilizing existing print styles"
-                >
-                  <Printer className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                  <span>PDF</span>
-                </button>
               </div>
             </div>
 
-            {/* Quick Status and Health Filters for Goats */}
+            {/* Merged Single Filter Bar for Goats: Herd Status + Health Status + Breed + Clear All */}
             {activeTab === 'goats' && (
-              <div className="flex flex-col gap-2.5 pt-1 border-t border-stone-200/70 dark:border-stone-800">
-                {/* 1. Health Status Filters */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 flex items-center gap-1 mr-1">
-                    <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
-                    Health Status:
+              <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-3 pt-2.5 border-t border-stone-200/70 dark:border-stone-800 text-xs">
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                  {/* Herd Status Chips (Neutral "All", no duplicate "Pregnant", dimmed if count 0) */}
+                  <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 mr-0.5 flex items-center gap-1">
+                    <Filter className="w-3 h-3 text-emerald-600" />
+                    Herd:
                   </span>
                   {[
-                    { id: 'all', label: 'All Health', count: goats.length },
-                    { id: 'Healthy', label: 'Healthy', count: goatCalculations.healthCounts.Healthy, dot: 'bg-emerald-500' },
-                    { id: 'Under Treatment', label: 'Under Treatment', count: goatCalculations.healthCounts['Under Treatment'], dot: 'bg-amber-500' },
-                    { id: 'Critical', label: 'Critical', count: goatCalculations.healthCounts.Critical, dot: 'bg-rose-500' },
-                    { id: 'Observation', label: 'Observation', count: goatCalculations.healthCounts.Observation, dot: 'bg-yellow-500' },
-                    { id: 'Pregnant', label: 'Pregnant', count: goatCalculations.healthCounts.Pregnant, dot: 'bg-[#0F6E56] dark:bg-[#5DCAA5]' },
-                  ].map(pill => (
-                    <button
-                      key={pill.id}
-                      id={`pill-goat-health-${pill.id.toLowerCase().replace(/\s+/g, '-')}`}
-                      type="button"
-                      onClick={() => setGoatHealthFilter(pill.id as any)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                        goatHealthFilter === pill.id
-                          ? 'bg-rose-600 text-white font-semibold shadow-2xs'
-                          : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700'
-                      }`}
-                    >
-                      {pill.dot && <span className={`w-1.5 h-1.5 rounded-full ${goatHealthFilter === pill.id ? 'bg-white' : pill.dot}`} />}
-                      <span>{pill.label}</span>
-                      <span
-                        className={`text-[10px] px-1 rounded-full ${
-                          goatHealthFilter === pill.id
-                            ? 'bg-rose-800 text-white'
-                            : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
-                        }`}
-                      >
-                        {pill.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* 2. Herd Status & Breed Filters */}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 flex items-center gap-1 mr-1">
-                      <Filter className="w-3.5 h-3.5 text-emerald-600" />
-                      Herd Status:
-                    </span>
-                    {[
-                      { id: 'all', label: 'All Registered', count: totalHerdRegistered },
-                      { id: 'remaining', label: 'Remaining (Present)', count: remainingHeadCount },
-                      { id: 'Active', label: 'Active', count: goatCalculations.activeCount },
-                      { id: 'Pregnant', label: 'Pregnant', count: goatCalculations.pregnantCount },
-                      { id: 'Quarantine', label: 'Quarantine', count: goatCalculations.quarantineCount },
-                      { id: 'Sold', label: 'Sold', count: soldCount },
-                      { id: 'Dead', label: 'Deceased', count: deceasedCount },
-                    ].map(pill => (
+                    { id: 'all', label: 'All Registered', count: totalHerdRegistered },
+                    { id: 'remaining', label: 'Remaining', count: remainingHeadCount },
+                    { id: 'Active', label: 'Active', count: goatCalculations.activeCount },
+                    { id: 'Quarantine', label: 'Quarantine', count: goatCalculations.quarantineCount },
+                    { id: 'Sold', label: 'Sold', count: soldCount },
+                    { id: 'Dead', label: 'Deceased', count: deceasedCount },
+                  ].map(pill => {
+                    const isSelected = goatStatusFilter === pill.id;
+                    const isZero = pill.count === 0;
+                    return (
                       <button
                         key={pill.id}
                         id={`pill-goat-status-${pill.id.toLowerCase()}`}
                         type="button"
                         onClick={() => setGoatStatusFilter(pill.id as any)}
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                          goatStatusFilter === pill.id
-                            ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                          isZero ? 'opacity-40 hover:opacity-75' : 'cursor-pointer'
+                        } ${
+                          isSelected
+                            ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-semibold shadow-2xs'
                             : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700'
                         }`}
                       >
                         <span>{pill.label}</span>
                         <span
                           className={`text-[10px] px-1 rounded-full ${
-                            goatStatusFilter === pill.id
-                              ? 'bg-emerald-800 text-white'
+                            isSelected
+                              ? 'bg-stone-700 dark:bg-stone-300 text-white dark:text-stone-900'
                               : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
                           }`}
                         >
                           {pill.count}
                         </span>
                       </button>
-                    ))}
+                    );
+                  })}
 
-                    {/* Breed Selector */}
-                    {availableBreeds.length > 0 && (
-                      <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-stone-200 dark:border-stone-700">
-                        <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-300">
-                          Breed:
-                        </span>
-                        <select
-                          id="select-goat-breed-filter"
-                          value={goatBreedFilter}
-                          onChange={e => setGoatBreedFilter(e.target.value)}
-                          className="text-xs bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
-                        >
-                          <option value="all">All Breeds ({goats.length})</option>
-                          {availableBreeds.map(b => (
-                            <option key={b} value={b}>
-                              {b} ({goatCalculations.breedCounts.get(b) || 0})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
+                  {/* Hairline Divider between Herd and Health */}
+                  <div className="h-4 w-px bg-stone-300 dark:bg-stone-700 mx-1 hidden sm:block" />
 
-                  {/* Filter Summary & Quick Reset */}
-                  <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
-                    <span>
-                      Showing <strong className="text-stone-800 dark:text-stone-200">{filteredGoats.length}</strong> of{' '}
-                      <strong className="text-stone-800 dark:text-stone-200">{goats.length}</strong> goats
-                    </span>
-                    {(searchQuery || goatStatusFilter !== 'all' || goatHealthFilter !== 'all' || goatBreedFilter !== 'all') && (
+                  {/* Health Status Chips (Neutral "All Health", Red only for Critical, dimmed if count 0) */}
+                  <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 mr-0.5 flex items-center gap-1">
+                    <HeartPulse className="w-3 h-3 text-rose-500" />
+                    Health:
+                  </span>
+                  {[
+                    { id: 'all', label: 'All Health', count: goats.length },
+                    { id: 'Healthy', label: 'Healthy', count: goatCalculations.healthCounts.Healthy, dot: 'bg-emerald-500' },
+                    { id: 'Under Treatment', label: 'Under Treatment', count: goatCalculations.healthCounts['Under Treatment'], dot: 'bg-amber-500' },
+                    { id: 'Critical', label: 'Critical', count: goatCalculations.healthCounts.Critical, dot: 'bg-rose-500', isCritical: true },
+                    { id: 'Observation', label: 'Observation', count: goatCalculations.healthCounts.Observation, dot: 'bg-yellow-500' },
+                    { id: 'Pregnant', label: 'Pregnant', count: goatCalculations.healthCounts.Pregnant, dot: 'bg-emerald-600' },
+                  ].map(pill => {
+                    const isSelected = goatHealthFilter === pill.id;
+                    const isZero = pill.count === 0;
+                    return (
                       <button
-                        id="btn-reset-goat-filters"
+                        key={pill.id}
+                        id={`pill-goat-health-${pill.id.toLowerCase().replace(/\s+/g, '-')}`}
                         type="button"
-                        onClick={() => {
-                          setSearchQuery('');
-                          setGoatStatusFilter('all');
-                          setGoatHealthFilter('all');
-                          setGoatBreedFilter('all');
-                        }}
-                        className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-semibold hover:underline ml-1"
+                        onClick={() => setGoatHealthFilter(pill.id as any)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          isZero ? 'opacity-40 hover:opacity-75' : 'cursor-pointer'
+                        } ${
+                          isSelected
+                            ? pill.isCritical
+                              ? 'bg-rose-600 text-white font-semibold shadow-2xs'
+                              : 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 font-semibold shadow-2xs'
+                            : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700'
+                        }`}
                       >
-                        <X className="w-3 h-3" />
-                        <span>Reset Filters</span>
+                        {pill.dot && <span className={`w-1.5 h-1.5 rounded-full ${isSelected && pill.isCritical ? 'bg-white' : pill.dot}`} />}
+                        <span>{pill.label}</span>
+                        <span
+                          className={`text-[10px] px-1 rounded-full ${
+                            isSelected
+                              ? pill.isCritical
+                                ? 'bg-rose-800 text-white'
+                                : 'bg-stone-700 dark:bg-stone-300 text-white dark:text-stone-900'
+                              : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
+                          }`}
+                        >
+                          {pill.count}
+                        </span>
                       </button>
-                    )}
-                  </div>
+                    );
+                  })}
+
+                  {/* Breed Selector */}
+                  {availableBreeds.length > 0 && (
+                    <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-stone-200 dark:border-stone-700">
+                      <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400">
+                        Breed:
+                      </span>
+                      <select
+                        id="select-goat-breed-filter"
+                        value={goatBreedFilter}
+                        onChange={e => setGoatBreedFilter(e.target.value)}
+                        className="text-xs bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-lg px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+                      >
+                        <option value="all">All Breeds ({goats.length})</option>
+                        {availableBreeds.map(b => (
+                          <option key={b} value={b}>
+                            {b} ({goatCalculations.breedCounts.get(b) || 0})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
-                {/* Active Filter Tags */}
-                {(searchQuery || goatStatusFilter !== 'all' || goatHealthFilter !== 'all' || goatBreedFilter !== 'all') && (
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[10px] uppercase tracking-wider font-semibold text-stone-400 dark:text-stone-500">
-                      Active Filters:
-                    </span>
-                    {searchQuery && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                        <span>Keyword: &ldquo;{searchQuery}&rdquo;</span>
-                        <button type="button" onClick={() => setSearchQuery('')} className="hover:text-emerald-950 dark:hover:text-white">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    )}
-                    {goatHealthFilter !== 'all' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                        <span>Health: {goatHealthFilter}</span>
-                        <button type="button" onClick={() => setGoatHealthFilter('all')} className="hover:text-rose-950 dark:hover:text-white">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    )}
-                    {goatStatusFilter !== 'all' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                        <span>Herd: {goatStatusFilter}</span>
-                        <button type="button" onClick={() => setGoatStatusFilter('all')} className="hover:text-emerald-950 dark:hover:text-white">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    )}
-                    {goatBreedFilter !== 'all' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700">
-                        <span>Breed: {goatBreedFilter}</span>
-                        <button type="button" onClick={() => setGoatBreedFilter('all')} className="hover:text-stone-900 dark:hover:text-white">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    )}
-                  </div>
+                {/* Count Summary & "Clear all" button */}
+                <div className="flex items-center gap-2.5 shrink-0 ml-auto">
+                  <span className="text-stone-500 dark:text-stone-400 text-xs">
+                    Showing <strong className="text-stone-800 dark:text-stone-200">{filteredGoats.length}</strong> of{' '}
+                    <strong className="text-stone-800 dark:text-stone-200">{goats.length}</strong> goats
+                  </span>
+                  {(searchQuery || goatStatusFilter !== 'all' || goatHealthFilter !== 'all' || goatBreedFilter !== 'all') && (
+                    <button
+                      id="btn-reset-goat-filters"
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setGoatStatusFilter('all');
+                        setGoatHealthFilter('all');
+                        setGoatBreedFilter('all');
+                      }}
+                      className="inline-flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-semibold px-2 py-0.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                      <span>Clear all</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Active Filter Tags */}
+            {activeTab === 'goats' && (searchQuery || goatStatusFilter !== 'all' || goatHealthFilter !== 'all' || goatBreedFilter !== 'all') && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-stone-400 dark:text-stone-500">
+                  Active Filters:
+                </span>
+                {searchQuery && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <span>Keyword: &ldquo;{searchQuery}&rdquo;</span>
+                    <button type="button" onClick={() => setSearchQuery('')} className="hover:text-emerald-950 dark:hover:text-white">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {goatHealthFilter !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                    <span>Health: {goatHealthFilter}</span>
+                    <button type="button" onClick={() => setGoatHealthFilter('all')} className="hover:text-rose-950 dark:hover:text-white">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {goatStatusFilter !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <span>Herd: {goatStatusFilter}</span>
+                    <button type="button" onClick={() => setGoatStatusFilter('all')} className="hover:text-emerald-950 dark:hover:text-white">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {goatBreedFilter !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700">
+                    <span>Breed: {goatBreedFilter}</span>
+                    <button type="button" onClick={() => setGoatBreedFilter('all')} className="hover:text-stone-900 dark:hover:text-white">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
                 )}
               </div>
             )}
@@ -1367,8 +1471,10 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
         )}
       </div>
 
-      {/* TAB 1: GOATS */}
-      {activeTab === 'goats' && (
+      {/* Animated Tab Content Container */}
+      <div key={activeTab} className="animate-in fade-in duration-200">
+        {/* TAB 1: GOATS */}
+        {activeTab === 'goats' && (
         <>
           {/* Enhanced Batch Action Bar for Goats */}
           {selectedGoatIds.length > 0 && (
@@ -1588,6 +1694,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
               setActiveTab('health');
               setSearchQuery(goatTag);
             }}
+            onViewGoatRecord={onSelectGoatRecord}
           />
         </>
       )}
@@ -1761,8 +1868,15 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                           )}
                           <button
                             id={`btn-del-breed-${item.id}`}
-                            onClick={() => deleteBreeding(item.id)}
-                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                            onClick={async () => {
+                              try {
+                                await deleteBreeding(item.id);
+                                showToast('Breeding record deleted', 'info');
+                              } catch (err: any) {
+                                showToast(err?.message || 'Failed to delete breeding record', 'error');
+                              }
+                            }}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                             title="Delete record"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1906,8 +2020,15 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                         <td className="px-6 py-[15px] text-right">
                           <button
                             id={`btn-del-health-${item.id}`}
-                            onClick={() => deleteHealth(item.id)}
-                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                            onClick={async () => {
+                              try {
+                                await deleteHealth(item.id);
+                                showToast('Health record deleted', 'info');
+                              } catch (err: any) {
+                                showToast(err?.message || 'Failed to delete health record', 'error');
+                              }
+                            }}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                             title="Delete record"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1998,8 +2119,16 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                         </td>
                         <td className="px-6 py-[15px] text-right">
                           <button
-                            onClick={() => deleteMilk(m.id)}
-                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                            id={`btn-del-milk-${m.id}`}
+                            onClick={async () => {
+                              try {
+                                await deleteMilk(m.id);
+                                showToast('Milk log deleted', 'info');
+                              } catch (err: any) {
+                                showToast(err?.message || 'Failed to delete milk log', 'error');
+                              }
+                            }}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                             title="Delete record"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -2082,8 +2211,15 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                         <td className="px-6 py-[15px] text-right">
                           <button
                             id={`btn-del-sale-${item.id}`}
-                            onClick={() => deleteSale(item.id)}
-                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                            onClick={async () => {
+                              try {
+                                await deleteSale(item.id);
+                                showToast('Sale record deleted', 'info');
+                              } catch (err: any) {
+                                showToast(err?.message || 'Failed to delete sale record', 'error');
+                              }
+                            }}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                             title="Delete record"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -2139,8 +2275,15 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
                         <td className="px-6 py-[15px] text-right">
                           <button
                             id={`btn-del-worker-${item.id}`}
-                            onClick={() => deleteWorker(item.id)}
-                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                            onClick={async () => {
+                              try {
+                                await deleteWorker(item.id);
+                                showToast('Worker record deleted', 'info');
+                              } catch (err: any) {
+                                showToast(err?.message || 'Failed to delete worker record', 'error');
+                              }
+                            }}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors cursor-pointer"
                             title="Delete record"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -2207,6 +2350,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ onOpenAddModal, onNavi
           </div>
         </div>
       )}
+      </div>
 
       {/* Excel & Spreadsheet Document Import Modal */}
       <ExcelImportModal

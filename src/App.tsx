@@ -17,12 +17,14 @@ import { TasksView } from './pages/TasksView';
 import { FeedSupplyView } from './pages/FeedSupplyView';
 import { AuthView } from './pages/AuthView';
 import { AddRecordModal } from './components/AddRecordModal';
+import { AnimalRecordDetailModal } from './components/AnimalRecordDetailModal';
+import { PedigreeTreeModal } from './components/PedigreeTreeModal';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { AppLaunchLoader } from './components/AppLaunchLoader';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { MobileTabletInstallPopup } from './components/MobileTabletInstallPopup';
 import { AppFooter } from './components/AppFooter';
-import { RecordType, AppView } from './types';
+import { RecordType, AppView, GoatRecord } from './types';
 import { getFarmNotifications } from './utils/notificationHelper';
 import { UnitsProvider } from './context/UnitsContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -167,6 +169,18 @@ const MainLayout: React.FC = () => {
   };
 
   const [recordsInitialTab, setRecordsInitialTab] = useState<'goats' | 'kids' | 'breeding' | 'health' | 'milk' | 'sales' | 'workers' | 'advisor'>('goats');
+  const [selectedGoatForRecord, setSelectedGoatForRecord] = useState<GoatRecord | null>(null);
+  const [isAnimalRecordModalOpen, setIsAnimalRecordModalOpen] = useState(false);
+  const [recordsSearchQuery, setRecordsSearchQuery] = useState('');
+  const [pedigreeSubjectForModal, setPedigreeSubjectForModal] = useState<GoatRecord | null>(null);
+
+  const handleOpenGoatRecord = (goat: GoatRecord) => {
+    setSelectedGoatForRecord(goat);
+    setIsAnimalRecordModalOpen(true);
+    setRecordsInitialTab('goats');
+    setRecordsSearchQuery(goat.tag_number);
+    handleNavigate('records', 'goats');
+  };
 
   const handleNavigate = (newTab: AppView, subTab?: string) => {
     setIsSettingsDrilledIn(false);
@@ -176,7 +190,13 @@ const MainLayout: React.FC = () => {
     if (newTab === activeTab && (!subTab || subTab === recordsInitialTab)) return;
     if (mobileSidebarOpen) setMobileSidebarOpen(false);
 
+    setNavigatingMessage(`Loading ${getTabLabel(newTab)}...`);
+    setIsNavigating(true);
     setActiveTab(newTab);
+
+    setTimeout(() => {
+      setIsNavigating(false);
+    }, 280);
   };
 
   if (authLoading || !minLaunchTimePassed) {
@@ -218,6 +238,7 @@ const MainLayout: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={handleNavigate}
         onOpenAddModal={() => handleOpenAddModal('goat')}
+        onOpenSearchModal={() => setIsCommandPaletteOpen(true)}
         mobileOpen={mobileSidebarOpen}
         setMobileOpen={setMobileSidebarOpen}
         onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
@@ -226,18 +247,16 @@ const MainLayout: React.FC = () => {
         onToggleCollapse={handleToggleSidebarCollapse}
       />
 
-      {/* Main Content Area (offset by left sidebar: 0 on mobile, 68px on tablet rail or minimized desktop, 256px on expanded desktop) */}
-      <div className={`flex-1 w-full max-w-full min-w-0 ${isSidebarCollapsed ? 'md:pl-[68px] xl:pl-[68px]' : 'md:pl-[68px] xl:pl-64'} print:pl-0 flex flex-col transition-[padding] duration-300 ease-in-out`}>
+      {/* Main Content Area (ChatGPT-style: 0 padding when sidebar is collapsed, pl-64 when expanded) */}
+      <div className={`flex-1 w-full max-w-full min-w-0 ${isSidebarCollapsed ? 'md:pl-0 xl:pl-0' : 'md:pl-64 xl:pl-64'} print:pl-0 flex flex-col transition-[padding] duration-300 ease-in-out`}>
         {/* Desktop & Tablet Sticky Header Bar */}
         <DesktopHeader
           activeTab={activeTab}
           setActiveTab={handleNavigate}
-          onOpenAddModal={handleOpenAddModal}
           onOpenSearchModal={() => setIsCommandPaletteOpen(true)}
           onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
           todayNotificationCount={activeTodayCount}
           isSidebarCollapsed={isSidebarCollapsed}
-          onToggleSidebar={handleToggleSidebarCollapse}
         />
 
         {/* Offline Warning Banner */}
@@ -343,6 +362,8 @@ const MainLayout: React.FC = () => {
                 onNavigate={handleNavigate}
                 onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
                 initialTab={recordsInitialTab}
+                initialSearchQuery={recordsSearchQuery}
+                onSelectGoatRecord={handleOpenGoatRecord}
               />
             )}
 
@@ -359,8 +380,6 @@ const MainLayout: React.FC = () => {
               <SettingsView
                 onNavigate={handleNavigate}
                 onMobileDrillChange={setIsSettingsDrilledIn}
-                isNavMinimized={isSidebarCollapsed}
-                onToggleNavMinimize={handleToggleSidebarCollapse}
               />
             )}
 
@@ -369,8 +388,6 @@ const MainLayout: React.FC = () => {
                 onNavigate={handleNavigate}
                 initialSection="you_and_farm"
                 onMobileDrillChange={setIsSettingsDrilledIn}
-                isNavMinimized={isSidebarCollapsed}
-                onToggleNavMinimize={handleToggleSidebarCollapse}
               />
             )}
           </div>
@@ -403,6 +420,41 @@ const MainLayout: React.FC = () => {
         onClose={() => setIsCommandPaletteOpen(false)}
         onNavigate={handleNavigate}
         onOpenAddModal={handleOpenAddModal}
+        onSelectGoat={handleOpenGoatRecord}
+      />
+
+      {/* Global Animal Record Detail Modal */}
+      <AnimalRecordDetailModal
+        isOpen={isAnimalRecordModalOpen}
+        onClose={() => setIsAnimalRecordModalOpen(false)}
+        goat={selectedGoatForRecord}
+        onEditGoat={(goat) => {
+          setIsAnimalRecordModalOpen(false);
+          setRecordsInitialTab('goats');
+          setRecordsSearchQuery(goat.tag_number);
+          handleNavigate('records', 'goats');
+        }}
+        onViewPedigree={(goat) => {
+          setPedigreeSubjectForModal(goat);
+        }}
+        onOpenAddRecord={(type) => {
+          setIsAnimalRecordModalOpen(false);
+          handleOpenAddModal(type);
+        }}
+        onSelectGoatByTag={(tagNumber) => {
+          const target = goats.find(g => g.tag_number.toLowerCase() === tagNumber.toLowerCase());
+          if (target) {
+            setSelectedGoatForRecord(target);
+          }
+        }}
+      />
+
+      {/* Global Pedigree Tree Modal */}
+      <PedigreeTreeModal
+        isOpen={!!pedigreeSubjectForModal}
+        onClose={() => setPedigreeSubjectForModal(null)}
+        rootSubject={pedigreeSubjectForModal}
+        allGoats={goats}
       />
 
       {/* Global Notification Center Modal (Upcoming Breeding & Vaccination Alerts) */}

@@ -46,6 +46,7 @@ interface GoatRecordsTableTemplateProps {
   onDeleteGoat: (id: string) => void;
   onViewPedigree: (goat: GoatRecord) => void;
   onNavigateToHealthWithGoat?: (goatTag: string) => void;
+  onViewGoatRecord?: (goat: GoatRecord) => void;
 }
 
 export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> = ({
@@ -62,6 +63,7 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
   onDeleteGoat,
   onViewPedigree,
   onNavigateToHealthWithGoat,
+  onViewGoatRecord,
 }) => {
   const { formatWeight, weightUnit, formatCurrency } = useUnits();
   const [activeMenuGoatId, setActiveMenuGoatId] = useState<string | null>(null);
@@ -454,9 +456,15 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setQuickViewGoat(goat)}
-                          className="px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold flex items-center gap-1"
-                          title="View"
+                          onClick={() => {
+                            if (onViewGoatRecord) {
+                              onViewGoatRecord(goat);
+                            } else {
+                              setQuickViewGoat(goat);
+                            }
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                          title="View complete records"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>View</span>
@@ -714,12 +722,18 @@ export const GoatRecordsTableTemplate: React.FC<GoatRecordsTableTemplateProps> =
                       {/* Column 9: 4 Action Buttons with Clear Plain-Word Tooltips */}
                       <td className="px-6 py-[15px] text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* 1. Eye Button: Quick Inspect */}
+                          {/* 1. Eye Button: Complete Animal Records */}
                           <button
                             type="button"
-                            onClick={() => setQuickViewGoat(goat)}
-                            className="w-8 h-8 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-100/90 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 flex items-center justify-center text-stone-700 dark:text-stone-300 transition-colors shadow-2xs"
-                            title="View"
+                            onClick={() => {
+                              if (onViewGoatRecord) {
+                                onViewGoatRecord(goat);
+                              } else {
+                                setQuickViewGoat(goat);
+                              }
+                            }}
+                            className="w-8 h-8 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-100/90 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 flex items-center justify-center text-stone-700 dark:text-stone-300 transition-colors shadow-2xs cursor-pointer"
+                            title="View complete records"
                           >
                             <Eye className="w-4 h-4" />
                           </button>

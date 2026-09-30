@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
+import { useToast } from '../context/ToastContext';
 import {
   Plus,
   Search,
@@ -21,6 +22,7 @@ interface HealthCareViewProps {
 
 export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOpenAddModal }) => {
   const { health, goats, deleteHealth } = useFarm();
+  const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [expandedMobileIds, setExpandedMobileIds] = useState<Record<string, boolean>>({});
@@ -297,8 +299,15 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
                     <div className="flex items-center justify-end pt-2 border-t border-stone-100 dark:border-stone-800">
                       <button
                         type="button"
-                        onClick={() => deleteHealth(item.id)}
-                        className="px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold flex items-center gap-1"
+                        onClick={async () => {
+                          try {
+                            await deleteHealth(item.id);
+                            showToast('Health record deleted', 'info');
+                          } catch (err: any) {
+                            showToast(err?.message || 'Failed to delete health record', 'error');
+                          }
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold flex items-center gap-1 cursor-pointer"
                         title="Delete record"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -407,8 +416,15 @@ export const HealthCareView: React.FC<HealthCareViewProps> = ({ onNavigate, onOp
                       <td className="px-6 py-[15px] text-right">
                         <button
                           type="button"
-                          onClick={() => deleteHealth(item.id)}
-                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                          onClick={async () => {
+                            try {
+                              await deleteHealth(item.id);
+                              showToast('Health record deleted', 'info');
+                            } catch (err: any) {
+                              showToast(err?.message || 'Failed to delete health record', 'error');
+                            }
+                          }}
+                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                           title="Delete record"
                         >
                           <Trash2 className="w-4 h-4" />

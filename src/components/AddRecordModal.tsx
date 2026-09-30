@@ -162,21 +162,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
         const cleanBreed = kidBreed.trim();
         const birthWeight = parseFloat(kidBirthWeight) || 3.5;
 
-        await addKidGrowthRecord({
-          kid_tag: cleanTag,
-          kid_name: cleanName,
-          gender: kidGender,
-          breed: cleanBreed,
-          dob: kidDob,
-          dam_tag: kidDamTag.trim() || undefined,
-          sire_tag: kidSireTag.trim() || undefined,
-          birth_weight_kg: birthWeight,
-          target_weaning_weight_kg: 15.0,
-          status: kidStatus,
-          notes: kidNotes.trim() || undefined,
-        });
-
-        // Only enroll in general adult herd records if status is 'Retained'
+        // Enroll in general adult herd records if status is 'Retained'
         // Kids with 'Nursing' or 'Weaned' remain in nursery tracking until moved to adult herd
         if (kidStatus === 'Retained') {
           const existingGoat = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
@@ -193,6 +179,20 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
               sire_tag: kidSireTag.trim() || undefined,
             });
           }
+        } else {
+          await addKidGrowthRecord({
+            kid_tag: cleanTag,
+            kid_name: cleanName,
+            gender: kidGender,
+            breed: cleanBreed,
+            dob: kidDob,
+            dam_tag: kidDamTag.trim() || undefined,
+            sire_tag: kidSireTag.trim() || undefined,
+            birth_weight_kg: birthWeight,
+            target_weaning_weight_kg: 15.0,
+            status: kidStatus,
+            notes: kidNotes.trim() || undefined,
+          });
         }
 
         // If Dam Tag provided, remove matching active breeding schedule from breeding records

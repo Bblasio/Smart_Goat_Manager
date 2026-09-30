@@ -204,25 +204,6 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
     const cleanBreed = newBreed.trim();
     const birthWeight = parseFloat(newBirthWeight) || 3.5;
 
-    await addKidGrowthRecord({
-      kid_tag: cleanTag,
-      kid_name: cleanName,
-      gender: newGender,
-      breed: cleanBreed,
-      dob: newDob,
-      dam_tag: newDamTag.trim() || undefined,
-      dam_name: newDamName.trim() || undefined,
-      sire_tag: newSireTag.trim() || undefined,
-      sire_name: newSireName.trim() || undefined,
-      birth_weight_kg: birthWeight,
-      thirty_day_weight_kg: newThirtyDayWeight ? parseFloat(newThirtyDayWeight) : undefined,
-      target_weaning_weight_kg: newTargetWeaningWeight ? parseFloat(newTargetWeaningWeight) : 15.0,
-      status: newStatus,
-      notes: newNotes.trim() || undefined,
-    });
-
-    // Only enroll into main adult herd if retained for breeding stock
-    // Nursing or Weaned kids stay in nursery tracker until moved to herd
     if (newStatus === 'Retained') {
       const existingGoat = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
       if (!existingGoat) {
@@ -238,6 +219,23 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
           sire_tag: newSireTag.trim() || undefined,
         });
       }
+    } else {
+      await addKidGrowthRecord({
+        kid_tag: cleanTag,
+        kid_name: cleanName,
+        gender: newGender,
+        breed: cleanBreed,
+        dob: newDob,
+        dam_tag: newDamTag.trim() || undefined,
+        dam_name: newDamName.trim() || undefined,
+        sire_tag: newSireTag.trim() || undefined,
+        sire_name: newSireName.trim() || undefined,
+        birth_weight_kg: birthWeight,
+        thirty_day_weight_kg: newThirtyDayWeight ? parseFloat(newThirtyDayWeight) : undefined,
+        target_weaning_weight_kg: newTargetWeaningWeight ? parseFloat(newTargetWeaningWeight) : 15.0,
+        status: newStatus,
+        notes: newNotes.trim() || undefined,
+      });
     }
 
     // If dam tag was specified, find and update any active breeding schedule to 'Delivered'
@@ -265,7 +263,7 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
       }
     }
 
-    showToast(`Kid ${cleanTag} registered in nursery.`, 'success');
+    showToast(`Kid ${cleanTag} ${newStatus === 'Retained' ? 'enrolled directly into adult herd' : 'registered in nursery'}.`, 'success');
 
     // Reset Form
     setNewTag('');
@@ -323,8 +321,12 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
           sire_tag: selectedKid.sire_tag || undefined,
         });
       }
-      updates.status = 'Retained';
-      showToast(`Kid ${selectedKid.kid_tag} weaned and moved to herd.`, 'success');
+      // When kid is moved to adult herd, delete from kids nursery records
+      await deleteKidGrowthRecord(selectedKid.id);
+      showToast(`Kid ${selectedKid.kid_tag} moved to adult herd and cleared from nursery.`, 'success');
+      setShowWeanModal(false);
+      setSelectedKid(null);
+      return;
     } else {
       showToast(`Weaning updated for ${selectedKid.kid_tag}.`, 'success');
     }
@@ -339,7 +341,9 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
     const cleanTag = kid.kid_tag.toUpperCase();
     const existing = goats.find(g => g.tag_number.toUpperCase() === cleanTag);
     if (existing) {
-      showToast(`${kid.kid_tag} is already in the herd.`, 'info');
+      // If already in adult herd, remove from nursery to prevent duplicates
+      await deleteKidGrowthRecord(kid.id);
+      showToast(`${kid.kid_tag} is already in the adult herd. Removed from nursery records.`, 'info');
       return;
     }
 
@@ -355,12 +359,10 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
       sire_tag: kid.sire_tag || undefined,
     });
 
-    await updateKidGrowthRecord(kid.id, {
-      status: 'Retained',
-      notes: (kid.notes ? `${kid.notes} | ` : '') + 'Moved to Adult Herd',
-    });
+    // Delete from nursery records so it's not duplicated
+    await deleteKidGrowthRecord(kid.id);
 
-    showToast(`Kid ${kid.kid_tag} moved to adult herd.`, 'success');
+    showToast(`Kid ${kid.kid_tag} graduated to adult herd and cleared from nursery.`, 'success');
   };
 
   return (
@@ -731,9 +733,12 @@ export const KidGrowthTracker: React.FC<KidGrowthTrackerProps> = () => {
                           <button
                             type="button"
                             id={`btn-delete-kid-${kid.id}`}
-                            onClick={() => {
-                              if (confirm(`Delete kid growth record ${kid.kid_tag}?`)) {
-                                deleteKidGrowthRecord(kid.id);
+                            onClick={async () => {
+                              try {
+                                await deleteKidGrowthRecord(kid.id);
+                                showToast(`Kid record ${kid.kid_tag} deleted.`, 'info');
+                              } catch (err: any) {
+                                showToast(err?.message || 'Failed to delete kid record', 'error');
                               }
                             }}
                             className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"

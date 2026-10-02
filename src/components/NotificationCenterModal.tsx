@@ -47,13 +47,15 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const activeToday = todayNotifications.filter(n => !dismissedIds.includes(n.id));
   const activeUpcoming = upcomingNotifications.filter(n => !dismissedIds.includes(n.id));
 
-  const filteredToday = activeFilter === 'all'
+  const filteredToday = (activeFilter === 'all'
     ? activeToday
-    : activeToday.filter(n => n.type === activeFilter);
+    : activeToday.filter(n => n.type === activeFilter)
+  ).slice().sort((a, b) => a.daysDiff - b.daysDiff);
 
-  const filteredUpcoming = activeFilter === 'all'
+  const filteredUpcoming = (activeFilter === 'all'
     ? activeUpcoming
-    : activeUpcoming.filter(n => n.type === activeFilter);
+    : activeUpcoming.filter(n => n.type === activeFilter)
+  ).slice().sort((a, b) => a.daysDiff - b.daysDiff);
 
   const handleActionClick = (notif: FarmNotification) => {
     onClose();
@@ -132,7 +134,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               onClick={() => setActiveFilter('breeding')}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium inline-flex items-center gap-1 transition-all ${
                 activeFilter === 'breeding'
-                  ? 'bg-[#0F6E56] text-white shadow-none'
+                  ? 'bg-rose-600 text-white shadow-2xs'
                   : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
               }`}
             >
@@ -199,21 +201,11 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   return (
                     <div
                       key={notif.id}
-                      className={`p-4 rounded-2xl border transition-all shadow-none ${
-                        isBreeding
-                          ? 'bg-[#E7F4EE] dark:bg-[#04342C] border-[#C3E6D6] dark:border-[#085041]'
-                          : 'bg-[#FCEBEB] dark:bg-[#501313] border-[#FCEBEB] dark:border-[#501313]'
-                      }`}
+                      className="p-4 rounded-2xl border transition-all shadow-none bg-rose-50/70 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/60"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">
-                          <div
-                            className={`p-2.5 rounded-xl shrink-0 mt-0.5 ${
-                              isBreeding
-                                ? 'bg-[#0F6E56] text-white shadow-none'
-                                : 'bg-[#A32D2D] text-white shadow-none'
-                            }`}
-                          >
+                          <div className="p-2.5 rounded-xl shrink-0 mt-0.5 bg-rose-600 text-white shadow-none">
                             {isBreeding ? (
                               <Activity className="w-5 h-5" />
                             ) : (
@@ -222,13 +214,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                           </div>
                           <div>
                             <div className="flex flex-wrap items-center gap-2 mb-1">
-                              <span
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider ${
-                                  isBreeding
-                                    ? 'bg-[#C3E6D6] text-[#085041] dark:bg-[#085041] dark:text-[#C3E6D6]'
-                                    : 'bg-[#FCEBEB] text-[#A32D2D] dark:bg-[#501313] dark:text-[#F09595]'
-                                }`}
-                              >
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                                 {notif.badge}
                               </span>
                               {notif.goatId && (
@@ -303,13 +289,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                       className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-800 flex items-start justify-between gap-3 hover:border-stone-300 dark:hover:border-stone-700 transition-colors"
                     >
                       <div className="flex items-start gap-3">
-                        <div
-                          className={`p-2 rounded-lg shrink-0 ${
-                            isBreeding
-                              ? 'bg-[#E7F4EE] text-[#0F6E56] dark:bg-[#04342C] dark:text-[#5DCAA5]'
-                              : 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300'
-                          }`}
-                        >
+                        <div className="p-2 rounded-lg shrink-0 bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300">
                           {isBreeding ? <Activity className="w-4 h-4" /> : <Syringe className="w-4 h-4" />}
                         </div>
                         <div>
@@ -317,7 +297,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                             <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 font-mono">
                               {notif.date}
                             </span>
-                            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">
                               Due in {notif.daysDiff} day{notif.daysDiff > 1 ? 's' : ''}
                             </span>
                           </div>

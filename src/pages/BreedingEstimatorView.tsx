@@ -15,7 +15,8 @@ import {
   Sliders,
   ChevronRight,
   Save,
-  Lock
+  Lock,
+  Baby
 } from 'lucide-react';
 import { AppView, GoatRecord, HealthRecord, BreedingRecord } from '../types';
 import { RecordKiddingModal } from '../components/RecordKiddingModal';
@@ -284,6 +285,32 @@ export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ on
     setTimeout(() => setSaveSuccessMsg(null), 4000);
   };
 
+  // Identify does whose expected delivery date is today (0 days) or a day after today (1 day)
+  const dueDoes = React.useMemo(() => {
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+
+    return breeding
+      .filter(b => b.status === 'Active' || !b.status)
+      .filter(b => {
+        if (!b.expected_birth) return false;
+        const target = new Date(b.expected_birth);
+        target.setHours(0, 0, 0, 0);
+        const days = Math.ceil((target.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+        return days === 0 || days === 1;
+      })
+      .map(b => {
+        const target = new Date(b.expected_birth);
+        target.setHours(0, 0, 0, 0);
+        const daysLeft = Math.ceil((target.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+        return {
+          ...b,
+          daysLeft,
+        };
+      })
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+  }, [breeding]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
@@ -299,6 +326,40 @@ export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ on
           based on mating dates, breed-specific gestation curves, or pregnancy checkup observations in goat health records.
         </p>
       </div>
+
+      {/* Due Goat Notification Indicator Banner - Exclusively on the Breeding Page */}
+      {dueDoes.length > 0 && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-2xs relative">
+              <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping absolute -top-1 -right-1" />
+              <Baby className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                  Kidding Due Notification
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-600 text-white shadow-2xs">
+                  {dueDoes.length} Expectant Doe{dueDoes.length > 1 ? 's' : ''} Due (Today / Tomorrow)
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-stone-700 dark:text-stone-300 mt-1 leading-relaxed">
+                Next in delivery countdown: <strong className="text-rose-900 dark:text-rose-200 font-mono font-bold">Doe {dueDoes[0].female_id}</strong> {dueDoes[0].daysLeft === 0 ? 'is DUE TODAY (0 days remaining)!' : `is due in ${dueDoes[0].daysLeft} day${dueDoes[0].daysLeft > 1 ? 's' : ''} (${dueDoes[0].expected_birth})`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="#watchlist-section"
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors shadow-2xs text-center"
+            >
+              View Delivery Watchlist ({dueDoes.length}) ↓
+            </a>
+          </div>
+        </div>
+      )}
 
       {saveSuccessMsg && (
         <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-sm font-semibold flex items-center gap-2 shadow-xs animate-in fade-in">
@@ -759,14 +820,31 @@ export const BreedingEstimatorView: React.FC<BreedingEstimatorViewProps> = ({ on
         const deliveredBreeding = breeding.filter(b => b.status === 'Delivered');
         const totalKidsRecorded = kidGrowthRecords.length;
 
-        const filteredWatchlist = breeding.filter(b => {
-          if (watchlistFilter === 'active') return b.status === 'Active' || !b.status;
-          if (watchlistFilter === 'delivered') return b.status === 'Delivered';
-          return true; // 'all' default keeps all does in stable positions so entries do not move
-        });
+        const getRemainingDays = (b: BreedingRecord): number => {
+          if (!b.expected_birth) return 99999;
+          const targetDate = new Date(b.expected_birth);
+          const todayMidnight = new Date();
+          todayMidnight.setHours(0, 0, 0, 0);
+          const targetMidnight = new Date(targetDate);
+          targetMidnight.setHours(0, 0, 0, 0);
+          return Math.ceil((targetMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+        };
+
+        const filteredWatchlist = breeding
+          .filter(b => {
+            if (watchlistFilter === 'active') return b.status === 'Active' || !b.status;
+            if (watchlistFilter === 'delivered') return b.status === 'Delivered';
+            return true;
+          })
+          .sort((a, b) => {
+            // Keep active expectant does prioritized, sorted ascending by days remaining
+            if (a.status !== 'Delivered' && b.status === 'Delivered') return -1;
+            if (a.status === 'Delivered' && b.status !== 'Delivered') return 1;
+            return getRemainingDays(a) - getRemainingDays(b);
+          });
 
         return (
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 shadow-xs space-y-4">
+          <div id="watchlist-section" className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">

@@ -633,20 +633,33 @@ export const RecordsView: React.FC<RecordsViewProps> = ({
 
   const filteredBreeding = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return breeding.filter(b => {
-      // Delivered does are removed from breeding records
-      if (b.status === 'Delivered') return false;
-      const female = goatMap.get(b.female_id.toUpperCase());
-      const male = goatMap.get(b.male_id.toUpperCase());
-      return (
-        !q ||
-        b.female_id.toLowerCase().includes(q) ||
-        b.male_id.toLowerCase().includes(q) ||
-        (female?.name && female.name.toLowerCase().includes(q)) ||
-        (male?.name && male.name.toLowerCase().includes(q)) ||
-        (b.status && b.status.toLowerCase().includes(q))
-      );
-    });
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+
+    return breeding
+      .filter(b => {
+        // Delivered does are removed from breeding records
+        if (b.status === 'Delivered') return false;
+        const female = goatMap.get(b.female_id.toUpperCase());
+        const male = goatMap.get(b.male_id.toUpperCase());
+        return (
+          !q ||
+          b.female_id.toLowerCase().includes(q) ||
+          b.male_id.toLowerCase().includes(q) ||
+          (female?.name && female.name.toLowerCase().includes(q)) ||
+          (male?.name && male.name.toLowerCase().includes(q)) ||
+          (b.status && b.status.toLowerCase().includes(q))
+        );
+      })
+      .sort((a, b) => {
+        const getRemaining = (rec: BreedingRecord) => {
+          if (!rec.expected_birth) return 99999;
+          const exp = new Date(rec.expected_birth);
+          exp.setHours(0, 0, 0, 0);
+          return Math.ceil((exp.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+        };
+        return getRemaining(a) - getRemaining(b);
+      });
   }, [breeding, searchQuery, goatMap]);
 
   const filteredHealth = useMemo(() => {
@@ -874,148 +887,6 @@ export const RecordsView: React.FC<RecordsViewProps> = ({
           { id: 'advisor', label: 'Farm Insights' },
         ]}
       />
-
-      {/* Herd Census Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {/* Remaining Head Count */}
-        <button
-          type="button"
-          id="census-btn-remaining"
-          onClick={() => {
-            setActiveTab('goats');
-            setGoatStatusFilter('remaining');
-          }}
-          className={`p-4 rounded-2xl text-left transition-all border ${
-            activeTab === 'goats' && goatStatusFilter === 'remaining'
-              ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
-              : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-emerald-500 shadow-2xs'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">
-              Remaining
-            </span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-stone-900 dark:text-stone-100 mt-1.5 font-serif">
-            {remainingHeadCount} <span className="text-xs font-sans font-semibold text-emerald-700 dark:text-emerald-400">head</span>
-          </div>
-          <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            Active on farm
-          </div>
-        </button>
-
-        {/* Total Herd Registered */}
-        <button
-          type="button"
-          id="census-btn-total-registered"
-          onClick={() => {
-            setActiveTab('goats');
-            setGoatStatusFilter('all');
-          }}
-          className={`p-4 rounded-2xl text-left transition-all border ${
-            activeTab === 'goats' && goatStatusFilter === 'all'
-              ? 'bg-stone-100 dark:bg-stone-800 border-stone-400 shadow-xs'
-              : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-stone-400 shadow-2xs'
-          }`}
-        >
-          <div className="text-xs font-semibold text-stone-600 dark:text-stone-400 uppercase tracking-wide">
-            Total Herd Registered
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-stone-900 dark:text-stone-100 mt-1.5 font-serif">
-            {totalHerdRegistered} <span className="text-xs font-sans font-semibold text-stone-500">head</span>
-          </div>
-          <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            Total registered
-          </div>
-        </button>
-
-        {/* Sold */}
-        <button
-          type="button"
-          id="census-btn-sold"
-          onClick={() => {
-            setActiveTab('goats');
-            setGoatStatusFilter('Sold');
-          }}
-          className={`p-4 rounded-2xl text-left transition-all border ${
-            activeTab === 'goats' && goatStatusFilter === 'Sold'
-              ? 'bg-amber-50 dark:bg-amber-950/80 border-amber-400 shadow-xs'
-              : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-400 shadow-2xs'
-          }`}
-        >
-          <div className="text-xs font-semibold text-amber-800 dark:text-amber-400 uppercase tracking-wide">
-            Sold
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-amber-900 dark:text-amber-300 mt-1.5 font-serif">
-            {soldCount} <span className="text-xs font-sans font-semibold text-amber-700 dark:text-amber-400">head</span>
-          </div>
-          <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            Sold
-          </div>
-        </button>
-
-        {/* Deceased */}
-        <button
-          type="button"
-          id="census-btn-deceased"
-          onClick={() => {
-            setActiveTab('goats');
-            setGoatStatusFilter('Dead');
-          }}
-          className={`p-4 rounded-2xl text-left transition-all border cursor-pointer ${
-            activeTab === 'goats' && goatStatusFilter === 'Dead'
-              ? 'bg-rose-50 dark:bg-rose-950/80 border-rose-500 ring-2 ring-rose-500/20 shadow-xs'
-              : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-stone-400 shadow-2xs'
-          }`}
-        >
-          <div className={`text-xs font-semibold uppercase tracking-wide ${
-            activeTab === 'goats' && goatStatusFilter === 'Dead'
-              ? 'text-rose-800 dark:text-rose-400'
-              : 'text-stone-600 dark:text-stone-400'
-          }`}>
-            Deceased
-          </div>
-          <div className={`text-2xl sm:text-3xl font-black mt-1.5 font-serif ${
-            activeTab === 'goats' && goatStatusFilter === 'Dead'
-              ? 'text-rose-900 dark:text-rose-300'
-              : 'text-stone-900 dark:text-stone-100'
-          }`}>
-            {deceasedCount} <span className="text-xs font-sans font-semibold text-stone-500">head</span>
-          </div>
-          <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            Deceased
-          </div>
-        </button>
-
-        {/* Kids & Nursery */}
-        <button
-          type="button"
-          id="census-btn-kids"
-          onClick={() => setActiveTab('kids')}
-          className={`p-4 rounded-2xl text-left transition-all border sm:col-span-2 lg:col-span-1 cursor-pointer ${
-            activeTab === 'kids'
-              ? 'bg-amber-50 dark:bg-amber-950/80 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
-              : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500 shadow-2xs'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wide flex items-center gap-1">
-              <GoatKidIcon className="w-3.5 h-3.5 text-amber-600" />
-              Kids
-            </span>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300">
-              {nursingKidsCount} nursing
-            </span>
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-amber-950 dark:text-amber-200 mt-1.5 font-serif">
-            {kidsCount} <span className="text-xs font-sans font-semibold text-amber-700 dark:text-amber-400">kids</span>
-          </div>
-          <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            {weanedKidsCount} weaned
-          </div>
-        </button>
-      </div>
 
       {/* Action Toolbar & Filters */}
       <div className="flex flex-col gap-3">

@@ -64,6 +64,7 @@ export function getFarmNotifications(
   upcomingNotifications: FarmNotification[];
   todayBreedingCount: number;
   todayVaccineCount: number;
+  dueGoatsCount: number;
 } {
   const todayStr = customToday || getSystemDateStr();
   const goatMap = new Map<string, GoatRecord>();
@@ -92,12 +93,12 @@ export function getFarmNotifications(
       const diff = getDaysDiff(b.expected_birth, todayStr);
 
       if (diff === 0) {
-        // DUE TODAY!
+        // DUE TODAY (0 days remaining)
         notifications.push({
           id: `notif-kidding-today-${b.id}`,
           type: 'breeding',
           priority: 'urgent',
-          title: `Expected Kidding Due Today: ${femaleName}`,
+          title: `Expected Kidding Due Today (0d remaining): ${femaleName}`,
           message: `Doe ${femaleName} has reached her projected delivery date (${b.expected_birth}). Monitor closely for labor contractions, vulva relaxation, and prepare sterile kidding supplies.`,
           date: b.expected_birth,
           isToday: true,
@@ -105,23 +106,23 @@ export function getFarmNotifications(
           goatId: b.female_id,
           goatName: femaleGoat?.name,
           details: b.notes || 'Ultrasound/natural gestation tracking',
-          badge: '🍼 Kidding Due Today',
+          badge: '🍼 Due Today (0d)',
         });
-      } else if (diff > 0 && diff <= 3) {
-        // Upcoming within 1-3 days
+      } else if (diff === 1) {
+        // DUE A DAY AFTER TODAY (1 day remaining)
         notifications.push({
-          id: `notif-kidding-upcoming-${b.id}`,
+          id: `notif-kidding-tomorrow-${b.id}`,
           type: 'breeding',
-          priority: 'high',
-          title: `Upcoming Kidding in ${diff} Day${diff > 1 ? 's' : ''}: ${femaleName}`,
-          message: `Doe ${femaleName} is due for kidding on ${b.expected_birth}. Ensure clean bedding and maternity pen separation.`,
+          priority: 'urgent',
+          title: `Expected Kidding Due Tomorrow (1d after today): ${femaleName}`,
+          message: `Doe ${femaleName} is due for kidding tomorrow on ${b.expected_birth} (1 day after today). Prepare clean dry straw bedding and separate into maternity stall.`,
           date: b.expected_birth,
           isToday: false,
-          daysDiff: diff,
+          daysDiff: 1,
           goatId: b.female_id,
           goatName: femaleGoat?.name,
           details: b.notes,
-          badge: `🍼 Due in ${diff}d`,
+          badge: '🍼 Due Tomorrow (1d)',
         });
       }
 
@@ -256,10 +257,25 @@ export function getFarmNotifications(
   });
 
   const todayNotifications = notifications.filter(n => n.isToday);
-  const upcomingNotifications = notifications.filter(n => !n.isToday);
+  const upcomingNotifications = notifications
+    .filter(n => !n.isToday)
+    .sort((a, b) => a.daysDiff - b.daysDiff);
 
   const todayBreedingCount = todayNotifications.filter(n => n.type === 'breeding').length;
   const todayVaccineCount = todayNotifications.filter(n => n.type === 'vaccination').length;
+
+  // Distinct count of pregnant does due today (0) or a day after today (1)
+  const dueDoeTags = new Set<string>();
+  breeding.forEach(b => {
+    if (b.status === 'Delivered' || b.status === 'Failed' || !b.expected_birth) return;
+    const femaleGoat = goatMap.get(b.female_id) || goatMap.get((b.female_id || '').toUpperCase());
+    if (femaleGoat && (femaleGoat.status === 'Sold' || femaleGoat.status === 'Dead')) return;
+    const diff = getDaysDiff(b.expected_birth, todayStr);
+    if (diff === 0 || diff === 1) {
+      dueDoeTags.add(b.female_id);
+    }
+  });
+  const dueGoatsCount = dueDoeTags.size;
 
   return {
     all: notifications,
@@ -267,5 +283,6 @@ export function getFarmNotifications(
     upcomingNotifications,
     todayBreedingCount,
     todayVaccineCount,
+    dueGoatsCount,
   };
 }

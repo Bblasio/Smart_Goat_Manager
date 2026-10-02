@@ -6,6 +6,7 @@ import { useUnits } from '../context/UnitsContext';
 import type { WeightUnit, MilkUnit } from '../context/UnitsContext';
 import { AppView } from '../types';
 import { PWAInstallButton } from '../components/PWAInstallButton';
+import { SignOutConfirmationModal } from '../components/SignOutConfirmationModal';
 import {
   Settings,
   User,
@@ -105,6 +106,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   );
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSuccessMsg, setProfileSuccessMsg] = useState<string | null>(null);
@@ -1137,7 +1139,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             type="button"
             id="btn-settings-confirm-logout"
-            onClick={logout}
+            onClick={() => setShowSignOutConfirm(true)}
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
@@ -1522,6 +1524,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Sign Out Warning Confirmation Modal */}
+      <SignOutConfirmationModal
+        isOpen={showSignOutConfirm}
+        onClose={() => setShowSignOutConfirm(false)}
+      />
     </div>
   );
 };

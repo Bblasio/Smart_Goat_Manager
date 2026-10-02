@@ -5,7 +5,6 @@ import {
   LayoutGrid,
   ClipboardList,
   CheckSquare,
-  LogOut,
   RotateCcw,
   Calendar,
   Stethoscope,
@@ -15,7 +14,6 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
-  Search,
   LucideIcon
 } from 'lucide-react';
 import { AppView } from '../types';
@@ -24,11 +22,11 @@ interface SidebarProps {
   activeTab: AppView;
   setActiveTab: (tab: AppView) => void;
   onOpenAddModal?: () => void;
-  onOpenSearchModal?: () => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
   onOpenNotificationModal?: () => void;
   todayNotificationCount?: number;
+  dueGoatsCount?: number;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -45,11 +43,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   onOpenAddModal: _onOpenAddModal,
-  onOpenSearchModal,
   mobileOpen,
   setMobileOpen,
   onOpenNotificationModal: _onOpenNotificationModal,
   todayNotificationCount = 0,
+  dueGoatsCount = 0,
   isCollapsed = false,
   onToggleCollapse,
 }) => {
@@ -59,7 +57,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     user,
     firebaseUser,
     isDemoMode,
-    logout,
     resetToSampleData,
     feeds,
     medications,
@@ -74,17 +71,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const lowStockCount =
     (feeds?.filter(f => f.quantity <= f.min_threshold).length || 0) +
     (medications?.filter(m => m.quantity <= m.min_threshold).length || 0);
-
-  const rawName = user?.owner_name || user?.manager_name || firebaseUser?.displayName || farmName || 'FM';
-  const userInitials = rawName
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part: string) => part[0]?.toUpperCase())
-    .join('') || 'FM';
-
-  const displayName = user?.owner_name || user?.manager_name || firebaseUser?.displayName || farmName || 'Farm Owner';
-  const displayRole = user?.location || user?.farm_type || 'Farm Manager';
 
   // Group 1 — Overview: Dashboard, Task
   const group1Items: NavItemConfig[] = [
@@ -115,6 +101,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'breeding_estimator',
       label: 'Breeding Estimator',
       icon: Calendar,
+      badge: dueGoatsCount > 0 ? `${dueGoatsCount} DUE` : undefined,
+      badgeClass: dueGoatsCount > 0 ? 'bg-rose-600 text-white font-bold animate-pulse shadow-2xs' : undefined,
     },
     {
       id: 'records',
@@ -250,21 +238,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
 
-            {/* Actions on Navigation Pane: Search & Minimizing Button */}
+            {/* Actions on Navigation Pane: Minimizing & Mobile Close */}
             <div className="flex items-center gap-1 shrink-0">
-              {onOpenSearchModal && (
-                <button
-                  type="button"
-                  id="btn-sidebar-search"
-                  onClick={onOpenSearchModal}
-                  className="p-1.5 text-stone-400 hover:text-white rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
-                  title="Search (⌘K or /)"
-                  aria-label="Search"
-                >
-                  <Search className="w-4 h-4" />
-                </button>
-              )}
-
               {onToggleCollapse && (
                 <button
                   type="button"
@@ -312,56 +287,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Bottom Profile Bar */}
-        <div className="border-t border-stone-800 bg-[#0a0f0d] p-2.5 shrink-0">
-          {isDemoMode && (
-            <div className="mb-2">
-              <button
-                type="button"
-                id="btn-sidebar-reset-data"
-                onClick={resetToSampleData}
-                title="Reset Sample Records"
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-300 border border-stone-800 text-xs font-medium transition-colors cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-stone-400" strokeWidth={1.75} />
-                <span>Reset Demo Records</span>
-              </button>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between gap-2 p-1.5 rounded-xl hover:bg-stone-800/70 transition-colors">
+        {/* Bottom Bar: Reset Demo Records only if in demo mode */}
+        {isDemoMode && (
+          <div className="border-t border-stone-800 bg-[#0a0f0d] p-2.5 shrink-0">
             <button
               type="button"
-              onClick={() => {
-                setActiveTab('profile');
-                setMobileOpen(false);
-              }}
-              className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer group"
+              id="btn-sidebar-reset-data"
+              onClick={resetToSampleData}
+              title="Reset Sample Records"
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-300 border border-stone-800 text-xs font-medium transition-colors cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-full bg-emerald-800 text-white flex items-center justify-center text-xs font-bold shrink-0 border border-emerald-600/50">
-                {userInitials}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold text-stone-200 group-hover:text-white truncate">
-                  {displayName}
-                </div>
-                <div className="text-[10px] text-stone-400 truncate">
-                  {displayRole}
-                </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={logout}
-              className="p-1.5 text-stone-400 hover:text-rose-400 rounded-lg hover:bg-stone-800 transition-colors shrink-0 cursor-pointer"
-              title="Sign Out"
-              aria-label="Sign Out"
-            >
-              <LogOut className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5 text-stone-400" strokeWidth={1.75} />
+              <span>Reset Demo Records</span>
             </button>
           </div>
-        </div>
+        )}
       </aside>
 
       {/* Expand button when Navigation Pane is Minimized (Owned by Navigation Pane, not on the page) */}

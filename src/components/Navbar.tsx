@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useFarm } from '../context/FarmContext';
 import { formatActiveDurationCompact } from '../utils/dateHelper';
 import { AppView } from '../types';
+import { SignOutConfirmationModal } from './SignOutConfirmationModal';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -45,6 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const [isPushing, setIsPushing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
   const handlePushData = async () => {
     setIsPushing(true);
@@ -183,9 +185,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* User / Logout */}
             <button
               id="btn-logout"
-              onClick={logout}
+              onClick={() => setShowSignOutConfirm(true)}
               title={`Logged in as ${firebaseUser?.email || user?.email || 'User'}`}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-stone-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-stone-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden lg:inline">Logout</span>
@@ -201,6 +203,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span>{syncFeedback}</span>
         </div>
       )}
+
+      {/* Sign Out Warning Confirmation Modal */}
+      <SignOutConfirmationModal
+        isOpen={showSignOutConfirm}
+        onClose={() => setShowSignOutConfirm(false)}
+      />
     </header>
   );
 };

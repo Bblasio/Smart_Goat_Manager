@@ -55,6 +55,7 @@ const MainLayout: React.FC = () => {
 
   const notifications = useMemo(() => getFarmNotifications(goats, breeding, health), [goats, breeding, health]);
   const activeTodayCount = notifications.todayNotifications.filter(n => !dismissedNotificationIds.includes(n.id)).length;
+  const dueGoatsCount = notifications.dueGoatsCount;
 
   const handleDismissNotification = (id: string) => {
     setDismissedNotificationIds(prev => {
@@ -146,25 +147,24 @@ const MainLayout: React.FC = () => {
   const getTabLabel = (tab: AppView): string => {
     switch (tab) {
       case 'dashboard':
-        return 'Dashboard';
+        return 'executive dashboard & livestock metrics...';
       case 'tasks':
-        return 'Tasks & Schedules';
+        return 'daily schedules & pending task operations...';
       case 'feed_supply':
-        return 'Feed & Supply';
+        return 'feed stockpiles & veterinary inventory...';
       case 'breeding_estimator':
-        return 'Breeding Estimator';
+        return 'breeding cycles & gestation predictor...';
       case 'records':
-        return 'Herd & Farm Records';
+        return 'herd registry & livestock records...';
       case 'health_vet':
-        return 'Veterinary & Health';
+        return 'veterinary schedules & health logs...';
       case 'reports':
-        return 'Reports & Forecasts';
+        return 'financial reports & lactation analytics...';
       case 'profile':
-        return 'Settings';
       case 'settings':
-        return 'Settings';
+        return 'farm configuration & system settings...';
       default:
-        return 'Farm Section';
+        return 'farm records & livestock ledger...';
     }
   };
 
@@ -190,13 +190,13 @@ const MainLayout: React.FC = () => {
     if (newTab === activeTab && (!subTab || subTab === recordsInitialTab)) return;
     if (mobileSidebarOpen) setMobileSidebarOpen(false);
 
-    setNavigatingMessage(`Loading ${getTabLabel(newTab)}...`);
+    setNavigatingMessage(`Loading ${getTabLabel(newTab)}`);
     setIsNavigating(true);
-    setActiveTab(newTab);
 
+    // Render new tab smoothly behind the loader
     setTimeout(() => {
-      setIsNavigating(false);
-    }, 280);
+      setActiveTab(newTab);
+    }, 160);
   };
 
   if (authLoading || !minLaunchTimePassed) {
@@ -230,6 +230,7 @@ const MainLayout: React.FC = () => {
           statusMessage={navigatingMessage}
           logoUrl={user?.logo_url}
           farmName={farmName}
+          onComplete={() => setIsNavigating(false)}
         />
       )}
 
@@ -238,11 +239,11 @@ const MainLayout: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={handleNavigate}
         onOpenAddModal={() => handleOpenAddModal('goat')}
-        onOpenSearchModal={() => setIsCommandPaletteOpen(true)}
         mobileOpen={mobileSidebarOpen}
         setMobileOpen={setMobileSidebarOpen}
         onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
         todayNotificationCount={activeTodayCount}
+        dueGoatsCount={dueGoatsCount}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebarCollapse}
       />
